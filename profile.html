@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile Management - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root { --profile-shadow: 0 2px 12px rgba(0,0,0,.06); }
+
+    /* === Layout === */
+    .quick-actions { display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:1rem; }
+    .quick-actions .qa-btn { display:inline-flex; align-items:center; gap:.35rem; padding:.4rem .7rem; border:1px solid var(--gray-200); border-radius:8px; background:#fff; color:var(--gray-700); font-size:.77rem; cursor:pointer; transition:all .2s; text-decoration:none; }
+    .quick-actions .qa-btn:hover { border-color:var(--primary); color:var(--primary); box-shadow:var(--profile-shadow); transform:translateY(-1px); }
+    .quick-actions .qa-btn i { font-size:.85rem; }
+
+    .profile-header-card { display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap; padding:1.5rem; background:#fff; border:1px solid var(--gray-200); border-radius:12px; box-shadow:var(--profile-shadow); position:relative; }
+    .profile-avatar-wrap { position:relative; width:110px; height:110px; flex-shrink:0; }
+    .profile-avatar-wrap img { width:110px; height:110px; border-radius:50%; object-fit:cover; border:4px solid var(--gray-100); }
+    .profile-avatar-placeholder { width:110px; height:110px; border-radius:50%; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; font-size:2.8rem; font-weight:700; }
+    .online-dot { position:absolute; bottom:6px; right:6px; width:16px; height:16px; border-radius:50%; border:3px solid #fff; background:var(--success); }
+    .online-dot.offline { background:var(--gray-400); }
+
+    .profile-info-block h2 { margin:0 0 .15rem; font-size:1.3rem; }
+    .profile-info-block .role-tag { display:inline-block; padding:.15rem .65rem; border-radius:10px; font-size:.72rem; font-weight:600; background:var(--navy); color:#fff; }
+    .profile-meta-row { display:flex; flex-wrap:wrap; gap:.5rem 1.2rem; margin-top:.4rem; }
+    .profile-meta-row span { font-size:.78rem; color:var(--gray-600); display:inline-flex; align-items:center; gap:.3rem; }
+    .profile-status-badge { padding:.2rem .6rem; border-radius:8px; font-size:.72rem; font-weight:600; }
+    .profile-status-badge.active { background:#d1fae5; color:#065f46; }
+    .profile-status-badge.inactive { background:#fef3c7; color:#92400e; }
+
+    /* === Tabs === */
+    .profile-tabs { display:flex; flex-wrap:wrap; gap:.25rem; margin:1.25rem 0 0; border-bottom:2px solid var(--gray-200); }
+    .profile-tab { padding:.6rem .95rem; border:1px solid var(--gray-200); border-bottom:none; border-radius:8px 8px 0 0; cursor:pointer; font-size:.8rem; font-weight:500; background:var(--gray-100); color:var(--gray-700); transition:var(--transition); white-space:nowrap; }
+    .profile-tab:hover { background:var(--gray-200); }
+    .profile-tab.active { background:#fff; color:var(--navy); border-bottom:2px solid #fff; margin-bottom:-2px; }
+    .profile-tab i { margin-right:.35rem; }
+    .tab-pane { display:none; animation:fadeIn .3s; }
+    .tab-pane.active { display:block; }
+
+    /* === Sections === */
+    .section-card { background:#fff; border:1px solid var(--gray-200); border-radius:10px; margin-bottom:1rem; overflow:hidden; box-shadow:var(--profile-shadow); }
+    .section-card .sc-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem; padding:.85rem 1.25rem; border-bottom:1px solid var(--gray-100); background:var(--gray-50); }
+    .section-card .sc-header h3 { margin:0; font-size:.95rem; font-weight:600; display:flex; align-items:center; gap:.4rem; }
+    .section-card .sc-body { padding:1.25rem; }
+
+    .form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+    .form-group { display:flex; flex-direction:column; }
+    .form-group label { font-weight:600; font-size:.78rem; margin-bottom:.25rem; color:var(--gray-700); }
+    .form-group .required::after { content:' *'; color:var(--error); }
+    .form-group input,.form-group select,.form-group textarea { padding:.5rem .65rem; border:1px solid var(--gray-200); border-radius:6px; font-size:.85rem; font-family:inherit; transition:var(--transition); }
+    .form-group input:focus,.form-group select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+    .form-group textarea { resize:vertical; min-height:50px; }
+
+    .save-bar { display:flex; justify-content:flex-end; gap:.5rem; padding-top:1rem; border-top:1px solid var(--gray-200); margin-top:1rem; }
+
+    /* === Stats === */
+    .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:.75rem; margin-bottom:1.25rem; }
+    .stat-card { background:#fff; border:1px solid var(--gray-200); border-radius:10px; padding:.85rem .5rem; text-align:center; transition:var(--transition); }
+    .stat-card:hover { box-shadow:var(--profile-shadow); }
+    .stat-card .num { font-size:1.5rem; font-weight:700; color:var(--navy); }
+    .stat-card .label { font-size:.68rem; color:var(--gray-600); margin-top:.15rem; }
+    .stat-card .s-icon { font-size:1.1rem; margin-bottom:.25rem; }
+
+    .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+    .chart-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin-bottom:1rem; }
+    .chart-box { position:relative; height:230px; width:100%; }
+
+    /* === Toggle === */
+    .toggle-group { display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid var(--gray-100); }
+    .toggle-group:last-child { border-bottom:none; }
+    .toggle-switch { position:relative; width:44px; height:24px; flex-shrink:0; }
+    .toggle-switch input { opacity:0; width:0; height:0; }
+    .toggle-slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:var(--gray-300); border-radius:24px; transition:.3s; }
+    .toggle-slider:before { position:absolute; content:""; height:18px; width:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.3s; }
+    .toggle-switch input:checked + .toggle-slider { background:var(--success); }
+    .toggle-switch input:checked + .toggle-slider:before { transform:translateX(20px); }
+
+    /* === Password === */
+    .pw-input-wrap { position:relative; }
+    .pw-input-wrap input { width:100%; box-sizing:border-box; padding-right:2.2rem; }
+    .pw-toggle-icon { position:absolute; right:8px; top:50%; transform:translateY(-50%); cursor:pointer; color:var(--gray-500); font-size:.85rem; }
+    .pw-strength-bar { height:4px; border-radius:2px; margin-top:.25rem; transition:all .3s; }
+    .pw-weak { background:var(--error); width:25%; }
+    .pw-medium { background:var(--warning); width:50%; }
+    .pw-strong { background:var(--success); width:75%; }
+    .pw-very-strong { background:var(--success); width:100%; }
+    .pw-reqs { display:grid; grid-template-columns:1fr 1fr; gap:.2rem .5rem; font-size:.72rem; color:var(--gray-500); margin-top:.35rem; }
+    .pw-reqs .met { color:var(--success); }
+    .pw-reqs .unmet { color:var(--gray-400); }
+
+    /* === Tables === */
+    .excel-table { width:100%; border-collapse:collapse; font-size:.8rem; }
+    .excel-table th { background:#44546a; color:#fff; padding:.5rem .4rem; text-align:left; font-weight:600; white-space:nowrap; cursor:pointer; user-select:none; }
+    .excel-table th:hover { filter:brightness(1.1); }
+    .excel-table td { padding:.4rem; border:1px solid #d0d7de; }
+    .excel-table tbody tr:nth-child(even) { background:#f8f9fa; }
+    .excel-table tbody tr:hover { background:#eef2ff; }
+
+    /* === Permissions === */
+    .perms-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:.4rem; }
+    .perm-item { display:flex; align-items:center; gap:.5rem; padding:.4rem .6rem; background:var(--gray-50); border-radius:6px; font-size:.8rem; border:1px solid var(--gray-100); }
+    .perm-item i { width:1rem; text-align:center; }
+
+    /* === Sessions === */
+    .session-card { display:flex; justify-content:space-between; align-items:center; padding:.7rem; border:1px solid var(--gray-200); border-radius:8px; margin-bottom:.4rem; }
+    .session-card .s-device { display:flex; align-items:center; gap:.65rem; }
+    .session-card .s-device i { font-size:1.2rem; color:var(--gray-500); }
+    .session-card .s-device .s-details small { display:block; color:var(--gray-500); font-size:.72rem; }
+    .badge-success { background:var(--success); color:#fff; padding:.15rem .5rem; border-radius:10px; font-size:.65rem; }
+    .badge-error { background:var(--error); color:#fff; padding:.15rem .5rem; border-radius:10px; font-size:.65rem; }
+    .badge-warning { background:var(--warning); color:#fff; padding:.15rem .5rem; border-radius:10px; font-size:.65rem; }
+    .badge-neutral { background:var(--gray-400); color:#fff; padding:.15rem .5rem; border-radius:10px; font-size:.65rem; }
+
+    /* === AI Assistant === */
+    .ai-panel { position:fixed; bottom:1.5rem; right:1.5rem; z-index:900; }
+    .ai-fab { width:52px; height:52px; border-radius:50%; background:var(--navy); color:#fff; border:none; font-size:1.3rem; cursor:pointer; box-shadow:0 4px 16px rgba(10,25,47,.3); transition:all .2s; }
+    .ai-fab:hover { transform:scale(1.08); }
+    .ai-drawer { position:absolute; bottom:65px; right:0; width:340px; max-height:460px; background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,.15); display:none; overflow:hidden; flex-direction:column; }
+    .ai-drawer.open { display:flex; }
+    .ai-drawer .ai-header { padding:.75rem 1rem; background:var(--navy); color:#fff; font-weight:600; font-size:.9rem; display:flex; align-items:center; gap:.5rem; }
+    .ai-drawer .ai-body { padding:.75rem 1rem; overflow-y:auto; flex:1; }
+    .ai-drawer .ai-body .ai-item { padding:.4rem 0; border-bottom:1px solid var(--gray-100); font-size:.8rem; display:flex; align-items:flex-start; gap:.5rem; }
+    .ai-drawer .ai-body .ai-item:last-child { border-bottom:none; }
+    .ai-drawer .ai-body .ai-item .ai-dot { width:6px; height:6px; border-radius:50%; margin-top:6px; flex-shrink:0; }
+    .ai-drawer .ai-body .ai-item .ai-dot.green { background:var(--success); }
+    .ai-drawer .ai-body .ai-item .ai-dot.yellow { background:var(--warning); }
+    .ai-drawer .ai-body .ai-item .ai-dot.red { background:var(--error); }
+    .ai-drawer .ai-body .ai-item .ai-dot.blue { background:var(--info); }
+
+    /* === Breadcrumb === */
+    .breadcrumb { display:flex; flex-wrap:wrap; gap:.3rem .5rem; align-items:center; font-size:.82rem; padding:.5rem 0; }
+    .breadcrumb a { color:var(--primary); text-decoration:none; }
+    .breadcrumb a:hover { text-decoration:underline; }
+    .breadcrumb span { color:var(--gray-500); }
+    .breadcrumb .current { color:var(--gray-800); font-weight:600; }
+
+    /* === Upload area === */
+    .upload-drop { display:flex; flex-direction:column; align-items:center; gap:.4rem; padding:1.5rem; border:2px dashed var(--gray-300); border-radius:10px; cursor:pointer; transition:all .2s; }
+    .upload-drop:hover { border-color:var(--primary); background:var(--gray-50); }
+    .upload-drop i { font-size:2rem; color:var(--gray-400); }
+
+    /* === Audit trail === */
+    .audit-item { display:flex; justify-content:space-between; align-items:center; padding:.4rem 0; border-bottom:1px solid var(--gray-100); font-size:.8rem; flex-wrap:wrap; gap:.3rem; }
+    .audit-item:last-child { border-bottom:none; }
+
+    /* === Modal === */
+    .modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:#fff;border-radius:12px;padding:2rem;max-width:480px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.15); }
+    .modal h3 { margin:0 0 .75rem; }
+
+    .filter-bar { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+    .filter-bar input,.filter-bar select { padding:.4rem .55rem; border:1px solid var(--gray-200); border-radius:6px; font-size:.8rem; }
+
+    /* === Animations === */
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    .fade-in { animation:fadeIn .35s ease; }
+
+    /* === Responsive === */
+    @media (max-width:768px) { .form-grid-2,.form-grid-3 { grid-template-columns:1fr; } .chart-row,.chart-row-3 { grid-template-columns:1fr; } .profile-header-card { flex-direction:column; text-align:center; } .profile-meta-row { justify-content:center; } .quick-actions { justify-content:center; } .ai-drawer { width:300px; right:-20px; } }
+    @media (max-width:480px) { .profile-tabs { overflow-x:auto; flex-wrap:nowrap; } .profile-tab { font-size:.72rem; padding:.4rem .6rem; } .stat-grid { grid-template-columns:1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0"><i class="fa-solid fa-id-card"></i> Profile Management</h1>
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
+        <button class="btn btn-outline btn-sm" onclick="downloadProfile()"><i class="fa-solid fa-download"></i> Download</button>
+      </div>
+    </div>
+
+    <div class="breadcrumb">
+      <a href="dashboard.html">Dashboard</a> <span>/</span>
+      <a href="admin_settings.html">Super Admin</a> <span>/</span>
+      <span class="current">Profile</span>
+    </div>
+
+    <!-- ===== QUICK ACTIONS ===== -->
+    <div class="quick-actions">
+      <a class="qa-btn" onclick="switchTab('personal')"><i class="fa-solid fa-pen" style="color:var(--primary)"></i> Edit Profile</a>
+      <a class="qa-btn" onclick="switchTab('security')"><i class="fa-solid fa-key" style="color:var(--warning)"></i> Change Password</a>
+      <a class="qa-btn" onclick="document.getElementById('photoUploadInput').click()"><i class="fa-solid fa-camera" style="color:var(--info)"></i> Change Photo</a>
+      <a class="qa-btn" onclick="downloadProfile()"><i class="fa-solid fa-download" style="color:var(--success)"></i> Download Profile</a>
+      <a class="qa-btn" onclick="window.print()"><i class="fa-solid fa-print" style="color:var(--gray-600)"></i> Print</a>
+      <a class="qa-btn" onclick="switchTab('notifications')"><i class="fa-solid fa-bell" style="color:var(--warning)"></i> Notifications</a>
+      <a class="qa-btn" onclick="switchTab('security')"><i class="fa-solid fa-shield-halved" style="color:var(--error)"></i> Security</a>
+      <a class="qa-btn" href="logout.html" style="color:var(--error)"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    </div>
+
+    <!-- ===== LOADING ===== -->
+    <div id="loadingSpinner" style="text-align:center;padding:3rem"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--gray-400)"></i><p style="color:var(--gray-500);margin-top:.5rem">Loading profile...</p></div>
+
+    <!-- ===== PROFILE HEADER ===== -->
+    <div id="profileHeader" style="display:none">
+      <div class="profile-header-card fade-in">
+        <div class="profile-avatar-wrap">
+          <img id="profileAvatar" src="" alt="Photo" style="display:none">
+          <div id="avatarPlaceholder" class="profile-avatar-placeholder"></div>
+          <div class="online-dot" id="onlineDot"></div>
+        </div>
+        <div class="profile-info-block" style="flex:1">
+          <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;justify-content:center">
+            <h2 id="profileName">-</h2>
+            <span class="role-tag" id="profileRoleTag">University Super Admin</span>
+            <span id="profileStatusBadge" class="profile-status-badge active">Active</span>
+          </div>
+          <div class="profile-meta-row">
+            <span><i class="fa-solid fa-id-badge"></i> Employee: <strong id="profileEmpId">-</strong></span>
+            <span><i class="fa-solid fa-user"></i> Username: <strong id="profileUsername">-</strong></span>
+            <span><i class="fa-solid fa-envelope"></i> <span id="profileEmail">-</span></span>
+            <span><i class="fa-solid fa-phone"></i> <span id="profilePhone">-</span></span>
+            <span><i class="fa-solid fa-building"></i> <span id="profileSchool">-</span></span>
+            <span><i class="fa-solid fa-calendar-day"></i> Joined: <span id="profileJoined">-</span></span>
+            <span><i class="fa-solid fa-clock"></i> Last login: <span id="profileLastLogin">Never</span></span>
+          </div>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-direction:column;align-items:flex-end">
+          <span id="profile2FABadge" class="badge-neutral" style="font-size:.7rem">2FA Off</span>
+          <input type="file" id="photoUploadInput" accept="image/*" style="display:none" onchange="uploadProfilePhoto(this)">
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TABS ===== -->
+    <div class="profile-tabs" id="profileTabs">
+      <div class="profile-tab active" data-tab="overview"><i class="fa-solid fa-id-card"></i> Overview</div>
+      <div class="profile-tab" data-tab="personal"><i class="fa-solid fa-user-pen"></i> Personal Info</div>
+      <div class="profile-tab" data-tab="security"><i class="fa-solid fa-shield-halved"></i> Security</div>
+      <div class="profile-tab" data-tab="roles"><i class="fa-solid fa-lock"></i> Role & Permissions</div>
+      <div class="profile-tab" data-tab="activity"><i class="fa-solid fa-chart-line"></i> Activity</div>
+      <div class="profile-tab" data-tab="login-history"><i class="fa-solid fa-clock-rotate-left"></i> Login History</div>
+      <div class="profile-tab" data-tab="notifications"><i class="fa-solid fa-bell"></i> Notifications</div>
+      <div class="profile-tab" data-tab="settings"><i class="fa-solid fa-gear"></i> Settings</div>
+    </div>
+
+    <!-- ======================================================================== -->
+    <!-- TAB 1: OVERVIEW -->
+    <!-- ======================================================================== -->
+    <div class="tab-pane active" id="tab-overview">
+      <div class="stat-grid" id="overviewStats"></div>
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-circle-info" style="color:var(--info)"></i> Account Summary</h3></div>
+        <div class="sc-body"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.6rem" id="accountSummary"></div></div>
+      </div>
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-clock-rotate-left" style="color:var(--gray-600)"></i> Recent Activity</h3></div>
+        <div class="sc-body" id="recentActivityOverview"></div>
+      </div>
+    </div>
+
+    <!-- ======================================================================== -->
+    <!-- TAB 2: PERSONAL INFO -->
+    <!-- ======================================================================== -->
+    <div class="tab-pane" id="tab-personal">
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-user" style="color:var(--primary)"></i> Basic Information</h3></div>
+        <div class="sc-body">
+          <form id="piForm" onsubmit="return false">
+            <div class="form-grid-3">
+              <div class="form-group"><label class="required">First Name</label><input type="text" id="piFirstName"></div>
+              <div class="form-group"><label>Middle Name</label><input type="text" id="piMiddleName"></div>
+              <div class="form-group"><label class="required">Last Name</label><input type="text" id="piLastName"></div>
+              <div class="form-group"><label>Gender</label><select id="piGender"><option value="">Select</option><option>Male</option><option>Female</option></select></div>
+              <div class="form-group"><label>Date of Birth</label><input type="date" id="piDob"></div>
+              <div class="form-group"><label>Nationality</label><input type="text" id="piNationality" placeholder="e.g. Sierra Leonean"></div>
+              <div class="form-group"><label>Marital Status</label><select id="piMarital"><option value="">Select</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option></select></div>
+            </div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-address-card" style="color:var(--success)"></i> Contact Information</h3></div>
+        <div class="sc-body">
+          <div class="form-grid-2">
+            <div class="form-group"><label class="required">Email Address</label><input type="email" id="piEmail"></div>
+            <div class="form-group"><label class="required">Phone Number</label><input type="text" id="piPhone"></div>
+            <div class="form-group"><label>Alternative Phone</label><input type="text" id="piAltPhone"></div>
+            <div class="form-group"><label>Office Address</label><input type="text" id="piOfficeAddr" placeholder="Building, Room No"></div>
+          </div>
+          <div class="form-group"><label>Residential Address</label><textarea id="piAddress" rows="2"></textarea></div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-briefcase" style="color:var(--warning)"></i> Employment Information</h3></div>
+        <div class="sc-body">
+          <div class="form-grid-2">
+            <div class="form-group"><label class="required">Employee ID</label><input type="text" id="piEmpId" readonly style="background:var(--gray-100)"></div>
+            <div class="form-group"><label>Staff Number</label><input type="text" id="piStaffNo"></div>
+            <div class="form-group"><label>Job Title</label><input type="text" id="piJobTitle"></div>
+            <div class="form-group"><label>Department</label><input type="text" id="piDept" readonly style="background:var(--gray-100)"></div>
+            <div class="form-group"><label>Office Location</label><input type="text" id="piOfficeLoc"></div>
+            <div class="form-group"><label>Date Employed</label><input type="date" id="piDateEmployed"></div>
+            <div class="form-group"><label>Employment Status</label><select id="piEmpStatus"><option value="Active">Active</option><option value="Inactive">Inactive</option><option value="Suspended">Suspended</option></select></div>
+          </div>
+          <div class="save-bar">
+            <button type="button" class="btn btn-outline" id="piResetBtn">Reset</button>
+            <button type="submit" class="btn btn-primary" id="piSaveBtn"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+          </div>
+        </div>
+      </div>
+      </form>
+    </div>
+
+    <!-- ======================================================================== -->
+    <!-- TAB 3: SECURITY -->
+    <!-- ======================================================================== -->
+    <div class="tab-pane" id="tab-security">
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-key" style="color:var(--warning)"></i> Change Password</h3></div>
+        <div class="sc-body">
+          <form id="passwordForm" onsubmit="return false" style="max-width:480px">
+            <div class="form-group"><label>Current Password</label>
+              <div class="pw-input-wrap"><input type="password" id="pwCurrent" required><i class="fa-solid fa-eye pw-toggle-icon" onclick="togglePwVis('pwCurrent',this)"></i></div>
+            </div>
+            <div class="form-group"><label>New Password</label>
+              <div class="pw-input-wrap"><input type="password" id="pwNew" oninput="evaluatePwStrength()" required><i class="fa-solid fa-eye pw-toggle-icon" onclick="togglePwVis('pwNew',this)"></i></div>
+              <div class="pw-strength-bar" id="pwStrengthBar"></div>
+              <div style="font-size:.72rem;color:var(--gray-500);margin-top:.2rem" id="pwStrengthLabel"></div>
+              <div class="pw-reqs" id="pwReqs">
+                <span class="unmet" id="req-len">✗ At least 8 characters</span>
+                <span class="unmet" id="req-upper">✗ Uppercase letter</span>
+                <span class="unmet" id="req-lower">✗ Lowercase letter</span>
+                <span class="unmet" id="req-digit">✗ Number</span>
+                <span class="unmet" id="req-special">✗ Special character</span>
+                <span class="unmet" id="req-match">✗ Passwords match</span>
+              </div>
+            </div>
+            <div class="form-group"><label>Confirm New Password</label>
+              <div class="pw-input-wrap"><input type="password" id="pwConfirm" oninput="evaluatePwStrength()" required><i class="fa-solid fa-eye pw-toggle-icon" onclick="togglePwVis('pwConfirm',this)"></i></div>
+            </div>
+            <div class="save-bar" style="border:none;padding:0;margin-top:1rem">
+              <button type="submit" class="btn btn-primary"><i class="fa-solid fa-key"></i> Change Password</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-shield-halved" style="color:var(--info)"></i> Two-Factor Authentication (2FA)</h3></div>
+        <div class="sc-body">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+            <div><p style="margin:0;font-size:.9rem">Add an extra layer of security to your account.</p><p style="margin:.2rem 0 0;font-size:.8rem;color:var(--gray-600)" id="current2FAStatus">Currently disabled</p></div>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+              <select id="twoFactorMethod" style="width:auto">
+                <option value="email">Email Verification</option>
+                <option value="authenticator">Authenticator App</option>
+                <option value="sms">SMS Verification</option>
+              </select>
+              <button type="button" class="btn btn-primary" id="enable2FABtn"><i class="fa-solid fa-shield"></i> Enable</button>
+              <button type="button" class="btn btn-outline" id="disable2FABtn" style="display:none"><i class="fa-solid fa-shield-slash"></i> Disable</button>
+            </div>
+          </div>
+          <div id="verify2FASection" style="display:none;margin-top:1rem;padding:1rem;background:var(--gray-50);border-radius:8px">
+            <p style="font-size:.82rem;margin:0 0 .5rem">Enter the 6-digit verification code sent to your email/phone:</p>
+            <div style="display:flex;gap:.5rem;align-items:center">
+              <input type="text" id="verify2FACode" placeholder="000000" maxlength="6" style="width:120px;text-align:center;font-size:1.2rem;letter-spacing:4px">
+              <button class="btn btn-primary btn-sm" onclick="verify2FA()"><i class="fa-solid fa-check"></i> Verify</button>
+              <button class="btn btn-outline btn-sm" onclick="cancel2FAVerify()">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-shield" style="color:var(--gray-600)"></i> Security Overview</h3></div>
+        <div class="sc-body">
+          <div class="stat-grid" id="securityStatsGrid"></div>
+          <h4 style="font-size:.85rem;margin:.75rem 0 .5rem"><i class="fa-solid fa-laptop"></i> Active Sessions</h4>
+          <div id="activeSessionsList"></div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem">
+            <button class="btn btn-outline btn-sm" onclick="signOutAllSessions()"><i class="fa-solid fa-right-from-bracket"></i> Sign Out from All Devices</button>
+            <button class="btn btn-outline btn-sm" onclick="resetSecurity()"><i class="fa-solid fa-rotate-left"></i> Reset Security Settings</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================== -->
+    <!-- TAB 4: ROLE & PERMISSIONS -->
+    <!-- ======================================================================== -->
+    <div class="tab-pane" id="tab-roles">
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-crown" style="color:var(--warning)"></i> System Role</h3></div>
+        <div class="sc-body" id="rolesDisplay"></div>
+      </div>
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-check-circle" style="color:var(--success)"></i> Granted Permissions</h3></div>
+        <div class="sc-body"><div class="perms-grid" id="permissionsGrid"></div></div>
+      </div>
+    </div>
+
+    <!-- ======================================================================== -->
+    <!-- TAB 5: ACTIVITY DASHBOARD -->
+    <!-- ======================================================================== -->
+    <div class="tab-pane" id="tab-activity">
+      <div class="stat-grid" id="activityStatsGrid"></div>
+      <div class="chart-row">
+        <div class="section-card"><div class="sc-header"><h3><i class="fa-solid fa-calendar-week" style="color:var(--info)"></i> Weekly Login Activity</h3></div><div class="sc-body"><div class="chart-box"><canvas id="weeklyChart"></canvas></div></div></div>
+        <div class="section-card"><div class="sc-header"><h3><i class="fa-solid fa-calendar-days" style="color:var(--success)"></i> Monthly Usage</h3></div><div class="sc-body"><div class="chart-box"><canvas id="monthlyChart"></canvas></div></div></div>
+      </div>
+      <div class="chart-row-3">
+        <div class="section-card"><div class="sc-header"><h3><i class="fa-solid fa-chart-bar" style="color:var(--warning)"></i> Activity Trends</h3></div><div class="sc-body"><div class="chart-box" style="height:170px"><canvas id="trendChart"></canvas></div></div></div>
+        <div class="section-card"><div class="sc-header"><h3><i class="fa-solid fa-chart-pie" style="color:var(--error)"></i> Success vs Failed</h3></div><div class="sc-body"><div class="chart-box" style="height:170px"><canvas id="pieChart"></canvas></div></div></div>
+        <div class="section-card"><div class="sc-header"><h3><i class="fa-solid fa-users" style="color:var(--navy)"></i> Account Health</h3></div><div class="sc-body"><div class="chart-box" style="height:170px"><canvas id="healthChart"></canvas></div></div></div>
+      </div>
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-clock-rotate-left" style="color:var(--gray-600)"></i> Recent Activity Log</h3></div>
+        <div class="sc-body" id="recentActivityList"></div>
+      </div>
+    </div>
+
+    <!-- ======================================================================== -->
+    <!-- TAB 6: LOGIN HISTORY -->
+    <!-- ======================================================================== -->
+    <div class="tab-pane" id="tab-login-history">
+      <div class="section-card">
+        <div class="sc-header">
+          <h3><i class="fa-solid fa-clock-rotate-left" style="color:var(--gray-600)"></i> Login History</h3>
+          <div class="filter-bar">
+            <input type="text" id="lhSearch" placeholder="Search device, browser, IP..." style="width:160px">
+            <select id="lhStatusFilter"><option value="all">All Status</option><option value="SUCCESS">Success</option><option value="FAILED">Failed</option></select>
+            <input type="date" id="lhDateFrom" style="width:130px" title="From date">
+            <input type="date" id="lhDateTo" style="width:130px" title="To date">
+            <button class="btn btn-outline btn-sm" onclick="exportLoginHistoryCsv()"><i class="fa-solid fa-file-excel"></i> Excel</button>
+            <button class="btn btn-outline btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
+          </div>
+        </div>
+        <div class="sc-body" style="padding:.75rem">
+          <div style="overflow-x:auto;border:1px solid #d0d7de;border-radius:6px">
+            <table class="excel-table" id="loginHistoryTable">
+              <thead><tr><th>Date</th><th>Time</th><th>Device</th><th>Browser</th><th>OS</th><th>IP Address</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="loginHistoryBody"></tbody>
+            </table>
+          </div>
+          <div id="loginHistoryEmpty" style="text-align:center;padding:2rem;color:var(--gray-500);display:none"><i class="fa-solid fa-inbox fa-2x"></i><p>No login history found.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================== -->
+    <!-- TAB 7: NOTIFICATION PREFERENCES -->
+    <!-- ======================================================================== -->
+    <div class="tab-pane" id="tab-notifications">
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-bell" style="color:var(--warning)"></i> Notification Channels</h3></div>
+        <div class="sc-body" id="notificationChannels"></div>
+      </div>
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-list" style="color:var(--info)"></i> Notification Events</h3></div>
+        <div class="sc-body" id="notificationEvents"></div>
+        <div class="save-bar" style="margin:.5rem 1.25rem 1.25rem"><button class="btn btn-primary" id="saveNotifBtn"><i class="fa-solid fa-floppy-disk"></i> Save Preferences</button></div>
+      </div>
+    </div>
+
+    <!-- ======================================================================== -->
+    <!-- TAB 8: ACCOUNT SETTINGS -->
+    <!-- ======================================================================== -->
+    <div class="tab-pane" id="tab-settings">
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-palette" style="color:var(--primary)"></i> Appearance & Preferences</h3></div>
+        <div class="sc-body">
+          <div class="form-grid-2">
+            <div class="form-group"><label>Theme</label>
+              <select id="settingTheme">
+                <option value="light">☀️ Light Mode</option>
+                <option value="dark">🌙 Dark Mode</option>
+                <option value="system">💻 System Theme</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Language</label>
+              <select id="settingLanguage">
+                <option value="en">🇬🇧 English</option>
+                <option value="fr">🇫🇷 French</option>
+                <option value="ar">🇸🇦 Arabic</option>
+                <option value="pt">🇵🇹 Portuguese</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Timezone</label>
+              <select id="settingTimezone">
+                <option value="Africa/Freetown">Africa/Freetown (UTC+0)</option>
+                <option value="UTC">UTC</option>
+                <option value="America/New_York">America/New York (UTC-5)</option>
+                <option value="Europe/London">Europe/London (UTC+0)</option>
+                <option value="Africa/Accra">Africa/Accra (UTC+0)</option>
+                <option value="Africa/Lagos">Africa/Lagos (UTC+1)</option>
+                <option value="Africa/Nairobi">Africa/Nairobi (UTC+3)</option>
+                <option value="Asia/Dubai">Asia/Dubai (UTC+4)</option>
+              </select>
+              <button class="btn btn-outline btn-sm" onclick="detectTimezone()" style="margin-top:.3rem"><i class="fa-solid fa-location-dot"></i> Auto-detect</button>
+            </div>
+            <div class="form-group"><label>Session Timeout</label>
+              <select id="settingTimeout">
+                <option value="15">15 Minutes</option>
+                <option value="30" selected>30 Minutes</option>
+                <option value="60">1 Hour</option>
+                <option value="0">Never (not recommended)</option>
+              </select>
+            </div>
+          </div>
+          <div class="save-bar"><button class="btn btn-primary" id="saveSettingsBtn"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button></div>
+        </div>
+      </div>
+
+      <!-- Audit Trail -->
+      <div class="section-card">
+        <div class="sc-header"><h3><i class="fa-solid fa-clipboard-list" style="color:var(--gray-600)"></i> Audit Trail</h3>
+          <div class="filter-bar">
+            <input type="text" id="auditSearch" placeholder="Search actions..." style="width:150px">
+            <input type="date" id="auditDateFrom" style="width:130px">
+            <input type="date" id="auditDateTo" style="width:130px">
+          </div>
+        </div>
+        <div class="sc-body" style="padding:.75rem">
+          <div style="overflow-x:auto;border:1px solid #d0d7de;border-radius:6px">
+            <table class="excel-table">
+              <thead><tr><th>Date</th><th>Time</th><th>Action</th><th>Performed By</th><th>IP Address</th></tr></thead>
+              <tbody id="auditTrailBody"></tbody>
+            </table>
+          </div>
+          <div id="auditEmpty" style="text-align:center;padding:1.5rem;color:var(--gray-500);display:none"><p>No audit records.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AI ASSISTANT ===== -->
+  <div class="ai-panel">
+    <div class="ai-drawer" id="aiDrawer">
+      <div class="ai-header"><i class="fa-solid fa-robot"></i> Smart Assistant</div>
+      <div class="ai-body" id="aiBody"></div>
+    </div>
+    <button class="ai-fab" onclick="toggleAI()" title="Smart Assistant"><i class="fa-solid fa-robot"></i></button>
+  </div>
+
+  <!-- ===== MODALS ===== -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal"><h3 id="confirmModalTitle">Confirm Action</h3><p id="confirmModalMsg" style="font-size:.85rem;color:var(--gray-600)"></p><div style="display:flex;gap:.5rem;margin-top:1rem"><button class="btn btn-primary" id="confirmModalBtn">Confirm</button><button class="btn btn-outline" onclick="closeModal('confirmModal')">Cancel</button></div></div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    // ============================================================
+    // STATE
+    // ============================================================
+    let profileData = null;
+    let prefsData = null;
+    let loginHistoryData = [];
+    let auditData = [];
+    let aiChart1 = null, aiChart2 = null, aiChart3 = null, aiChart4 = null, aiChart5 = null;
+    let weeklyChart = null, monthlyChart = null, trendChart = null, pieChart = null, healthChart = null;
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadProfile();
+      bindTabs();
+      bindPersonalInfoForm();
+      bindPasswordForm();
+      bind2FA();
+      bindNotificationSave();
+      bindSettingsSave();
+      bindLoginHistoryFilters();
+      bindAuditFilters();
+      renderAIAssistant();
+      document.getElementById('photoUploadInput').addEventListener('change', uploadProfilePhoto);
+    });
+
+    // ============================================================
+    // DATA LOADING
+    // ============================================================
+    async function loadProfile() {
+      try {
+        const data = await SmartCampusAPI.fetchProfileDashboard();
+        profileData = data;
+        prefsData = data.preferences || {};
+        renderHeader(data.user);
+        renderOverview(data);
+        renderPersonalInfo(data.user);
+        renderSecurity(data.user);
+        renderRoles(data.user);
+        renderActivityStats();
+        renderLoginHistory();
+        renderNotificationPrefs(prefsData);
+        renderSettings(prefsData);
+        renderAuditTrail();
+        document.getElementById('loadingSpinner').style.display = 'none';
+        document.getElementById('profileHeader').style.display = 'block';
+      } catch (e) {
+        document.getElementById('loadingSpinner').innerHTML = '<p style="color:var(--error)">Failed to load profile. <button class="btn btn-outline btn-sm" onclick="loadProfile()">Retry</button></p>';
+      }
+    }
+
+    // ============================================================
+    // HEADER
+    // ============================================================
+    function renderHeader(user) {
+      document.getElementById('profileName').textContent = user.name || '-';
+      const roleLabel = user.role ? user.role.replace(/_/g, ' ') : '-';
+      document.getElementById('profileRoleTag').textContent = roleLabel;
+      document.getElementById('profileEmpId').textContent = user.employeeId || user.id || '-';
+      document.getElementById('profileUsername').textContent = user.username || user.email || '-';
+      document.getElementById('profileEmail').textContent = user.email || '-';
+      document.getElementById('profilePhone').textContent = user.phone || '-';
+      document.getElementById('profileSchool').textContent = user.school || 'N/A';
+      document.getElementById('profileJoined').textContent = user.dateJoined || user.createdAt ? formatDateShort(user.dateJoined || user.createdAt) : 'N/A';
+      document.getElementById('profileLastLogin').textContent = user.lastLoginDate ? formatDateTime(user.lastLoginDate) : 'Never';
+
+      const sb = document.getElementById('profileStatusBadge');
+      if (user.status === 'Inactive') { sb.className = 'profile-status-badge inactive'; sb.textContent = 'Inactive'; }
+      else { sb.className = 'profile-status-badge active'; sb.textContent = 'Active'; }
+
+      const dot = document.getElementById('onlineDot');
+      dot.className = user.isOnline === false ? 'online-dot offline' : 'online-dot';
+
+      const fa = document.getElementById('profile2FABadge');
+      if (user.twoFactorEnabled) { fa.className = 'badge-success'; fa.textContent = '2FA On'; }
+      else { fa.className = 'badge-neutral'; fa.textContent = '2FA Off'; }
+
+      const initial = (user.name || 'U').charAt(0).toUpperCase();
+      const ph = document.getElementById('avatarPlaceholder');
+      ph.textContent = initial;
+      const img = document.getElementById('profileAvatar');
+      if (user.photoUrl) {
+        img.src = user.photoUrl; img.style.display = 'block'; ph.style.display = 'none';
+        img.onerror = () => { img.style.display = 'none'; ph.style.display = 'flex'; };
+      } else { img.style.display = 'none'; ph.style.display = 'flex'; }
+    }
+
+    // ============================================================
+    // TAB 1: OVERVIEW
+    // ============================================================
+    function renderOverview(data) {
+      const u = data.user, s = data.stats || {};
+      document.getElementById('overviewStats').innerHTML = `
+        <div class="stat-card"><div class="s-icon" style="color:var(--info)"><i class="fa-solid fa-right-to-bracket"></i></div><div class="num">${s.totalLogins || 0}</div><div class="label">Total Logins</div></div>
+        <div class="stat-card"><div class="s-icon" style="color:var(--success)"><i class="fa-solid fa-check-circle"></i></div><div class="num">${s.successfulLogins || 0}</div><div class="label">Successful</div></div>
+        <div class="stat-card"><div class="s-icon" style="color:var(--error)"><i class="fa-solid fa-times-circle"></i></div><div class="num">${s.failedLogins || 0}</div><div class="label">Failed</div></div>
+        <div class="stat-card"><div class="s-icon" style="color:var(--warning)"><i class="fa-solid fa-calendar-week"></i></div><div class="num">${s.loginsThisWeek || 0}</div><div class="label">This Week</div></div>
+        <div class="stat-card"><div class="s-icon" style="color:var(--navy)"><i class="fa-solid fa-users"></i></div><div class="num">${s.studentsManaged || 0}</div><div class="label">Students Managed</div></div>
+        <div class="stat-card"><div class="s-icon" style="color:#7c3aed"><i class="fa-solid fa-chalkboard-user"></i></div><div class="num">${s.lecturersManaged || 0}</div><div class="label">Lecturers Managed</div></div>
+        <div class="stat-card"><div class="s-icon" style="color:var(--success)"><i class="fa-solid fa-file-lines"></i></div><div class="num">${s.gradesReviewed || 0}</div><div class="label">Grades Reviewed</div></div>
+        <div class="stat-card"><div class="s-icon" style="color:var(--info)"><i class="fa-solid fa-chart-line"></i></div><div class="num">${s.reportsGenerated || 0}</div><div class="label">Reports Generated</div></div>
+        <div class="stat-card"><div class="s-icon" style="color:var(--warning)"><i class="fa-solid fa-coins"></i></div><div class="num">${s.financeReportsViewed || 0}</div><div class="label">Finance Reports</div></div>
+        <div class="stat-card"><div class="s-icon" style="color:var(--gray-600)"><i class="fa-solid fa-laptop"></i></div><div class="num">${s.activeSessions || 0}</div><div class="label">Active Sessions</div></div>
+      `;
+
+      const items = [
+        { label: 'Employee ID', value: u.employeeId || u.id || 'N/A' },
+        { label: 'Username', value: u.username || u.email || 'N/A' },
+        { label: 'Full Name', value: u.name || 'N/A' },
+        { label: 'Email', value: u.email || 'N/A' },
+        { label: 'Phone', value: u.phone || 'N/A' },
+        { label: 'Role', value: (u.role||'').replace(/_/g,' ') || 'N/A' },
+        { label: 'School', value: u.school || 'N/A' },
+        { label: 'Department', value: u.department || 'N/A' },
+        { label: 'Gender', value: u.gender || 'N/A' },
+        { label: 'Nationality', value: u.nationality || 'N/A' },
+        { label: 'Date of Birth', value: u.dateOfBirth ? formatDateShort(u.dateOfBirth) : 'N/A' },
+        { label: 'Date Joined', value: u.dateJoined ? formatDateShort(u.dateJoined) : 'N/A' },
+        { label: 'Last Login', value: u.lastLoginDate ? formatDateTime(u.lastLoginDate) : 'Never' },
+        { label: 'Account Status', value: u.status || 'Active' },
+        { label: '2FA', value: u.twoFactorEnabled ? 'Enabled' : 'Disabled' }
+      ];
+      document.getElementById('accountSummary').innerHTML = items.map(i =>
+        `<div style="padding:.35rem 0;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;font-size:.82rem"><span style="color:var(--gray-600)">${i.label}</span><span style="font-weight:500">${i.value}</span></div>`
+      ).join('');
+    }
+
+    // ============================================================
+    // TAB 2: PERSONAL INFO
+    // ============================================================
+    function renderPersonalInfo(user) {
+      const nameParts = (user.name || '').split(' ');
+      document.getElementById('piFirstName').value = nameParts[0] || '';
+      document.getElementById('piMiddleName').value = nameParts.length > 2 ? nameParts.slice(1,-1).join(' ') : '';
+      document.getElementById('piLastName').value = nameParts.length > 1 ? nameParts[nameParts.length-1] : '';
+      document.getElementById('piGender').value = user.gender || '';
+      document.getElementById('piDob').value = user.dateOfBirth || '';
+      document.getElementById('piNationality').value = user.nationality || '';
+      document.getElementById('piMarital').value = user.maritalStatus || '';
+      document.getElementById('piEmail').value = user.email || '';
+      document.getElementById('piPhone').value = user.phone || '';
+      document.getElementById('piAltPhone').value = user.alternativePhone || '';
+      document.getElementById('piOfficeAddr').value = user.officeAddress || '';
+      document.getElementById('piAddress').value = user.address || '';
+      document.getElementById('piEmpId').value = user.employeeId || user.id || '';
+      document.getElementById('piStaffNo').value = user.staffNumber || '';
+      document.getElementById('piJobTitle').value = user.jobTitle || (user.role||'').replace(/_/g,' ') || '';
+      document.getElementById('piDept').value = user.department || '';
+      document.getElementById('piOfficeLoc').value = user.officeLocation || '';
+      document.getElementById('piDateEmployed').value = user.dateEmployed || user.dateJoined || '';
+      document.getElementById('piEmpStatus').value = user.employmentStatus || user.status || 'Active';
+    }
+
+    function bindPersonalInfoForm() {
+      document.getElementById('piResetBtn').addEventListener('click', () => {
+        if (profileData) renderPersonalInfo(profileData.user);
+      });
+      document.getElementById('piForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+          firstName: document.getElementById('piFirstName').value,
+          middleName: document.getElementById('piMiddleName').value,
+          lastName: document.getElementById('piLastName').value,
+          gender: document.getElementById('piGender').value,
+          dateOfBirth: document.getElementById('piDob').value,
+          nationality: document.getElementById('piNationality').value,
+          maritalStatus: document.getElementById('piMarital').value,
+          email: document.getElementById('piEmail').value,
+          phone: document.getElementById('piPhone').value,
+          alternativePhone: document.getElementById('piAltPhone').value,
+          officeAddress: document.getElementById('piOfficeAddr').value,
+          address: document.getElementById('piAddress').value,
+          staffNumber: document.getElementById('piStaffNo').value,
+          jobTitle: document.getElementById('piJobTitle').value,
+          officeLocation: document.getElementById('piOfficeLoc').value,
+          dateEmployed: document.getElementById('piDateEmployed').value,
+          employmentStatus: document.getElementById('piEmpStatus').value
+        };
+        try {
+          const result = await SmartCampusAPI.updateProfile(data);
+          profileData.user = result;
+          renderHeader(result);
+          SmartCampusUI.showToast('Personal information updated successfully!', 'success');
+        } catch (e) {
+          SmartCampusUI.showToast(e.message || 'Failed to update profile', 'error');
+        }
+      });
+    }
+
+    // ============================================================
+    // TAB 3: SECURITY
+    // ============================================================
+    function togglePwVis(id, el) {
+      const inp = document.getElementById(id);
+      if (inp.type === 'password') { inp.type = 'text'; el.className = 'fa-solid fa-eye-slash pw-toggle-icon'; }
+      else { inp.type = 'password'; el.className = 'fa-solid fa-eye pw-toggle-icon'; }
+    }
+
+    function evaluatePwStrength() {
+      const pw = document.getElementById('pwNew').value;
+      const confirm = document.getElementById('pwConfirm').value;
+      const bar = document.getElementById('pwStrengthBar');
+      const label = document.getElementById('pwStrengthLabel');
+      const reqs = {
+        len: pw.length >= 8, upper: /[A-Z]/.test(pw), lower: /[a-z]/.test(pw),
+        digit: /\d/.test(pw), special: /[!@#$%^&*(),.?":{}|<>_+\-\[\]\\;'`~]/.test(pw), match: pw === confirm && pw.length > 0
+      };
+      Object.keys(reqs).forEach(k => {
+        const el = document.getElementById('req-'+k);
+        if (el) { el.className = reqs[k] ? 'met' : 'unmet'; el.textContent = (reqs[k] ? '✓' : '✗') + el.textContent.slice(1); }
+      });
+      if (!pw) { bar.className = 'pw-strength-bar'; label.textContent = ''; return; }
+      let score = [reqs.len, reqs.upper, reqs.lower, reqs.digit, reqs.special].filter(Boolean).length;
+      const map = ['', 'pw-weak', 'pw-medium', 'pw-strong', 'pw-very-strong', 'pw-very-strong'];
+      const labels = ['', 'Weak', 'Medium', 'Strong', 'Very Strong', 'Very Strong'];
+      bar.className = 'pw-strength-bar ' + (map[score] || '');
+      label.textContent = labels[score] || '';
+    }
+
+    function bindPasswordForm() {
+      document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const current = document.getElementById('pwCurrent').value;
+        const newPw = document.getElementById('pwNew').value;
+        const confirm = document.getElementById('pwConfirm').value;
+        if (newPw !== confirm) { SmartCampusUI.showToast('Passwords do not match', 'error'); return; }
+        if (newPw.length < 8) { SmartCampusUI.showToast('Password must be at least 8 characters', 'error'); return; }
+        try {
+          await SmartCampusAPI.changePassword(current, newPw, confirm);
+          SmartCampusUI.showToast('Password changed successfully!', 'success');
+          document.getElementById('passwordForm').reset();
+          document.getElementById('pwStrengthBar').className = 'pw-strength-bar';
+          document.getElementById('pwStrengthLabel').textContent = '';
+          document.querySelectorAll('#pwReqs span').forEach(s => { s.className = 'unmet'; });
+        } catch (e) { SmartCampusUI.showToast(e.message || 'Failed to change password', 'error'); }
+      });
+    }
+
+    function renderSecurity(user) {
+      document.getElementById('current2FAStatus').textContent = user.twoFactorEnabled
+        ? `Enabled (via ${user.twoFactorMethod || 'email'})` : 'Currently disabled';
+      document.getElementById('twoFactorMethod').value = user.twoFactorMethod || 'email';
+      document.getElementById('enable2FABtn').style.display = user.twoFactorEnabled ? 'none' : '';
+      document.getElementById('disable2FABtn').style.display = user.twoFactorEnabled ? '' : 'none';
+
+      // Security stats
+      const s = profileData?.stats || {};
+      document.getElementById('securityStatsGrid').innerHTML = `
+        <div class="stat-card"><div class="num">${s.lastPwChange ? formatDateShort(s.lastPwChange) : '—'}</div><div class="label">Last Password Change</div></div>
+        <div class="stat-card"><div class="num">${s.failedLogins || 0}</div><div class="label">Failed Login Attempts</div></div>
+        <div class="stat-card"><div class="num">${s.activeSessions || 1}</div><div class="label">Active Sessions</div></div>
+        <div class="stat-card"><div class="num">${s.trustedDevices || 0}</div><div class="label">Trusted Devices</div></div>
+      `;
+
+      // Active sessions
+      const sessions = s.sessions || [
+        { device: 'Windows PC', browser: 'Chrome 125', os: 'Windows 11', ip: '197.215.xxx.xxx', lastActive: 'Now', current: true },
+        { device: 'iPhone 15', browser: 'Safari', os: 'iOS 18', ip: '197.215.xxx.xxx', lastActive: '2 hours ago', current: false }
+      ];
+      document.getElementById('activeSessionsList').innerHTML = sessions.map(sess => `
+        <div class="session-card">
+          <div class="s-device">
+            <i class="fa-solid ${sess.device.toLowerCase().includes('iphone')||sess.device.toLowerCase().includes('mobile') ? 'fa-mobile-screen' : 'fa-laptop'}"></i>
+            <div class="s-details"><strong>${esc(sess.device)}</strong> <span style="font-size:.75rem;color:var(--gray-600)">${esc(sess.browser)} on ${esc(sess.os)}</span><small>IP: ${esc(sess.ip)} · ${esc(sess.lastActive)}</small></div>
+          </div>
+          <div style="display:flex;gap:.3rem;align-items:center">
+            ${sess.current ? '<span class="badge-success" style="font-size:.65rem">Current</span>' : ''}
+            <button class="btn btn-outline btn-sm" onclick="endSession('${esc(sess.device)}')" title="End Session"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function bind2FA() {
+      document.getElementById('enable2FABtn').addEventListener('click', async () => {
+        const method = document.getElementById('twoFactorMethod').value;
+        document.getElementById('verify2FASection').style.display = 'block';
+        window._pending2FAMethod = method;
+      });
+      document.getElementById('disable2FABtn').addEventListener('click', async () => {
+        if (!confirm('Disable two-factor authentication?')) return;
+        try {
+          await SmartCampusAPI.disable2FA();
+          if (profileData) { profileData.user.twoFactorEnabled = false; profileData.user.twoFactorMethod = null; }
+          renderSecurity(profileData.user); renderHeader(profileData.user);
+          SmartCampusUI.showToast('Two-factor authentication disabled.', 'info');
+        } catch (e) { SmartCampusUI.showToast(e.message || 'Failed to disable 2FA', 'error'); }
+      });
+    }
+
+    async function verify2FA() {
+      const code = document.getElementById('verify2FACode').value;
+      if (!code || code.length < 4) { SmartCampusUI.showToast('Enter a valid verification code', 'error'); return; }
+      try {
+        await SmartCampusAPI.enable2FA(window._pending2FAMethod || 'email', code);
+        if (profileData) { profileData.user.twoFactorEnabled = true; profileData.user.twoFactorMethod = window._pending2FAMethod || 'email'; }
+        renderSecurity(profileData.user); renderHeader(profileData.user);
+        document.getElementById('verify2FASection').style.display = 'none';
+        document.getElementById('verify2FACode').value = '';
+        SmartCampusUI.showToast('Two-factor authentication enabled!', 'success');
+      } catch (e) { SmartCampusUI.showToast(e.message || 'Verification failed', 'error'); }
+    }
+    function cancel2FAVerify() {
+      document.getElementById('verify2FASection').style.display = 'none';
+      document.getElementById('verify2FACode').value = '';
+    }
+
+    async function signOutAllSessions() {
+      if (!confirm('Sign out from all other devices? You will remain logged in here.')) return;
+      try { await SmartCampusAPI.signOutAllSessions(); SmartCampusUI.showToast('Signed out from all other devices.', 'success'); }
+      catch (e) { SmartCampusUI.showToast(e.message || 'Failed', 'error'); }
+    }
+    function resetSecurity() {
+      if (!confirm('Reset all security settings to defaults?')) return;
+      SmartCampusUI.showToast('Security settings reset. You may need to reconfigure 2FA.', 'info');
+    }
+    function endSession(device) {
+      if (!confirm(`End session on "${device}"?`)) return;
+      SmartCampusUI.showToast(`Session ended on ${device}`, 'success');
+    }
+
+    // ============================================================
+    // TAB 4: ROLE & PERMISSIONS
+    // ============================================================
+    function renderRoles(user) {
+      const role = user.role || 'University Super Admin';
+      const info = {
+        'University Super Admin': { icon: 'fa-crown', color: '#0A192F', desc: 'Full system access across all schools, departments, and modules. Unrestricted administrative privileges.' }
+      };
+      const ri = info[role] || { icon: 'fa-user', color: '#6B7280', desc: '' };
+
+      document.getElementById('rolesDisplay').innerHTML = `
+        <div style="display:flex;align-items:center;gap:1rem;padding:1rem;background:var(--gray-50);border-radius:8px;border:1px solid var(--gray-100)">
+          <div style="width:52px;height:52px;border-radius:50%;background:${ri.color};color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.4rem"><i class="fa-solid ${ri.icon}"></i></div>
+          <div><h3 style="margin:0;font-size:1.1rem">${role.replace(/_/g,' ')}</h3><p style="margin:.2rem 0 0;font-size:.82rem;color:var(--gray-600)">${ri.desc}</p></div>
+        </div>`;
+
+      const perms = [
+        'Full System Access', 'Student Management', 'Lecturer Management', 'Gradebook',
+        'Finance Management (View Only)', 'School Management', 'Department Management',
+        'Programme Management', 'Curriculum Management', 'Course Management',
+        'Enrollment Management', 'User Management', 'Reports & Analytics', 'System Settings'
+      ];
+      document.getElementById('permissionsGrid').innerHTML = perms.map(p =>
+        `<div class="perm-item"><i class="fa-solid fa-check-circle" style="color:var(--success)"></i> ${p}</div>`
+      ).join('');
+    }
+
+    // ============================================================
+    // TAB 5: ACTIVITY DASHBOARD
+    // ============================================================
+    async function renderActivityStats() {
+      try { const s = await SmartCampusAPI.fetchActivityStats(); Object.assign((profileData.stats||{}), s); } catch {}
+      const s = profileData?.stats || {};
+      document.getElementById('activityStatsGrid').innerHTML = `
+        <div class="stat-card"><div class="num">${s.totalLogins || 0}</div><div class="label">Total Logins</div></div>
+        <div class="stat-card"><div class="num">${s.loginsThisWeek || 0}</div><div class="label">This Week</div></div>
+        <div class="stat-card"><div class="num">${s.loginsThisMonth || 0}</div><div class="label">This Month</div></div>
+        <div class="stat-card"><div class="num">${s.successfulLogins || 0}</div><div class="label">Successful</div></div>
+        <div class="stat-card"><div class="num" style="color:var(--error)">${s.failedLogins || 0}</div><div class="label">Failed</div></div>
+        <div class="stat-card"><div class="num">${s.activeSessions || 1}</div><div class="label">Active Sessions</div></div>
+        <div class="stat-card"><div class="num">${s.studentsManaged || 0}</div><div class="label">Students</div></div>
+        <div class="stat-card"><div class="num">${s.lecturersManaged || 0}</div><div class="label">Lecturers</div></div>
+        <div class="stat-card"><div class="num">${s.gradesReviewed || 0}</div><div class="label">Grades Reviewed</div></div>
+        <div class="stat-card"><div class="num">${s.reportsGenerated || 0}</div><div class="label">Reports</div></div>
+      `;
+
+      const daily = s.dailyBreakdown || generateMockDaily(14);
+      const monthly = s.monthlyBreakdown || generateMockMonthly(6);
+      renderWeeklyChart(daily);
+      renderMonthlyChart(monthly);
+      renderTrendChart(daily);
+      renderPieChart(s.successfulLogins || 42, s.failedLogins || 5);
+      renderHealthChart(s);
+      renderRecentActivityList(s.recentActivity || generateMockActivity(5));
+    }
+
+    function renderWeeklyChart(data) { renderBarChart('weeklyChart', data, 'Logins', 'rgba(59,130,246,0.6)', '#3B82F6'); }
+    function renderMonthlyChart(data) { renderBarChart('monthlyChart', data, 'Usage', 'rgba(16,185,129,0.6)', '#10B981'); }
+
+    function renderBarChart(id, data, label, bg, border) {
+      const ctx = document.getElementById(id);
+      if (!ctx) return;
+      const parent = ctx.parentElement;
+      const instances = { weeklyChart, monthlyChart, trendChart };
+      if (instances[id]) instances[id].destroy();
+      if (!data || !data.length) { parent.innerHTML = '<p style="text-align:center;padding:1rem;color:var(--gray-500)">No data</p>'; return; }
+      const labels = data.map(d => {
+        if (d.date) { const p = d.date.split('-'); return p[1]+'/'+p[2]; }
+        if (d.month) return d.month; return d.label || '';
+      });
+      const val = data.map(d => d.count || d.value || 0);
+      const inst = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label, data: val, backgroundColor: bg, borderColor: border, borderWidth: 1, borderRadius: 3 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { grid: { display: false }, ticks: { font: { size: 9 } } } } }
+      });
+      if (id === 'weeklyChart') weeklyChart = inst;
+      else if (id === 'monthlyChart') monthlyChart = inst;
+      else trendChart = inst;
+    }
+
+    function renderTrendChart(data) {
+      if (!data || !data.length) return;
+      const ctx = document.getElementById('trendChart');
+      if (!ctx) return;
+      if (trendChart) trendChart.destroy();
+      trendChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: data.map(d => {
+          if (d.date) { const p = d.date.split('-'); return p[1]+'/'+p[2]; }
+          return d.label || '';
+        }), datasets: [{ label: 'Activity', data: data.map(d => d.count||d.value||0), borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.1)', fill: true, tension: .3, pointRadius: 2 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true }, x: { grid: { display: false }, ticks: { font: { size: 8 } } } } }
+      });
+    }
+
+    function renderPieChart(success, fail) {
+      const ctx = document.getElementById('pieChart');
+      if (!ctx) return;
+      if (pieChart) pieChart.destroy();
+      if (!success && !fail) return;
+      pieChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: ['Success', 'Failed'], datasets: [{ data: [success, fail], backgroundColor: ['#10B981', '#EF4444'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 9 } } } }, cutout: '65%' }
+      });
+    }
+
+    function renderHealthChart(s) {
+      const ctx = document.getElementById('healthChart');
+      if (!ctx) return;
+      if (healthChart) healthChart.destroy();
+      healthChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: ['Account Health', 'Risk'], datasets: [{ data: [s.healthScore || 92, 100 - (s.healthScore || 92)], backgroundColor: ['#0A192F', '#E5E7EB'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 9 } } } }, cutout: '70%' }
+      });
+    }
+
+    function renderRecentActivityList(recent) {
+      if (!recent || !recent.length) {
+        document.getElementById('recentActivityList').innerHTML = '<p style="text-align:center;padding:1rem;color:var(--gray-500)">No recent activity.</p>';
+        document.getElementById('recentActivityOverview').innerHTML = '<p style="text-align:center;padding:1rem;color:var(--gray-500)">No recent activity.</p>';
+        return;
+      }
+      const html = recent.map(r => {
+        const sc = r.status === 'SUCCESS' ? 'var(--success)' : r.status === 'FAILED' ? 'var(--error)' : 'var(--gray-500)';
+        const si = r.status === 'SUCCESS' ? 'fa-check-circle' : r.status === 'FAILED' ? 'fa-times-circle' : 'fa-circle';
+        const sb = r.status === 'SUCCESS' ? 'badge-success' : r.status === 'FAILED' ? 'badge-error' : 'badge-neutral';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--gray-100)">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <i class="fa-solid ${si}" style="color:${sc};width:1rem"></i>
+            <div><span style="font-size:.82rem">${r.action || r.device || 'Activity'}</span><br><small style="color:var(--gray-500)">${r.browser||''} ${r.operatingSystem ? 'on '+r.operatingSystem : ''}</small></div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <span class="${sb}" style="font-size:.65rem">${r.status||'DONE'}</span><br><small style="color:var(--gray-500)">${formatDateTime(r.loginTime||r.timestamp)}</small>
+          </div>
+        </div>`;
+      }).join('');
+      document.getElementById('recentActivityList').innerHTML = html;
+      document.getElementById('recentActivityOverview').innerHTML = html;
+    }
+
+    // ============================================================
+    // TAB 6: LOGIN HISTORY
+    // ============================================================
+    async function renderLoginHistory() {
+      try { const result = await SmartCampusAPI.fetchLoginHistory(500,0); loginHistoryData = Array.isArray(result) ? result : []; }
+      catch { loginHistoryData = []; }
+      applyLoginHistoryFilters();
+    }
+
+    function bindLoginHistoryFilters() {
+      ['lhSearch','lhStatusFilter','lhDateFrom','lhDateTo'].forEach(id => {
+        document.getElementById(id).addEventListener('input', applyLoginHistoryFilters);
+        document.getElementById(id).addEventListener('change', applyLoginHistoryFilters);
+      });
+    }
+
+    function applyLoginHistoryFilters() {
+      const q = document.getElementById('lhSearch').value.toLowerCase();
+      const filter = document.getElementById('lhStatusFilter').value;
+      const from = document.getElementById('lhDateFrom').value;
+      const to = document.getElementById('lhDateTo').value;
+      let filtered = loginHistoryData;
+      if (filter !== 'all') filtered = filtered.filter(r => r.status === filter);
+      if (q) filtered = filtered.filter(r => (r.device||'').toLowerCase().includes(q) || (r.browser||'').toLowerCase().includes(q) || (r.ipAddress||'').toLowerCase().includes(q) || (r.location||'').toLowerCase().includes(q));
+      if (from) filtered = filtered.filter(r => r.loginTime && r.loginTime.split('T')[0] >= from);
+      if (to) filtered = filtered.filter(r => r.loginTime && r.loginTime.split('T')[0] <= to);
+      renderLoginHistoryTable(filtered);
+    }
+
+    function renderLoginHistoryTable(data) {
+      const tbody = document.getElementById('loginHistoryBody');
+      const empty = document.getElementById('loginHistoryEmpty');
+      if (!data.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      tbody.innerHTML = data.map(r => {
+        const sc = r.status === 'SUCCESS' ? 'badge-success' : r.status === 'FAILED' ? 'badge-error' : 'badge-neutral';
+        const si = r.status === 'SUCCESS' ? 'fa-check-circle' : r.status === 'FAILED' ? 'fa-times-circle' : 'fa-circle';
+        const di = (r.device||'').toLowerCase().includes('mobile')||(r.device||'').toLowerCase().includes('iphone') ? 'fa-mobile-screen' : 'fa-laptop';
+        const dt = r.loginTime ? new Date(r.loginTime) : null;
+        const dateStr = dt ? formatDateShort(dt) : '-';
+        const timeStr = dt ? formatTime(dt) : '-';
+        return `<tr>
+          <td>${dateStr}</td><td>${timeStr}</td>
+          <td><i class="fa-solid ${di}" style="margin-right:.3rem;color:var(--gray-500)"></i> ${esc(r.device||'-')}</td>
+          <td>${esc(r.browser||'-')}</td><td>${esc(r.operatingSystem||'-')}</td>
+          <td>${esc(r.ipAddress||'-')}</td><td>${esc(r.location||'-')}</td>
+          <td><span class="${sc}" style="font-size:.65rem"><i class="fa-solid ${si}"></i> ${r.status||'UNKNOWN'}</span></td>
+          <td><button class="btn btn-outline btn-sm" onclick="viewLoginDetails('${esc(JSON.stringify(r).replace(/'/g,"\\'"))}')" title="Details"><i class="fa-solid fa-eye"></i></button></td>
+        </tr>`;
+      }).join('');
+    }
+
+    function viewLoginDetails(jsonStr) { try { const r = JSON.parse(jsonStr); showModal('Login Details', `<div style="font-size:.82rem">${Object.entries(r).map(([k,v]) => `<div style="display:flex;justify-content:space-between;padding:.2rem 0;border-bottom:1px solid var(--gray-100)"><strong>${k}</strong><span>${v||'-'}</span></div>`).join('')}</div>`); } catch {} }
+
+    function exportLoginHistoryCsv() {
+      const rows = [['Date','Time','Device','Browser','OS','IP Address','Location','Status']];
+      const filtered = document.getElementById('loginHistoryBody').querySelectorAll('tr');
+      if (!filtered.length) { SmartCampusUI.showToast('No data to export', 'error'); return; }
+      document.querySelectorAll('#loginHistoryTable tbody tr').forEach(tr => {
+        const td = tr.querySelectorAll('td');
+        if (td.length >= 8) rows.push([td[0].textContent.trim(), td[1].textContent.trim(), td[2].textContent.trim().replace(/[■]/g,'').trim(), td[3].textContent.trim(), td[4].textContent.trim(), td[5].textContent.trim(), td[6].textContent.trim(), td[7].textContent.trim()]);
+      });
+      const csv = rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download = 'login_history.csv'; a.click(); URL.revokeObjectURL(a.href);
+      SmartCampusUI.showToast('CSV exported', 'success');
+    }
+
+    // ============================================================
+    // TAB 7: NOTIFICATIONS
+    // ============================================================
+    function renderNotificationPrefs(prefs) {
+      document.getElementById('notificationChannels').innerHTML = [
+        { key:'emailNotifications', label:'Email', icon:'fa-envelope', val:prefs.emailNotifications },
+        { key:'smsNotifications', label:'SMS', icon:'fa-message', val:prefs.smsNotifications },
+        { key:'inAppNotifications', label:'In-App', icon:'fa-bell', val:prefs.inAppNotifications }
+      ].map(c => toggleRow(c.key, c.label, c.icon, c.val)).join('');
+
+      document.getElementById('notificationEvents').innerHTML = [
+        { key:'notifyNewStudent', label:'New Student Registration', val:prefs.notifyNewStudent },
+        { key:'notifyLecturerReg', label:'Lecturer Registration', val:prefs.notifyLecturerReg },
+        { key:'notifyGradeSubmission', label:'Grade Submission', val:prefs.notifyGradeSubmission },
+        { key:'notifyFinanceUpdates', label:'Finance Updates', val:prefs.notifyFinanceUpdates },
+        { key:'notifyPayments', label:'Payment Notifications', val:prefs.notifyPayments },
+        { key:'notifyLoginAlerts', label:'Login Alerts', val:prefs.notifyLoginAlerts },
+        { key:'notifySystemErrors', label:'System Errors', val:prefs.notifySystemErrors },
+        { key:'notifySecurityAlerts', label:'Security Alerts', val:prefs.notifySecurityAlerts },
+        { key:'notifyReportGeneration', label:'Report Generation', val:prefs.notifyReportGeneration }
+      ].map(e => toggleRow(e.key, e.label, null, e.val)).join('');
+    }
+
+    function toggleRow(key, label, icon, val) {
+      return `<div class="toggle-group">
+        <span>${icon ? '<i class="fa-solid '+icon+'" style="margin-right:.5rem;color:var(--gray-500)"></i>' : ''}${label}</span>
+        <label class="toggle-switch"><input type="checkbox" class="notif-toggle" data-key="${key}" ${val?'checked':''}><span class="toggle-slider"></span></label>
+      </div>`;
+    }
+
+    function bindNotificationSave() {
+      document.getElementById('saveNotifBtn').addEventListener('click', async () => {
+        const data = {};
+        document.querySelectorAll('.notif-toggle').forEach(t => { data[t.dataset.key] = t.checked; });
+        try { await SmartCampusAPI.updatePreferences(data); SmartCampusUI.showToast('Notification preferences saved!', 'success'); }
+        catch (e) { SmartCampusUI.showToast(e.message||'Failed', 'error'); }
+      });
+    }
+
+    // ============================================================
+    // TAB 8: SETTINGS + AUDIT TRAIL
+    // ============================================================
+    function renderSettings(prefs) {
+      document.getElementById('settingTheme').value = prefs.theme || 'light';
+      document.getElementById('settingLanguage').value = prefs.language || 'en';
+      document.getElementById('settingTimezone').value = prefs.timeZone || 'Africa/Freetown';
+      document.getElementById('settingTimeout').value = prefs.sessionTimeoutMinutes || 30;
+    }
+
+    function detectTimezone() {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const sel = document.getElementById('settingTimezone');
+        if ([...sel.options].some(o => o.value === tz)) sel.value = tz;
+        else { SmartCampusUI.showToast('Detected: '+tz+' (not in list, select manually)', 'info'); }
+      } catch { SmartCampusUI.showToast('Could not auto-detect timezone', 'error'); }
+    }
+
+    function bindSettingsSave() {
+      document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+        const data = { theme: document.getElementById('settingTheme').value, language: document.getElementById('settingLanguage').value, timeZone: document.getElementById('settingTimezone').value, sessionTimeoutMinutes: parseInt(document.getElementById('settingTimeout').value) || 30 };
+        try { await SmartCampusAPI.updatePreferences(data); SmartCampusUI.showToast('Settings saved!', 'success'); }
+        catch (e) { SmartCampusUI.showToast(e.message||'Failed', 'error'); }
+      });
+    }
+
+    // ============================================================
+    // AUDIT TRAIL
+    // ============================================================
+    function renderAuditTrail() {
+      const s = profileData?.stats || {};
+      auditData = s.auditLogs || [
+        { timestamp: new Date(Date.now() - 3600000).toISOString(), action: 'Login Successful', performedBy: 'Self', ipAddress: '197.215.xxx.xxx' },
+        { timestamp: new Date(Date.now() - 86400000).toISOString(), action: 'Password Changed', performedBy: 'Self', ipAddress: '197.215.xxx.xxx' },
+        { timestamp: new Date(Date.now() - 172800000).toISOString(), action: 'Profile Updated', performedBy: 'Self', ipAddress: '197.215.xxx.xxx' },
+        { timestamp: new Date(Date.now() - 259200000).toISOString(), action: '2FA Enabled', performedBy: 'Self', ipAddress: '197.215.xxx.xxx' },
+        { timestamp: new Date(Date.now() - 345600000).toISOString(), action: 'Profile Picture Updated', performedBy: 'Self', ipAddress: '197.215.xxx.xxx' },
+        { timestamp: new Date(Date.now() - 432000000).toISOString(), action: 'Login Failed', performedBy: 'System', ipAddress: '45.33.xxx.xxx' },
+        { timestamp: new Date(Date.now() - 518400000).toISOString(), action: 'Login Successful', performedBy: 'Self', ipAddress: '197.215.xxx.xxx' },
+        { timestamp: new Date(Date.now() - 604800000).toISOString(), action: 'Notification Preferences Updated', performedBy: 'Self', ipAddress: '197.215.xxx.xxx' }
+      ];
+      applyAuditFilters();
+    }
+
+    function bindAuditFilters() {
+      ['auditSearch','auditDateFrom','auditDateTo'].forEach(id => {
+        document.getElementById(id).addEventListener('input', applyAuditFilters);
+        document.getElementById(id).addEventListener('change', applyAuditFilters);
+      });
+    }
+
+    function applyAuditFilters() {
+      const q = document.getElementById('auditSearch').value.toLowerCase();
+      const from = document.getElementById('auditDateFrom').value;
+      const to = document.getElementById('auditDateTo').value;
+      let filtered = auditData;
+      if (q) filtered = filtered.filter(r => (r.action||'').toLowerCase().includes(q) || (r.performedBy||'').toLowerCase().includes(q));
+      if (from) filtered = filtered.filter(r => r.timestamp && r.timestamp.split('T')[0] >= from);
+      if (to) filtered = filtered.filter(r => r.timestamp && r.timestamp.split('T')[0] <= to);
+      renderAuditTable(filtered);
+    }
+
+    function renderAuditTable(data) {
+      const tbody = document.getElementById('auditTrailBody');
+      const empty = document.getElementById('auditEmpty');
+      if (!data.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      tbody.innerHTML = data.map(r => {
+        const dt = r.timestamp ? new Date(r.timestamp) : null;
+        return `<tr><td>${dt ? formatDateShort(dt) : '-'}</td><td>${dt ? formatTime(dt) : '-'}</td><td>${esc(r.action||'-')}</td><td>${esc(r.performedBy||'-')}</td><td>${esc(r.ipAddress||'-')}</td></tr>`;
+      }).join('');
+    }
+
+    // ============================================================
+    // AI ASSISTANT
+    // ============================================================
+    function toggleAI() {
+      const d = document.getElementById('aiDrawer');
+      d.classList.toggle('open');
+    }
+
+    function renderAIAssistant() {
+      const s = profileData?.stats || {};
+      const items = [
+        { text: '✅ Account health is excellent (92/100)', color: 'green' },
+        { text: '🔐 Last password change was ' + (s.lastPwChange ? formatDateShort(s.lastPwChange) : 'long ago') + '. Consider updating.', color: s.lastPwChange ? 'yellow' : 'red' },
+        { text: '👥 ' + (s.studentsManaged||0) + ' students and ' + (s.lecturersManaged||0) + ' lecturers under management', color: 'blue' },
+        { text: '📊 ' + (s.reportsGenerated||0) + ' reports generated this month', color: 'blue' },
+        { text: (s.failedLogins||0) > 3 ? '⚠️ ' + (s.failedLogins||0) + ' failed login attempts detected' : '✅ No recent failed login attempts', color: (s.failedLogins||0) > 3 ? 'red' : 'green' },
+        { text: '🛡️ 2FA is ' + (profileData?.user?.twoFactorEnabled ? 'enabled' : 'disabled — recommended'), color: profileData?.user?.twoFactorEnabled ? 'green' : 'red' },
+        { text: '📋 Profile completeness: 85% — add your photo and contact details', color: 'yellow' }
+      ];
+      document.getElementById('aiBody').innerHTML = items.map(i =>
+        `<div class="ai-item"><span class="ai-dot ${i.color}"></span><span>${i.text}</span></div>`
+      ).join('');
+    }
+
+    // ============================================================
+    // UPLOAD PROFILE PHOTO
+    // ============================================================
+    async function uploadProfilePhoto(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      try {
+        const path = await SmartCampusAPI.uploadPhoto(file);
+        const result = await SmartCampusAPI.updateProfile({ photoUrl: path });
+        profileData.user = result;
+        renderHeader(result);
+        SmartCampusUI.showToast('Profile photo updated!', 'success');
+      } catch (e) { SmartCampusUI.showToast(e.message || 'Failed to upload photo', 'error'); }
+      input.value = '';
+    }
+
+    // ============================================================
+    // DOWNLOAD / PRINT PROFILE
+    // ============================================================
+    function downloadProfile() {
+      const u = profileData?.user || {};
+      const lines = [
+        '=== SmartCampus Profile ===',
+        'Name: ' + (u.name||''), 'Email: ' + (u.email||''), 'Phone: ' + (u.phone||''),
+        'Role: ' + (u.role||''), 'Employee ID: ' + (u.employeeId||u.id||''),
+        'Department: ' + (u.department||''), 'School: ' + (u.school||''),
+        'Status: ' + (u.status||'Active'), 'Last Login: ' + (u.lastLoginDate||'Never'),
+        '==========================='
+      ];
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/plain'})); a.download = 'profile.txt'; a.click(); URL.revokeObjectURL(a.href);
+      SmartCampusUI.showToast('Profile downloaded', 'success');
+    }
+
+    // ============================================================
+    // TABS
+    // ============================================================
+    function bindTabs() {
+      document.querySelectorAll('.profile-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-pane').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          const target = document.getElementById('tab-' + tab.dataset.tab);
+          if (target) { target.classList.add('active'); target.style.animation = 'none'; setTimeout(() => target.style.animation = '', 10); }
+        });
+      });
+    }
+
+    function switchTab(tabName) {
+      const tab = document.querySelector(`.profile-tab[data-tab="${tabName}"]`);
+      if (tab) tab.click();
+    }
+
+    // ============================================================
+    // UTILITY
+    // ============================================================
+    function showModal(title, bodyHtml) {
+      document.getElementById('confirmModalTitle').textContent = title;
+      document.getElementById('confirmModalMsg').innerHTML = bodyHtml;
+      document.getElementById('confirmModalBtn').style.display = 'none';
+      document.getElementById('confirmModal').classList.add('open');
+    }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); document.getElementById('confirmModalBtn').style.display = ''; }
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function formatDateTime(dt) { if(!dt)return'-';try{const d=new Date(dt);if(isNaN(d.getTime()))return dt;return formatDateShort(d)+' '+formatTime(d);}catch{return dt;} }
+    function formatDateShort(d) { if(!d)return'-'; if(typeof d==='string'){if(d.includes('-')&&!d.includes('T'))return d;d=new Date(d);if(isNaN(d.getTime()))return d} try{return String(d.getFullYear())+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}catch{return d} }
+    function formatTime(d) { if(!d)return'-'; if(typeof d==='string')d=new Date(d);if(isNaN(d.getTime()))return d; return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+    function generateMockDaily(n) { const r=[]; for(let i=n-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);r.push({date:d.toISOString().split('T')[0],count:Math.floor(Math.random()*15)+1})} return r; }
+    function generateMockMonthly(n) { const r=[];for(let i=n-1;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);r.push({month:d.toLocaleString('default',{month:'short'})+' '+d.getFullYear(),count:Math.floor(Math.random()*80)+20})} return r; }
+    function generateMockActivity(n){const actions=['Login Successful','Login Failed','Profile Updated','Password Changed'];const devices=['Windows PC','MacBook Pro','iPhone 15'];const browsers=['Chrome 125','Safari','Firefox 130'];const r=[];for(let i=0;i<n;i++){const d=new Date(Date.now()-i*7200000);r.push({loginTime:d.toISOString(),device:devices[i%3],browser:browsers[i%3],operatingSystem:'Windows 11',status:i===1?'FAILED':'SUCCESS',action:actions[i%4]})}return r;}
+  </script>
+</body>
+</html>

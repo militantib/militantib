@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Academic Transcript - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    .stat-card {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 1.25rem 1.5rem;
+      text-align: center;
+    }
+    .stat-card h3 {
+      font-size: 1.75rem;
+      margin-bottom: 0.25rem;
+      color: var(--navy);
+    }
+    .stat-card p {
+      font-size: 0.82rem;
+      color: var(--gray-700);
+      margin: 0;
+    }
+    .standing-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1.25rem;
+      border-radius: 30px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .standing-first-class {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+    .standing-second-upper {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+    .standing-second-lower {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+    .standing-pass {
+      background: #ffedd5;
+      color: #9a3412;
+      border: 1px solid #fdba74;
+    }
+    .standing-probation {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    .semester-subheader {
+      background: var(--gray-100);
+      font-weight: 600;
+      color: var(--navy);
+    }
+    .semester-subheader td {
+      padding: 0.5rem 0.75rem;
+    }
+    .semester-subtotal {
+      background: #f0fdf4;
+      font-weight: 500;
+    }
+    .semester-subtotal td {
+      border-bottom: 2px solid var(--gray-300);
+    }
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+    }
+    .filter-bar label {
+      margin-bottom: 0;
+      white-space: nowrap;
+    }
+    .student-search-item {
+      padding: 0.6rem 0.85rem;
+      cursor: pointer;
+      border-bottom: 1px solid var(--gray-100);
+      transition: background 0.15s;
+      font-size: 0.88rem;
+    }
+    .student-search-item:hover {
+      background: var(--gray-100);
+    }
+    .student-search-item strong {
+      display: block;
+    }
+    .student-search-item small {
+      color: var(--gray-500);
+    }
+    .grade-analysis-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .grade-analysis-item {
+      text-align: center;
+      padding: 0.75rem;
+      border-radius: var(--border-radius);
+      background: var(--gray-100);
+    }
+    .grade-analysis-item h4 {
+      font-size: 1.5rem;
+      margin: 0;
+    }
+    .grade-analysis-item p {
+      font-size: 0.8rem;
+      color: var(--gray-700);
+      margin: 0.15rem 0 0;
+    }
+    .ga-a { border-left: 4px solid var(--success); }
+    .ga-b { border-left: 4px solid var(--info); }
+    .ga-c { border-left: 4px solid var(--warning); }
+    .ga-d { border-left: 4px solid #f97316; }
+    .ga-f { border-left: 4px solid var(--error); }
+    @media (max-width: 768px) {
+      .stat-card h3 { font-size: 1.35rem; }
+      #statsRow { grid-template-columns: repeat(2, 1fr); }
+      #chartsRow { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar">
+      <button class="menu-toggle" type="button">☰</button>
+      <div class="role-selector">
+        <label for="roleSelect">View as:</label>
+        <select id="roleSelect"></select>
+      </div>
+    </div>
+
+    <div id="accessDenied" style="display:none;text-align:center;padding:4rem">
+      <i class="fa-solid fa-lock fa-3x" style="color:var(--error)"></i>
+      <h2 style="color:var(--error);margin-top:1rem">Access Denied</h2>
+      <p style="color:var(--gray-500)">You do not have permission to view this page.</p>
+    </div>
+
+    <div id="transcriptContent" style="display:none">
+      <div id="adminSearchSection" class="card" data-role="University Super Admin,School Super Admin,Department Admin" style="display:none">
+        <div class="card-header">Select Student</div>
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:1;min-width:250px">
+            <label for="studentSearchInput">Search by name, email, or registration number</label>
+            <input type="text" id="studentSearchInput" placeholder="Type to search students..." style="width:100%">
+          </div>
+          <button class="btn btn-primary" id="searchStudentBtn"><i class="fa-solid fa-search"></i> Search</button>
+        </div>
+        <div id="studentSearchResults" style="margin-top:0.75rem"></div>
+      </div>
+
+      <div class="card" id="transcriptHeader">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem">
+          <div>
+            <h1>Academic Transcript &amp; CGPA</h1>
+            <p id="studentInfo" style="color:var(--gray-700);margin-top:0.25rem">
+              <strong id="studentName">--</strong> &mdash;
+              <span id="studentProgramme">--</span><br>
+              <span id="studentRegNumber">REG: --</span>
+            </p>
+          </div>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center">
+            <div class="filter-bar">
+              <label for="yearFilter">Year:</label>
+              <select id="yearFilter" style="width:auto;display:inline-block;padding:0.35rem 0.75rem">
+                <option value="all">All Years</option>
+              </select>
+              <label for="semesterFilter">Semester:</label>
+              <select id="semesterFilter" style="width:auto;display:inline-block;padding:0.35rem 0.75rem">
+                <option value="all">All Semesters</option>
+              </select>
+            </div>
+            <button class="btn btn-outline" id="viewAllToggle"><i class="fa-solid fa-layer-group"></i> <span>View All Semesters</span></button>
+            <button class="btn btn-primary" id="pdfDownloadBtn"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+            <button class="btn btn-outline" id="printBtn"><i class="fa-solid fa-print"></i> Print</button>
+          </div>
+        </div>
+        <div id="academicStanding" style="margin-top:0.75rem"></div>
+      </div>
+
+      <div class="grid-3" id="statsRow">
+        <div class="stat-card" id="statTotalCredits"><h3>0</h3><p>Total Credits Attempted</p></div>
+        <div class="stat-card" id="statEarnedCredits"><h3>0</h3><p>Total Credits Earned</p></div>
+        <div class="stat-card" id="statCumulativeGpa"><h3>0.00</h3><p>Cumulative GPA (CGPA)</p></div>
+        <div class="stat-card" id="statSemesterGpa"><h3>0.00</h3><p>Semester GPA</p></div>
+        <div class="stat-card" id="statTotalCourses"><h3>0</h3><p>Total Courses</p></div>
+        <div class="stat-card" id="statPassedCourses"><h3>0</h3><p>Courses Passed</p></div>
+        <div class="stat-card" id="statFailedCourses"><h3>0</h3><p>Courses Failed</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Course History</div>
+        <div class="table-responsive">
+          <table id="transcriptTable">
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>Semester</th>
+                <th>Course Code</th>
+                <th>Course Title</th>
+                <th>Credits</th>
+                <th>Grade</th>
+                <th>Score</th>
+                <th>GPA Points</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="transcriptBody"></tbody>
+          </table>
+        </div>
+        <div id="tableEmptyMessage" style="display:none;text-align:center;padding:2rem;color:var(--gray-500)">
+          <i class="fa-solid fa-file-circle-exclamation fa-2x"></i>
+          <p style="margin-top:0.5rem">No course records found for the selected filters.</p>
+        </div>
+      </div>
+
+      <div class="grid-3" id="chartsRow">
+        <div class="card">
+          <div class="card-header">GPA Trend</div>
+          <canvas id="gpaTrendChart" height="200"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-header">Grade Distribution</div>
+          <canvas id="gradeDistributionChart" height="200"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-header">Credits by Semester</div>
+          <canvas id="creditsBySemesterChart" height="200"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Grade Analysis</div>
+        <div id="gradeAnalysisContainer"></div>
+      </div>
+    </div>
+
+    <div id="loadingSpinner" style="text-align:center;padding:3rem">
+      <i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--gray-400)"></i>
+      <p style="color:var(--gray-500);margin-top:.5rem">Loading transcript data...</p>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+  function esc(v) {
+    if (v == null) return '';
+    var d = document.createElement('div');
+    d.textContent = String(v);
+    return d.innerHTML;
+  }
+
+  var mockGrades = [
+    { yearLevel: "Year1", semester: "Semester1", courseCode: "CS101", courseTitle: "Intro to Computing", credits: 3, total: 85, letterGrade: "A", gpa: 4.0, status: "Published" },
+    { yearLevel: "Year1", semester: "Semester1", courseCode: "MATH101", courseTitle: "Discrete Mathematics", credits: 4, total: 72, letterGrade: "B", gpa: 3.0, status: "Published" },
+    { yearLevel: "Year1", semester: "Semester1", courseCode: "ENG101", courseTitle: "English Composition", credits: 3, total: 68, letterGrade: "C", gpa: 2.0, status: "Published" },
+    { yearLevel: "Year1", semester: "Semester1", courseCode: "PHY101", courseTitle: "General Physics", credits: 4, total: 78, letterGrade: "B", gpa: 3.0, status: "Published" },
+    { yearLevel: "Year1", semester: "Semester2", courseCode: "CS102", courseTitle: "Programming Fundamentals", credits: 4, total: 82, letterGrade: "A", gpa: 4.0, status: "Published" },
+    { yearLevel: "Year1", semester: "Semester2", courseCode: "MATH102", courseTitle: "Calculus I", credits: 4, total: 65, letterGrade: "C", gpa: 2.0, status: "Published" },
+    { yearLevel: "Year1", semester: "Semester2", courseCode: "IT101", courseTitle: "Information Systems", credits: 3, total: 74, letterGrade: "B", gpa: 3.0, status: "Published" },
+    { yearLevel: "Year1", semester: "Semester2", courseCode: "STA101", courseTitle: "Introduction to Statistics", credits: 3, total: 88, letterGrade: "A", gpa: 4.0, status: "Published" },
+    { yearLevel: "Year2", semester: "Semester1", courseCode: "CS201", courseTitle: "Data Structures", credits: 4, total: 76, letterGrade: "B", gpa: 3.0, status: "Published" },
+    { yearLevel: "Year2", semester: "Semester1", courseCode: "MATH201", courseTitle: "Linear Algebra", credits: 3, total: 70, letterGrade: "B", gpa: 3.0, status: "Published" },
+    { yearLevel: "Year2", semester: "Semester1", courseCode: "IT201", courseTitle: "Web Development", credits: 3, total: 81, letterGrade: "A", gpa: 4.0, status: "Published" },
+    { yearLevel: "Year2", semester: "Semester1", courseCode: "NET201", courseTitle: "Computer Networks", credits: 3, total: 58, letterGrade: "D", gpa: 1.0, status: "Published" },
+    { yearLevel: "Year2", semester: "Semester1", courseCode: "CS203", courseTitle: "Digital Logic", credits: 3, total: 62, letterGrade: "C", gpa: 2.0, status: "Published" },
+    { yearLevel: "Year2", semester: "Semester2", courseCode: "CS202", courseTitle: "Algorithms", credits: 4, total: 79, letterGrade: "B", gpa: 3.0, status: "Published" },
+    { yearLevel: "Year2", semester: "Semester2", courseCode: "DB201", courseTitle: "Database Systems", credits: 3, total: 85, letterGrade: "A", gpa: 4.0, status: "Published" },
+    { yearLevel: "Year2", semester: "Semester2", courseCode: "SE201", courseTitle: "Software Engineering", credits: 3, total: 73, letterGrade: "B", gpa: 3.0, status: "Published" },
+    { yearLevel: "Year2", semester: "Semester2", courseCode: "OS201", courseTitle: "Operating Systems", credits: 3, total: 45, letterGrade: "F", gpa: 0.0, status: "Published" },
+    { yearLevel: "Year2", semester: "Semester2", courseCode: "PRO201", courseTitle: "Professional Ethics", credits: 2, total: 90, letterGrade: "A", gpa: 4.0, status: "Published" }
+  ];
+
+  var mockStudentProfile = {
+    name: "John Doe",
+    programme: "BSc Computer Science",
+    regNumber: "NU-CS-2022-001",
+    id: 1
+  };
+
+  var mockUsers = [
+    { id: 1, name: "John Doe", email: "john.doe@smartcampus.edu", regNumber: "NU-CS-2022-001", programme: "BSc Computer Science" },
+    { id: 2, name: "Alice Johnson", email: "alice.j@smartcampus.edu", regNumber: "NU-CS-2022-002", programme: "BSc Information Technology" },
+    { id: 3, name: "Bob Smith", email: "bob.smith@smartcampus.edu", regNumber: "NU-CS-2022-003", programme: "BSc Computer Science" },
+    { id: 4, name: "Carol Davis", email: "carol.d@smartcampus.edu", regNumber: "NU-CS-2022-004", programme: "BSc Statistics" },
+    { id: 5, name: "David Wilson", email: "david.w@smartcampus.edu", regNumber: "NU-CS-2022-005", programme: "BSc Information Technology" }
+  ];
+
+  var allGrades = [];
+  var selectedStudentId = null;
+  var currentStudentProfile = null;
+  var chartInstances = {};
+
+  function getGradeLabel(letter) {
+    var labels = { A: 'A (Excellent)', B: 'B (Good)', C: 'C (Average)', D: 'D (Below Average)', F: 'F (Fail)' };
+    return labels[letter] || letter;
+  }
+
+  function getStanding(cgpa) {
+    if (cgpa >= 3.5) return { label: 'First Class Honours', cls: 'standing-first-class', icon: 'fa-trophy' };
+    if (cgpa >= 3.0) return { label: 'Second Class Upper', cls: 'standing-second-upper', icon: 'fa-star' };
+    if (cgpa >= 2.0) return { label: 'Second Class Lower', cls: 'standing-second-lower', icon: 'fa-arrow-up' };
+    if (cgpa >= 1.5) return { label: 'Pass', cls: 'standing-pass', icon: 'fa-check' };
+    return { label: 'Probation', cls: 'standing-probation', icon: 'fa-exclamation-triangle' };
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    setupTranscriptPage();
+  });
+
+  function setupTranscriptPage() {
+    var role = currentRole || 'Student';
+    var allowed = ['Student', 'University Super Admin', 'School Super Admin', 'Department Admin'];
+    if (allowed.indexOf(role) === -1) {
+      document.getElementById('accessDenied').style.display = 'block';
+      document.getElementById('loadingSpinner').style.display = 'none';
+      return;
+    }
+
+    if (role === 'Student') {
+      document.getElementById('adminSearchSection').style.display = 'none';
+      try {
+        var u = JSON.parse(localStorage.getItem('sc_user'));
+        selectedStudentId = u ? (u.id || 1) : 1;
+      } catch(e) {
+        selectedStudentId = 1;
+      }
+      loadTranscript(selectedStudentId);
+    } else {
+      document.getElementById('adminSearchSection').style.display = 'block';
+      bindStudentSearch();
+      document.getElementById('loadingSpinner').style.display = 'none';
+      document.getElementById('transcriptContent').style.display = 'block';
+      document.getElementById('transcriptContent').innerHTML = '<div class="card" style="text-align:center;padding:3rem"><i class="fa-solid fa-user-search fa-3x" style="color:var(--gray-300)"></i><h3 style="margin-top:1rem">Select a Student</h3><p style="color:var(--gray-500)">Use the search above to find a student and view their transcript.</p></div>';
+    }
+
+    document.getElementById('yearFilter').addEventListener('change', applyFilters);
+    document.getElementById('semesterFilter').addEventListener('change', applyFilters);
+
+    document.getElementById('viewAllToggle').addEventListener('click', function() {
+      document.getElementById('yearFilter').value = 'all';
+      document.getElementById('semesterFilter').value = 'all';
+      applyFilters();
+    });
+
+    document.getElementById('printBtn').addEventListener('click', function() {
+      window.print();
+    });
+
+    document.getElementById('pdfDownloadBtn').addEventListener('click', function() {
+      SmartCampusUI.showToast('PDF download initiated. Your transcript will be generated shortly.', 'info');
+    });
+  }
+
+  function bindStudentSearch() {
+    var input = document.getElementById('studentSearchInput');
+    var btn = document.getElementById('searchStudentBtn');
+    var results = document.getElementById('studentSearchResults');
+
+    function doSearch() {
+      var q = input.value.trim().toLowerCase();
+      if (q.length < 2) {
+        results.innerHTML = '<div class="student-search-item" style="color:var(--gray-400)">Type at least 2 characters to search.</div>';
+        return;
+      }
+      var filtered = mockUsers.filter(function(u) {
+        return u.name.toLowerCase().indexOf(q) !== -1 ||
+               u.email.toLowerCase().indexOf(q) !== -1 ||
+               (u.regNumber && u.regNumber.toLowerCase().indexOf(q) !== -1);
+      });
+      if (filtered.length === 0) {
+        results.innerHTML = '<div class="student-search-item" style="color:var(--gray-500)">No students found matching "' + esc(q) + '".</div>';
+        return;
+      }
+      var html = '';
+      filtered.forEach(function(u) {
+        html += '<div class="student-search-item" data-student-id="' + u.id + '" data-student-name="' + esc(u.name) + '" data-student-programme="' + esc(u.programme) + '" data-student-reg="' + esc(u.regNumber) + '">';
+        html += '<strong>' + esc(u.name) + '</strong>';
+        html += '<small>' + esc(u.programme) + ' &mdash; ' + esc(u.regNumber) + ' &middot; ' + esc(u.email) + '</small>';
+        html += '</div>';
+      });
+      results.innerHTML = html;
+      results.querySelectorAll('.student-search-item').forEach(function(el) {
+        el.addEventListener('click', function() {
+          var id = parseInt(el.dataset.studentId);
+          selectedStudentId = id;
+          currentStudentProfile = {
+            name: el.dataset.studentName,
+            programme: el.dataset.studentProgramme,
+            regNumber: el.dataset.studentReg
+          };
+          results.innerHTML = '<div class="student-search-item" style="color:var(--success);font-weight:600"><i class="fa-solid fa-check-circle"></i> Selected: ' + esc(el.dataset.studentName) + '</div>';
+          loadTranscript(id);
+        });
+      });
+    }
+
+    btn.addEventListener('click', doSearch);
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') doSearch();
+    });
+  }
+
+  async function loadTranscript(studentId) {
+    document.getElementById('loadingSpinner').style.display = 'block';
+    document.getElementById('transcriptContent').style.display = 'none';
+    try {
+      var result = await SmartCampusAPI.fetchStudentGrades(studentId);
+      var gradesArr = result && result.data ? (Array.isArray(result.data) ? result.data : []) : (Array.isArray(result) ? result : []);
+      var visible = gradesArr.filter(function(g) {
+        return g.status === 'Published' || g.status === 'Finalized' || g.status === 'Approved by University';
+      });
+      if (visible.length > 0) {
+        allGrades = visible.map(function(g) { return normalizeGradeBookGpa(g); });
+        if (!currentStudentProfile) {
+          try {
+            var user = JSON.parse(localStorage.getItem('sc_user'));
+            currentStudentProfile = {
+              name: user ? user.name : 'Student',
+              programme: user ? (user.programme || 'BSc Programme') : 'BSc Programme',
+              regNumber: user ? (user.regNumber || 'REG-000') : 'REG-000'
+            };
+          } catch(e) {
+            currentStudentProfile = { name: 'Student', programme: 'BSc Programme', regNumber: 'REG-000' };
+          }
+        }
+        renderTranscript(allGrades);
+        document.getElementById('loadingSpinner').style.display = 'none';
+        document.getElementById('transcriptContent').style.display = 'block';
+        return;
+      }
+    } catch(e) {}
+    useMockData();
+  }
+
+  function isGradeBookEntry(g) {
+    return g.status === 'Approved by University';
+  }
+
+  function normalizeGradeBookGpa(g) {
+    if (!isGradeBookEntry(g)) return g;
+    var normMap = { 'A': 4.0, 'B': 3.0, 'C': 2.0, 'D': 1.0, 'E': 0.0, 'F': 0.0 };
+    var norm = g.letterGrade && normMap[g.letterGrade] !== undefined ? normMap[g.letterGrade] : 0;
+    g = Object.assign({}, g);
+    g.originalGpa = g.gpa;
+    g.gpa = norm;
+    return g;
+  }
+
+  function useMockData() {
+    allGrades = JSON.parse(JSON.stringify(mockGrades));
+    if (!currentStudentProfile) {
+      currentStudentProfile = JSON.parse(JSON.stringify(mockStudentProfile));
+    }
+    renderTranscript(allGrades);
+    document.getElementById('loadingSpinner').style.display = 'none';
+    document.getElementById('transcriptContent').style.display = 'block';
+  }
+
+  function renderTranscript(grades) {
+    document.getElementById('studentName').textContent = currentStudentProfile.name;
+    document.getElementById('studentProgramme').textContent = currentStudentProfile.programme;
+    document.getElementById('studentRegNumber').textContent = 'REG: ' + currentStudentProfile.regNumber;
+
+    populateFilters(grades);
+    applyFilters();
+  }
+
+  function populateFilters(grades) {
+    var yearSet = {};
+    var semSet = {};
+    grades.forEach(function(g) {
+      yearSet[g.yearLevel] = true;
+      semSet[g.semester] = true;
+    });
+    var yearSelect = document.getElementById('yearFilter');
+    var currentVal = yearSelect.value;
+    yearSelect.innerHTML = '<option value="all">All Years</option>';
+    Object.keys(yearSet).sort().forEach(function(y) {
+      yearSelect.innerHTML += '<option value="' + esc(y) + '">' + esc(y) + '</option>';
+    });
+    if (currentVal && yearSet[currentVal]) yearSelect.value = currentVal;
+
+    var semSelect = document.getElementById('semesterFilter');
+    var currentSem = semSelect.value;
+    semSelect.innerHTML = '<option value="all">All Semesters</option>';
+    Object.keys(semSet).sort().forEach(function(s) {
+      semSelect.innerHTML += '<option value="' + esc(s) + '">' + esc(s) + '</option>';
+    });
+    if (currentSem && semSet[currentSem]) semSelect.value = currentSem;
+  }
+
+  function applyFilters() {
+    var yearFilter = document.getElementById('yearFilter').value;
+    var semFilter = document.getElementById('semesterFilter').value;
+    var filtered = allGrades.filter(function(g) {
+      if (yearFilter !== 'all' && g.yearLevel !== yearFilter) return false;
+      if (semFilter !== 'all' && g.semester !== semFilter) return false;
+      return true;
+    });
+    renderTable(filtered);
+    renderStats(filtered);
+    renderStanding(filtered);
+    renderCharts();
+    renderGradeAnalysis(filtered);
+  }
+
+  function renderTable(grades) {
+    var tbody = document.getElementById('transcriptBody');
+    var emptyMsg = document.getElementById('tableEmptyMessage');
+    if (!grades.length) {
+      tbody.innerHTML = '';
+      emptyMsg.style.display = 'block';
+      return;
+    }
+    emptyMsg.style.display = 'none';
+
+    var groups = {};
+    var order = [];
+    grades.forEach(function(g) {
+      var key = g.yearLevel + '|' + g.semester;
+      if (!groups[key]) {
+        groups[key] = { yearLevel: g.yearLevel, semester: g.semester, courses: [] };
+        order.push(key);
+      }
+      groups[key].courses.push(g);
+    });
+
+    var html = '';
+    order.forEach(function(key) {
+      var grp = groups[key];
+      var semCredits = 0;
+      var semPoints = 0;
+      grp.courses.forEach(function(c) {
+        semCredits += c.credits || 0;
+        semPoints += (c.gpa || 0) * (c.credits || 0);
+      });
+      var semGpa = semCredits > 0 ? (semPoints / semCredits) : 0;
+
+      html += '<tr class="semester-subheader">';
+      html += '<td colspan="9">' + esc(grp.yearLevel) + ' &mdash; ' + esc(grp.semester) + '</td>';
+      html += '</tr>';
+
+      grp.courses.forEach(function(c) {
+        var passed = c.gpa > 0;
+        var isGb = isGradeBookEntry(c);
+        var statusBadge = passed ? '<span class="badge badge-success">Pass</span>' : '<span class="badge badge-error">Fail</span>';
+        var gradeBadge = passed ? '<span class="badge badge-success">' + esc(c.letterGrade) + '</span>' : '<span class="badge badge-error">' + esc(c.letterGrade) + '</span>';
+        var scoreDisplay = isGb ? '<span style="color:var(--gray-400)">GB</span>' : (c.total != null ? c.total : '-');
+        var displayGpa = isGb ? (c.originalGpa != null ? c.originalGpa : c.gpa) : c.gpa;
+        var rowBg = isGb ? ' style="background:#f8faff"' : '';
+        html += '<tr' + rowBg + '>';
+        html += '<td>' + esc(c.yearLevel) + (isGb ? ' <span style="font-size:.65rem;color:var(--info)">(GB)</span>' : '') + '</td>';
+        html += '<td>' + esc(c.semester) + '</td>';
+        html += '<td>' + esc(c.courseCode) + '</td>';
+        html += '<td>' + esc(c.courseTitle) + '</td>';
+        html += '<td>' + (c.credits || 0) + '</td>';
+        html += '<td>' + gradeBadge + '</td>';
+        html += '<td>' + scoreDisplay + '</td>';
+        html += '<td>' + (displayGpa != null ? displayGpa.toFixed(1) : '-') + '</td>';
+        html += '<td>' + statusBadge + '</td>';
+        html += '</tr>';
+      });
+
+      html += '<tr class="semester-subtotal">';
+      html += '<td colspan="4" style="text-align:right"><strong>Semester GPA:</strong></td>';
+      html += '<td><strong>' + semCredits + '</strong></td>';
+      html += '<td colspan="3"><strong>' + semGpa.toFixed(2) + '</strong></td>';
+      html += '<td></td>';
+      html += '</tr>';
+    });
+
+    tbody.innerHTML = html;
+  }
+
+  function renderStats(grades) {
+    var totalCredits = 0;
+    var earnedCredits = 0;
+    var totalPoints = 0;
+    var totalCourses = grades.length;
+    var passed = 0;
+    var failed = 0;
+
+    grades.forEach(function(g) {
+      var cr = g.credits || 0;
+      var gp = g.gpa || 0;
+      totalCredits += cr;
+      totalPoints += gp * cr;
+      if (gp > 0) {
+        earnedCredits += cr;
+        passed++;
+      } else {
+        failed++;
+      }
+    });
+
+    var cgpa = totalCredits > 0 ? (totalPoints / totalCredits) : 0;
+
+    document.getElementById('statTotalCredits').querySelector('h3').textContent = totalCredits;
+    document.getElementById('statEarnedCredits').querySelector('h3').textContent = earnedCredits;
+    document.getElementById('statCumulativeGpa').querySelector('h3').textContent = cgpa.toFixed(2);
+    document.getElementById('statTotalCourses').querySelector('h3').textContent = totalCourses;
+    document.getElementById('statPassedCourses').querySelector('h3').textContent = passed;
+    document.getElementById('statFailedCourses').querySelector('h3').textContent = failed;
+
+    updateSemesterGpa(grades);
+  }
+
+  function updateSemesterGpa(grades) {
+    var selYear = document.getElementById('yearFilter').value;
+    var selSem = document.getElementById('semesterFilter').value;
+    var filtered = grades;
+    if (selYear !== 'all' || selSem !== 'all') {
+      filtered = allGrades.filter(function(g) {
+        if (selYear !== 'all' && g.yearLevel !== selYear) return false;
+        if (selSem !== 'all' && g.semester !== selSem) return false;
+        return true;
+      });
+    }
+    var semCredits = 0;
+    var semPoints = 0;
+    filtered.forEach(function(g) {
+      var cr = g.credits || 0;
+      semCredits += cr;
+      semPoints += (g.gpa || 0) * cr;
+    });
+    var semGpa = semCredits > 0 ? (semPoints / semCredits) : 0;
+    document.getElementById('statSemesterGpa').querySelector('h3').textContent = semGpa.toFixed(2);
+  }
+
+  function renderStanding(grades) {
+    var totalCredits = 0;
+    var totalPoints = 0;
+    grades.forEach(function(g) {
+      var cr = g.credits || 0;
+      totalCredits += cr;
+      totalPoints += (g.gpa || 0) * cr;
+    });
+    var cgpa = totalCredits > 0 ? (totalPoints / totalCredits) : 0;
+    var standing = getStanding(cgpa);
+    var container = document.getElementById('academicStanding');
+    container.innerHTML = '<span class="standing-badge ' + standing.cls + '"><i class="fa-solid ' + standing.icon + '"></i> ' + standing.label + ' &mdash; CGPA: ' + cgpa.toFixed(2) + '</span>';
+  }
+
+  function renderCharts() {
+    renderGpaTrendChart();
+    renderGradeDistributionChart();
+    renderCreditsBySemesterChart();
+  }
+
+  function getSemesterKeys() {
+    var keys = {};
+    allGrades.forEach(function(g) {
+      var key = g.yearLevel + '|' + g.semester;
+      keys[key] = { yearLevel: g.yearLevel, semester: g.semester };
+    });
+    var sorted = Object.keys(keys).sort();
+    return sorted.map(function(k) { return keys[k]; });
+  }
+
+  function renderGpaTrendChart() {
+    var ctx = document.getElementById('gpaTrendChart').getContext('2d');
+    if (chartInstances.gpaTrend) chartInstances.gpaTrend.destroy();
+
+    var sems = getSemesterKeys();
+    var labels = sems.map(function(s) { return s.yearLevel + ' ' + s.semester; });
+    var semesterGpas = [];
+    var cumulativeGpas = [];
+    var totalCredits = 0;
+    var totalPoints = 0;
+
+    sems.forEach(function(s) {
+      var grades = allGrades.filter(function(g) {
+        return g.yearLevel === s.yearLevel && g.semester === s.semester;
+      });
+      var semCredits = 0;
+      var semPoints = 0;
+      grades.forEach(function(g) {
+        var cr = g.credits || 0;
+        semCredits += cr;
+        semPoints += (g.gpa || 0) * cr;
+      });
+      var semGpa = semCredits > 0 ? (semPoints / semCredits) : 0;
+      semesterGpas.push(parseFloat(semGpa.toFixed(2)));
+      totalCredits += semCredits;
+      totalPoints += semPoints;
+      var cumGpa = totalCredits > 0 ? (totalPoints / totalCredits) : 0;
+      cumulativeGpas.push(parseFloat(cumGpa.toFixed(2)));
+    });
+
+    chartInstances.gpaTrend = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Semester GPA',
+            data: semesterGpas,
+            borderColor: '#3B82F6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: '#3B82F6',
+            pointRadius: 4
+          },
+          {
+            label: 'Cumulative GPA',
+            data: cumulativeGpas,
+            borderColor: '#10B981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            fill: true,
+            tension: 0.3,
+            borderDash: [5, 3],
+            pointBackgroundColor: '#10B981',
+            pointRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } }
+        },
+        scales: {
+          y: { beginAtZero: true, max: 4.5, ticks: { stepSize: 0.5 } }
+        }
+      }
+    });
+  }
+
+  function renderGradeDistributionChart() {
+    var ctx = document.getElementById('gradeDistributionChart').getContext('2d');
+    if (chartInstances.gradeDist) chartInstances.gradeDist.destroy();
+
+    var counts = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
+    allGrades.forEach(function(g) {
+      var grade = g.letterGrade || 'F';
+      if (counts[grade] !== undefined) counts[grade]++;
+      else if (grade === 'E') counts.E++;
+      else counts.F++;
+    });
+
+    var distLabels = [];
+    var distData = [];
+    var distColors = [];
+    var distMap = { A: ['A (Excellent)', '#10B981'], B: ['B (Good)', '#3B82F6'], C: ['C (Average)', '#F59E0B'], D: ['D (Below Average)', '#f97316'], E: ['E (Failed)', '#8B5CF6'], F: ['F (Complete Failure)', '#EF4444'] };
+    ['A','B','C','D','E','F'].forEach(function(k) {
+      if (counts[k] > 0) { distLabels.push(distMap[k][0]); distData.push(counts[k]); distColors.push(distMap[k][1]); }
+    });
+
+    chartInstances.gradeDist = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: distLabels,
+        datasets: [{
+          data: distData,
+          backgroundColor: distColors,
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  function renderCreditsBySemesterChart() {
+    var ctx = document.getElementById('creditsBySemesterChart').getContext('2d');
+    if (chartInstances.creditsSem) chartInstances.creditsSem.destroy();
+
+    var sems = getSemesterKeys();
+    var labels = sems.map(function(s) { return s.yearLevel + ' ' + s.semester; });
+    var credits = [];
+    sems.forEach(function(s) {
+      var total = 0;
+      allGrades.forEach(function(g) {
+        if (g.yearLevel === s.yearLevel && g.semester === s.semester) {
+          total += g.credits || 0;
+        }
+      });
+      credits.push(total);
+    });
+
+    chartInstances.creditsSem = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Credits',
+          data: credits,
+          backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'],
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 5 } }
+        }
+      }
+    });
+  }
+
+  function renderGradeAnalysis(grades) {
+    var container = document.getElementById('gradeAnalysisContainer');
+    var counts = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
+    var total = grades.length;
+
+    grades.forEach(function(g) {
+      var grade = g.letterGrade || 'F';
+      if (counts[grade] !== undefined) counts[grade]++;
+      else if (grade === 'E') counts.E++;
+      else counts.F++;
+    });
+
+    var passedCount = counts.A + counts.B + counts.C + counts.D;
+    var failedCount = counts.E + counts.F;
+    var passRate = total > 0 ? ((passedCount / total) * 100).toFixed(1) : 0;
+    var failRate = total > 0 ? ((failedCount / total) * 100).toFixed(1) : 0;
+
+    var html = '<div class="grade-analysis-grid">';
+    html += '<div class="grade-analysis-item ga-a"><h4>' + counts.A + '</h4><p>A (Excellent)</p></div>';
+    html += '<div class="grade-analysis-item ga-b"><h4>' + counts.B + '</h4><p>B (Good)</p></div>';
+    html += '<div class="grade-analysis-item ga-c"><h4>' + counts.C + '</h4><p>C (Average)</p></div>';
+    html += '<div class="grade-analysis-item ga-d"><h4>' + counts.D + '</h4><p>D (Below Average)</p></div>';
+    if (counts.E > 0) html += '<div class="grade-analysis-item ga-e" style="border-left:4px solid #8B5CF6"><h4>' + counts.E + '</h4><p>E (Failed)</p></div>';
+    html += '<div class="grade-analysis-item ga-f"><h4>' + counts.F + '</h4><p>F (Fail)</p></div>';
+    html += '</div>';
+
+    html += '<div style="display:flex;gap:2rem;flex-wrap:wrap;padding-top:0.75rem;border-top:1px solid var(--gray-200)">';
+    html += '<div><strong>Total Courses Analysed:</strong> ' + total + '</div>';
+    html += '<div><strong>Pass Rate:</strong> <span class="badge badge-success">' + passRate + '%</span></div>';
+    html += '<div><strong>Fail Rate:</strong> <span class="badge badge-error">' + failRate + '%</span></div>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+  </script>
+</body>
+</html>

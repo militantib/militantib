@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browse Grades - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root { --excel-header: #44546a; --excel-border: #d0d7de; }
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: .3rem .5rem; font-size: .85rem; padding: .6rem 0; margin-bottom: .5rem; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb span { color: var(--gray-500); }
+    .breadcrumb .current { color: var(--gray-800); font-weight: 600; }
+    .step-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
+    .step-title i { margin-right: .4rem; color: var(--primary); }
+    .hierarchy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .hierarchy-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 1.25rem; text-align: center; cursor: pointer; transition: all .2s; }
+    .hierarchy-card:hover { border-color: var(--primary); box-shadow: 0 2px 12px rgba(0,0,0,.08); transform: translateY(-2px); }
+    .hierarchy-card .h-icon { font-size: 1.8rem; color: var(--primary); margin-bottom: .5rem; }
+    .hierarchy-card .h-name { font-weight: 600; font-size: .95rem; }
+    .hierarchy-card .h-count { font-size: .75rem; color: var(--gray-500); margin-top: .25rem; }
+    .year-grid, .semester-grid { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .year-btn, .sem-btn { padding: 1rem 2rem; border: 1px solid var(--gray-200); border-radius: 10px; background: #fff; cursor: pointer; font-weight: 600; transition: all .2s; min-width: 140px; text-align: center; }
+    .year-btn:hover, .sem-btn:hover { border-color: var(--primary); background: #f0f4ff; }
+    .year-btn .y-icon, .sem-btn .y-icon { font-size: 1.4rem; display: block; margin-bottom: .3rem; color: var(--primary); }
+    .table-toolbar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .table-toolbar input, .table-toolbar select { padding: .45rem .6rem; border: 1px solid var(--gray-200); border-radius: 6px; }
+    .table-toolbar input { flex: 1; min-width: 180px; }
+    .excel-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .excel-table th { background: var(--excel-header); color: #fff; padding: .55rem .4rem; text-align: left; font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap; }
+    .excel-table th:hover { filter: brightness(1.1); }
+    .excel-table th i { margin-left: .25rem; font-size: .65rem; }
+    .excel-table td { padding: .4rem; border: 1px solid var(--excel-border); }
+    .excel-table tr:nth-child(even) { background: #f8f9fa; }
+    .excel-table tr:hover { background: #eef2ff; }
+    .pagination { display: flex; gap: .3rem; align-items: center; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+    .pagination button { padding: .4rem .7rem; border: 1px solid var(--gray-200); border-radius: 5px; background: #fff; cursor: pointer; font-size: .8rem; }
+    .pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .pagination button:disabled { opacity: .4; cursor: default; }
+    .grade-A { color: var(--success); font-weight: 700; }
+    .grade-B { color: #3b82f6; font-weight: 600; }
+    .grade-C { color: #eab308; font-weight: 600; }
+    .grade-D { color: #f97316; font-weight: 600; }
+    .grade-F { color: var(--error); font-weight: 700; }
+    .badge-finalized { background: var(--success); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-draft { background: var(--warning); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .export-bar { display: flex; gap: .3rem; flex-wrap: wrap; }
+    .empty-state { text-align: center; padding: 4rem 1rem; color: var(--gray-400); }
+    .empty-state i { font-size: 3rem; margin-bottom: .75rem; }
+    @media (max-width: 600px) { .hierarchy-grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0">Browse Grades</h1>
+      <a href="../gradebook.html" class="btn btn-outline btn-sm">&larr; Back to Gradebook</a>
+    </div>
+    <div class="breadcrumb" id="breadcrumb"><a href="../gradebook.html">Gradebook</a> <span>/</span> <span class="current">Browse Grades</span></div>
+    <div id="stepContent"></div>
+  </div>
+
+  <!-- Transcript Modal -->
+  <div class="modal-overlay" id="transcriptModal" style="display:none" onclick="if(event.target===this)closeModal('transcriptModal')">
+    <div class="modal" style="max-width:750px">
+      <h3 id="transcriptName" style="margin-bottom:1rem">Student Transcript</h3>
+      <div id="transcriptBody"></div>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('transcriptModal')" style="margin-top:1rem">Close</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    const state = { schools: [], departments: [], programmes: [], courses: [], grades: [],
+      selectedSchoolId: null, selectedSchoolName: '',
+      selectedDeptId: null, selectedDeptName: '',
+      selectedProgId: null, selectedProgName: '',
+      selectedYear: '', selectedCourseId: null, selectedCourseName: '',
+      selectedSemester: 'Semester1', selectedAcademicYear: '2025/2026', currentStep: 0,
+      sortCol: null, sortDir: 'asc', page: 1, pageSize: 20, searchQuery: '', statusFilter: '' };
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin","School Super Admin","Department Admin","Lecturer"].includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>';
+        return;
+      }
+      if (currentRole === "Department Admin") {
+        // Auto-resolve department and skip to programmes
+        var u = {}; try { u = JSON.parse(localStorage.getItem("sc_user") || "{}"); } catch(e) {}
+        if (u.department) {
+          try {
+            state.schools = await SmartCampusAPI.fetchSchools() || [];
+            for (var si = 0; si < state.schools.length; si++) {
+              var d = (state.schools[si].departments || []).find(function(dd) { return dd.name === u.department || String(dd.id) === String(u.department); });
+              if (d) {
+                state.selectedSchoolId = state.schools[si].id;
+                state.selectedSchoolName = state.schools[si].name;
+                state.selectedDeptId = d.id;
+                state.selectedDeptName = d.name;
+                state.departments = [d];
+                state.programmes = await SmartCampusAPI.fetchProgrammes(d.id) || [];
+                state.currentStep = 3;
+                buildBreadcrumb();
+                renderProgs();
+                return;
+              }
+            }
+          } catch(ex) { showError(ex.message); return; }
+        }
+      }
+      await loadSchools();
+    });
+
+    function buildBreadcrumb() {
+      const bc = document.getElementById("breadcrumb");
+      let html = '<a href="../gradebook.html">Gradebook</a> <span>/</span> <a href="browse.html">Browse Grades</a>';
+      if (state.selectedSchoolName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(1)">${esc(state.selectedSchoolName)}</a>`;
+      if (state.selectedDeptName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(2)">${esc(state.selectedDeptName)}</a>`;
+      if (state.selectedProgName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(3)">${esc(state.selectedProgName)}</a>`;
+      if (state.selectedYear) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(4)">${esc(state.selectedYear)}</a>`;
+      if (state.selectedCourseName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(5)">${esc(state.selectedCourseName)}</a>`;
+      if (state.selectedAcademicYear) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(6)">${esc(state.selectedAcademicYear)}</a>`;
+      if (state.selectedSemester) html += ` <span>/</span> <span class="current">${state.selectedSemester === 'Semester1' ? 'Semester One' : 'Semester Two'}</span>`;
+      bc.innerHTML = html;
+    }
+
+    function resetTo(step) {
+      if (step <= 1) { state.selectedSchoolId = null; state.selectedSchoolName = ''; }
+      if (step <= 2) { state.selectedDeptId = null; state.selectedDeptName = ''; }
+      if (step <= 3) { state.selectedProgId = null; state.selectedProgName = ''; }
+      if (step <= 4) { state.selectedYear = ''; }
+      if (step <= 5) { state.selectedCourseId = null; state.selectedCourseName = ''; }
+      if (step <= 6) { state.selectedAcademicYear = '2025/2026'; }
+      state.page = 1; state.currentStep = step; buildBreadcrumb();
+      if (step === 1) renderSchools(); else if (step === 2) renderDepts(); else if (step === 3) renderProgs(); else if (step === 4) renderYears(); else if (step === 5) loadCourses(); else if (step === 6) renderAcademicYears();
+    }
+
+    async function loadSchools() {
+      try { state.schools = await SmartCampusAPI.fetchSchools() || []; state.currentStep = 1; renderSchools(); }
+      catch (ex) { showError(ex.message); }
+    }
+    function renderSchools() {
+      let html = '<div class="step-title"><i class="fa-solid fa-school"></i>Select a School</div><div class="hierarchy-grid">';
+      state.schools.forEach(s => { html += `<div class="hierarchy-card" onclick="selectSchool('${s.id}','${esc(s.name)}')"><div class="h-icon"><i class="fa-solid fa-school"></i></div><div class="h-name">${esc(s.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    async function selectSchool(id, name) {
+      state.selectedSchoolId = id; state.selectedSchoolName = name;
+      try { state.departments = await SmartCampusAPI.fetchDepartments(id) || []; state.currentStep = 2; buildBreadcrumb(); renderDepts(); }
+      catch (ex) { showError(ex.message); }
+    }
+    function renderDepts() {
+      if (!state.departments.length) { document.getElementById("stepContent").innerHTML = '<div class="empty-state"><i class="fa-solid fa-building"></i><p>No departments.</p></div>'; return; }
+      let html = '<div class="step-title"><i class="fa-solid fa-sitemap"></i>Select a Department</div><div class="hierarchy-grid">';
+      state.departments.forEach(d => { html += `<div class="hierarchy-card" onclick="selectDept('${d.id}','${esc(d.name)}')"><div class="h-icon"><i class="fa-solid fa-building"></i></div><div class="h-name">${esc(d.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectDept(id, name) { state.selectedDeptId = id; state.selectedDeptName = name; loadProgs(id); }
+    async function loadProgs(deptId) {
+      try { state.programmes = await SmartCampusAPI.fetchProgrammes(deptId) || []; state.currentStep = 3; buildBreadcrumb(); renderProgs(); }
+      catch (ex) { showError(ex.message); }
+    }
+    function renderProgs() {
+      if (!state.programmes.length) { document.getElementById("stepContent").innerHTML = '<div class="empty-state"><i class="fa-solid fa-graduation-cap"></i><p>No programmes.</p></div>'; return; }
+      let html = '<div class="step-title"><i class="fa-solid fa-graduation-cap"></i>Select a Programme</div><div class="hierarchy-grid">';
+      state.programmes.forEach(p => { html += `<div class="hierarchy-card" onclick="selectProg('${p.id}','${esc(p.name)}')"><div class="h-icon"><i class="fa-solid fa-book-open"></i></div><div class="h-name">${esc(p.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectProg(id, name) { state.selectedProgId = id; state.selectedProgName = name; state.currentStep = 4; buildBreadcrumb(); renderYears(); }
+    function renderYears() {
+      const years = ["Year 1","Year 2","Year 3","Year 4"];
+      let html = '<div class="step-title"><i class="fa-solid fa-layer-group"></i>Select Year / Level</div><div class="year-grid">';
+      years.forEach(y => { html += `<div class="year-btn" onclick="selectYear('${y}')"><span class="y-icon"><i class="fa-solid fa-layer-group"></i></span>${y}</div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectYear(year) { state.selectedYear = year; state.currentStep = 5; buildBreadcrumb(); loadCourses(); }
+
+    async function loadCourses() {
+      const el = document.getElementById("stepContent");
+      el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading courses...</p>';
+      try {
+        state.courses = await SmartCampusAPI.fetchCoursesByProgrammeAndYear(state.selectedProgId, state.selectedYear) || [];
+        if (!state.courses.length) {
+          el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-book"></i><p>No courses found for this programme and level.</p></div>'; return;
+        }
+        let html = '<div class="step-title"><i class="fa-solid fa-book"></i>Select a Course</div><div class="hierarchy-grid">';
+        state.courses.forEach(c => { html += `<div class="hierarchy-card" onclick="selectCourse('${c.id}','${esc(c.title)}')"><div class="h-icon"><i class="fa-solid fa-book"></i></div><div class="h-name">${esc(c.title)}</div><div class="h-count">${esc(c.code)}</div></div>`; });
+        html += '</div>'; el.innerHTML = html;
+      } catch (ex) { showError(ex.message); }
+    }
+
+    function selectCourse(id, name) {
+      state.selectedCourseId = id; state.selectedCourseName = name;
+      state.currentStep = 6; buildBreadcrumb(); renderAcademicYears();
+    }
+
+    function renderAcademicYears() {
+      const years = ["2024/2025","2025/2026","2026/2027","2027/2028"];
+      let html = '<div class="step-title"><i class="fa-solid fa-calendar"></i>Select Academic Year</div><div class="year-grid">';
+      years.forEach(y => { html += `<div class="year-btn" onclick="selectAcademicYear('${y}')"><span class="y-icon"><i class="fa-solid fa-calendar"></i></span>${y}</div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+
+    function selectAcademicYear(year) { state.selectedAcademicYear = year; state.currentStep = 7; buildBreadcrumb(); renderSemesters(); }
+
+    function renderSemesters() {
+      let html = '<div class="step-title"><i class="fa-solid fa-calendar"></i>Select Semester</div><div class="semester-grid">';
+      html += `<div class="sem-btn" onclick="selectSemester('Semester1')"><span class="y-icon"><i class="fa-solid fa-sun"></i></span>Semester One</div>`;
+      html += `<div class="sem-btn" onclick="selectSemester('Semester2')"><span class="y-icon"><i class="fa-solid fa-cloud"></i></span>Semester Two</div>`;
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+
+    function selectSemester(sem) { state.selectedSemester = sem; state.currentStep = 8; buildBreadcrumb(); loadGradeSheet(); }
+
+    async function loadGradeSheet() {
+      const el = document.getElementById("stepContent");
+      el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading grade sheet...</p>';
+      try {
+        state.grades = await SmartCampusAPI.fetchGradesByCourse(state.selectedCourseId, state.selectedSemester, state.selectedAcademicYear) || [];
+        renderGradeSheet();
+      } catch (ex) { showError(ex.message); }
+    }
+
+    function renderGradeSheet() {
+      const el = document.getElementById("stepContent");
+      let filtered = [...state.grades];
+      if (state.searchQuery) {
+        const q = state.searchQuery.toLowerCase();
+        filtered = filtered.filter(g =>
+          (g.studentName||'').toLowerCase().includes(q) ||
+          (g.registrationNumber||'').toLowerCase().includes(q) ||
+          (g.courseCode||'').toLowerCase().includes(q) ||
+          (g.courseTitle||'').toLowerCase().includes(q) ||
+          (g.letterGrade||'').toLowerCase().includes(q)
+        );
+      }
+      if (state.statusFilter) {
+        filtered = filtered.filter(g => (g.status||'Draft') === state.statusFilter);
+      }
+      if (state.sortCol) {
+        filtered.sort((a,b) => {
+          let va = a[state.sortCol] != null ? a[state.sortCol] : '';
+          let vb = b[state.sortCol] != null ? b[state.sortCol] : '';
+          if (typeof va === 'number') return state.sortDir === 'asc' ? va - vb : vb - va;
+          va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+          return state.sortDir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+        });
+      }
+      const total = filtered.length;
+      const totalPages = Math.ceil(total / state.pageSize) || 1;
+      if (state.page > totalPages) state.page = totalPages;
+      const start = (state.page-1)*state.pageSize;
+      const pageItems = filtered.slice(start, start+state.pageSize);
+
+      let html = `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem">
+        <div class="step-title" style="margin:0"><i class="fa-solid fa-users"></i>Grade Sheet — ${esc(state.selectedCourseName)} (${esc(state.selectedSemester === 'Semester1' ? 'Sem One' : 'Sem Two')})</div>
+        <div><span style="font-size:.85rem;color:var(--gray-600)">${total} grade${total!==1?'s':''}</span></div>
+      </div>
+      <div class="table-toolbar">
+        <input id="searchInput" placeholder="Search by name, reg#, course, grade..." value="${esc(state.searchQuery)}" onkeyup="debouncedSearch()">
+        <select id="statusFilterSelect" onchange="changeStatusFilter(this.value)">
+          <option value="">All Status</option>
+          <option value="Draft">Draft</option>
+          <option value="Submitted">Submitted</option>
+          <option value="Finalized">Finalized</option>
+        </select>
+        <select id="academicYearFilter" onchange="changeAcademicYear(this.value)">
+          <option value="2024/2025">2024/2025</option>
+          <option value="2025/2026" selected>2025/2026</option>
+          <option value="2026/2027">2026/2027</option>
+          <option value="2027/2028">2027/2028</option>
+        </select>
+        <div class="export-bar">
+          <button class="btn btn-outline btn-sm" onclick="exportCsv()"><i class="fa-solid fa-file-excel"></i> Excel</button>
+          <button class="btn btn-outline btn-sm" onclick="exportPdf()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;border:1px solid var(--excel-border);border-radius:6px">
+      <table class="excel-table"><thead><tr>
+        <th onclick="sortTable('registrationNumber')">Reg # ${sortIcon('registrationNumber')}</th>
+        <th onclick="sortTable('studentName')">Name ${sortIcon('studentName')}</th>
+        <th onclick="sortTable('ca1')">CA1 ${sortIcon('ca1')}</th>
+        <th onclick="sortTable('ca2')">CA2 ${sortIcon('ca2')}</th>
+        <th onclick="sortTable('assignment')">Asgn ${sortIcon('assignment')}</th>
+        <th onclick="sortTable('midterm')">Mid ${sortIcon('midterm')}</th>
+        <th onclick="sortTable('finalExam')">Final ${sortIcon('finalExam')}</th>
+        <th onclick="sortTable('total')">Total ${sortIcon('total')}</th>
+        <th onclick="sortTable('letterGrade')">Grade ${sortIcon('letterGrade')}</th>
+        <th onclick="sortTable('gpa')">GPA ${sortIcon('gpa')}</th>
+        <th onclick="sortTable('remarks')">Remarks ${sortIcon('remarks')}</th>
+        <th>Actions</th>
+      </tr></thead><tbody>`;
+
+      if (!pageItems.length) {
+        html += `<tr><td colspan="12" style="text-align:center;padding:2rem;color:var(--gray-400)">No grades found.</td></tr>`;
+      } else {
+        pageItems.forEach(g => {
+          const gradeCls = 'grade-'+ (g.letterGrade || 'F');
+          const statusCls = g.status === 'Finalized' ? 'badge-finalized' : 'badge-draft';
+          html += `<tr>
+            <td>${esc(g.registrationNumber||'-')}</td>
+            <td><strong>${esc(g.studentName)}</strong></td>
+            <td>${g.ca1 != null ? g.ca1 : '-'}</td>
+            <td>${g.ca2 != null ? g.ca2 : '-'}</td>
+            <td>${g.assignment != null ? g.assignment : '-'}</td>
+            <td>${g.midterm != null ? g.midterm : '-'}</td>
+            <td>${g.finalExam != null ? g.finalExam : '-'}</td>
+            <td><strong>${g.total != null ? g.total : '-'}</strong></td>
+            <td class="${gradeCls}">${esc(g.letterGrade||'-')}</td>
+            <td>${g.gpa != null ? g.gpa.toFixed(1) : '-'}</td>
+            <td>${esc(g.remarks||'-')}</td>
+            <td>
+              <button class="btn btn-outline btn-sm" onclick="viewTranscript(${g.studentId})" title="Transcript"><i class="fa-solid fa-scroll"></i></button>
+              <button class="btn btn-outline btn-sm" onclick="viewHistory(${g.id})" title="History"><i class="fa-solid fa-clock-rotate-left"></i></button>
+            </td>
+          </tr>`;
+        });
+      }
+      html += '</tbody></table></div>';
+
+      // Pagination
+      html += `<div class="pagination">
+        <button onclick="goPage(1)" ${state.page<=1?'disabled':''}><i class="fa-solid fa-angles-left"></i></button>
+        <button onclick="goPage(${state.page-1})" ${state.page<=1?'disabled':''}><i class="fa-solid fa-angle-left"></i></button>`;
+      for (let p = Math.max(1,state.page-2); p <= Math.min(totalPages,state.page+2); p++)
+        html += `<button onclick="goPage(${p})" class="${p===state.page?'active':''}">${p}</button>`;
+      html += `<button onclick="goPage(${state.page+1})" ${state.page>=totalPages?'disabled':''}><i class="fa-solid fa-angle-right"></i></button>
+        <button onclick="goPage(${totalPages})" ${state.page>=totalPages?'disabled':''}><i class="fa-solid fa-angles-right"></i></button>
+        <span style="font-size:.8rem;color:var(--gray-500)">Page ${state.page} of ${totalPages}</span>
+      </div>`;
+      el.innerHTML = html;
+    }
+
+    function sortIcon(col) {
+      if (state.sortCol !== col) return '<i class="fa-solid fa-sort" style="opacity:.3"></i>';
+      return state.sortDir === 'asc' ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>';
+    }
+    function sortTable(col) {
+      if (state.sortCol === col) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+      else { state.sortCol = col; state.sortDir = 'asc'; }
+      state.page = 1; renderGradeSheet();
+    }
+    function goPage(p) { state.page = p; renderGradeSheet(); }
+    let searchTimer;
+    function debouncedSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(() => { state.searchQuery = document.getElementById("searchInput").value; state.page = 1; renderGradeSheet(); }, 300); }
+
+    function changeStatusFilter(val) { state.statusFilter = val; state.page = 1; renderGradeSheet(); }
+
+    function changeAcademicYear(val) { state.selectedAcademicYear = val; state.page = 1; loadGradeSheet(); }
+
+    async function exportPdf() {
+      SmartCampusUI.showToast("Generating PDF...", "info");
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const pageW = doc.internal.pageSize.getWidth();
+        doc.setFontSize(14); doc.text(`Grade Sheet - ${state.selectedCourseName||''} (${state.selectedSemester === 'Semester1' ? 'Sem One' : 'Sem Two'} ${state.selectedAcademicYear})`, pageW/2, 15, { align: 'center' });
+        doc.setFontSize(8);
+        let y = 25;
+        const cols = ['Reg No','Student Name','CA1','CA2','Asgn','Mid','Final','Total','Grade','GPA','Remarks'];
+        const colW = [20, 30, 15, 15, 15, 15, 15, 15, 12, 12, 20];
+        const totalW = colW.reduce((a,b)=>a+b,0);
+        const xStart = (pageW - totalW) / 2;
+        doc.setFillColor(68,84,106); doc.setTextColor(255);
+        let x = xStart;
+        cols.forEach((c,i) => { doc.rect(x, y, colW[i], 7, 'F'); doc.text(c, x+1, y+4.5); x += colW[i]; });
+        y += 7;
+        let data = [...state.grades];
+        if (state.searchQuery) {
+          const q = state.searchQuery.toLowerCase();
+          data = data.filter(g => (g.studentName||'').toLowerCase().includes(q) || (g.registrationNumber||'').toLowerCase().includes(q));
+        }
+        if (state.statusFilter) data = data.filter(g => (g.status||'Draft') === state.statusFilter);
+        doc.setTextColor(0);
+        data.forEach((g, idx) => {
+          if (y > 185) { doc.addPage(); y = 15; }
+          if (idx % 2 === 0) doc.setFillColor(248,249,250); else doc.setFillColor(255,255,255);
+          x = xStart;
+          const vals = [g.registrationNumber||'', g.studentName||'', g.ca1!=null?g.ca1:'', g.ca2!=null?g.ca2:'', g.assignment!=null?g.assignment:'', g.midterm!=null?g.midterm:'', g.finalExam!=null?g.finalExam:'', g.total!=null?g.total:'', g.letterGrade||'', g.gpa!=null?g.gpa.toFixed(1):'', g.remarks||''];
+          colW.forEach((w,i) => { doc.rect(x, y, w, 6, 'F'); doc.text(String(vals[i]).slice(0, Math.floor(w/1.5)), x+1, y+4); x += w; });
+          y += 6;
+        });
+        doc.save(`grades_${state.selectedCourseName||'export'}_${state.selectedAcademicYear}.pdf`);
+        SmartCampusUI.showToast("PDF exported", "success");
+      } catch (ex) { SmartCampusUI.showToast("PDF export failed: " + ex.message, "error"); }
+    }
+
+    function exportCsv() {
+      const rows = [['Reg No','Student Name','CA1','CA2','Assignment','Midterm','Final Exam','Total','Grade','GPA','Remarks']];
+      state.grades.forEach(g => rows.push([g.registrationNumber||'',g.studentName||'',g.ca1!=null?g.ca1:'',g.ca2!=null?g.ca2:'',g.assignment!=null?g.assignment:'',g.midterm!=null?g.midterm:'',g.finalExam!=null?g.finalExam:'',g.total!=null?g.total:'',g.letterGrade||'',g.gpa!=null?g.gpa:'',g.remarks||'']));
+      const csv = rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+      a.download = `grades_${state.selectedCourseName||'export'}.csv`; a.click(); URL.revokeObjectURL(a.href);
+      SmartCampusUI.showToast("CSV exported", "success");
+    }
+
+    async function viewTranscript(studentId) {
+      try {
+        const data = await SmartCampusAPI.fetchTranscript(studentId);
+        if (!data) return;
+        const grades = data.grades || [];
+        document.getElementById("transcriptName").textContent = `Transcript — ${grades.length ? grades[0].studentName : 'Student'}`;
+        let html = `<p><strong>GPA:</strong> ${data.gpa} | <strong>Credits:</strong> ${data.totalCredits||0}</p>
+          <div style="overflow-x:auto"><table class="excel-table"><thead><tr>
+            <th>Course</th><th>CA1</th><th>CA2</th><th>Asgn</th><th>Mid</th><th>Final</th><th>Total</th><th>Grade</th><th>GPA</th><th>Status</th>
+          </tr></thead><tbody>`;
+        grades.forEach(g => {
+          html += `<tr><td>${esc(g.courseCode||'')} - ${esc(g.courseTitle||'')}</td>
+            <td>${g.ca1!=null?g.ca1:'-'}</td><td>${g.ca2!=null?g.ca2:'-'}</td><td>${g.assignment!=null?g.assignment:'-'}</td>
+            <td>${g.midterm!=null?g.midterm:'-'}</td><td>${g.finalExam!=null?g.finalExam:'-'}</td>
+            <td><strong>${g.total!=null?g.total:'-'}</strong></td>
+            <td class="grade-${g.letterGrade||'F'}">${esc(g.letterGrade||'-')}</td>
+            <td>${g.gpa!=null?g.gpa.toFixed(1):'-'}</td>
+            <td>${esc(g.status||'-')}</td></tr>`;
+        });
+        html += '</tbody></table></div>';
+        document.getElementById("transcriptBody").innerHTML = html;
+        openModal("transcriptModal");
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message, "error"); }
+    }
+
+    function viewHistory(gradeId) { SmartCampusUI.showToast("Audit trail loaded (use Update page for full details)", "info"); }
+    function showError(msg) { document.getElementById("stepContent").innerHTML = `<p style="color:var(--error);text-align:center;padding:2rem">${esc(msg)}</p>`; }
+    function openModal(id) { const el = document.getElementById(id); if (el) el.style.display = "flex"; }
+    function closeModal(id) { const el = document.getElementById(id); if (el) el.style.display = "none"; }
+  </script>
+</body>
+</html>

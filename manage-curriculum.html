@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Curriculum - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .mc-header { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+    .mc-header select { padding:.55rem; border:1px solid var(--gray-200); border-radius:6px; min-width:220px; font-size:.9rem; }
+    .mc-split { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
+    .mc-split .card { margin:0; }
+    .mc-split .card table { margin-bottom:0; }
+    .mc-split .card-header { display:flex; align-items:center; justify-content:space-between; }
+    .mc-split .edit-input { width:100%; box-sizing:border-box; padding:4px 6px; border:1px solid var(--gray-300); border-radius:4px; font-size:.85rem; }
+    .mc-split .edit-input.code { width:70px; }
+    .mc-split .edit-input.credits { width:50px; }
+    .mc-split .edit-input.type { width:80px; }
+    @media (max-width:768px) { .mc-split { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <h1>Manage Curriculum</h1>
+    <div id="manageCurriculumContainer"></div>
+  </div>
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+</body>
+</html>

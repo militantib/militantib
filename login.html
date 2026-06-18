@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Njala University SmartCampus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --navy: #0A192F;
+      --navy-light: #112240;
+      --gold: #C9A84C;
+      --gold-light: #DFC66A;
+      --white: #FFFFFF;
+      --gray-50: #F8FAFC;
+      --gray-100: #F1F5F9;
+      --gray-200: #E2E8F0;
+      --gray-300: #CBD5E1;
+      --gray-400: #94A3B8;
+      --gray-500: #64748B;
+      --gray-600: #475569;
+      --gray-700: #334155;
+      --gray-900: #0F172A;
+      --success: #10B981;
+      --error: #EF4444;
+      --info: #3B82F6;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
+      --shadow-md: 0 4px 24px rgba(0,0,0,.08);
+      --shadow-lg: 0 8px 40px rgba(0,0,0,.12);
+      --radius: 12px;
+      --transition: all 0.2s ease;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .login-wrapper {
+      width: 100%;
+      max-width: 480px;
+    }
+    .login-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+    .login-header {
+      background: var(--navy);
+      padding: 2rem 2rem 1.5rem;
+      text-align: center;
+      position: relative;
+    }
+    .login-header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 3px;
+      background: var(--gold);
+      border-radius: 2px;
+    }
+    .login-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      padding: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    }
+    .login-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 50%;
+    }
+    .login-header h1 {
+      color: var(--white);
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-bottom: 0.25rem;
+    }
+    .login-header p {
+      color: var(--gray-400);
+      font-size: 0.85rem;
+      font-weight: 300;
+    }
+    .login-body {
+      padding: 1.75rem 2rem 2rem;
+    }
+    .login-description {
+      text-align: center;
+      color: var(--gray-500);
+      font-size: 0.8rem;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    /* Tabs */
+    .auth-tabs {
+      display: flex;
+      background: var(--gray-100);
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 1.5rem;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 0.65rem 1rem;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--gray-500);
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .auth-tab i { font-size: 1rem; }
+    .auth-tab.active {
+      background: var(--white);
+      color: var(--navy);
+      box-shadow: var(--shadow-sm);
+    }
+    .auth-tab:hover:not(.active) { color: var(--gray-700); }
+    /* Form */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 0.35rem;
+    }
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-wrapper .input-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--gray-400);
+      font-size: 0.95rem;
+      pointer-events: none;
+    }
+    .input-wrapper input {
+      width: 100%;
+      padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      transition: var(--transition);
+      background: var(--gray-50);
+      color: var(--gray-900);
+    }
+    .input-wrapper input:focus {
+      outline: none;
+      border-color: var(--navy);
+      background: var(--white);
+      box-shadow: 0 0 0 3px rgba(10,25,47,.08);
+    }
+    .input-wrapper input::placeholder { color: var(--gray-400); }
+    .password-toggle {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      color: var(--gray-400);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 4px;
+      transition: var(--transition);
+    }
+    .password-toggle:hover { color: var(--gray-600); }
+    .btn-submit {
+      width: 100%;
+      padding: 0.8rem;
+      background: var(--navy);
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-family: inherit;
+    }
+    .btn-submit:hover { background: var(--navy-light); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10,25,47,.2); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .btn-submit i { font-size: 1rem; }
+    .error-msg {
+      display: none;
+      background: #FEF2F2;
+      color: var(--error);
+      font-size: 0.85rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      text-align: center;
+      border: 1px solid #FECACA;
+    }
+    .error-msg.visible { display: block; }
+    .success-msg {
+      display: none;
+      background: #F0FDF4;
+      color: #166534;
+      font-size: 0.85rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      text-align: center;
+      border: 1px solid #BBF7D0;
+    }
+    .success-msg.visible { display: block; }
+    .help-text {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      background: #FFFBEB;
+      border: 1px solid #FDE68A;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      color: #92400E;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .help-text i {
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+    .forgot-link {
+      display: block;
+      text-align: right;
+      font-size: 0.8rem;
+      color: var(--info);
+      margin-top: -0.75rem;
+      margin-bottom: 1.25rem;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: inherit;
+      transition: var(--transition);
+    }
+    .forgot-link:hover { text-decoration: underline; color: #2563EB; }
+    .login-footer {
+      text-align: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--gray-100);
+      background: var(--gray-50);
+    }
+    .login-footer p {
+      font-size: 0.75rem;
+      color: var(--gray-400);
+    }
+    .login-footer strong {
+      color: var(--gray-600);
+    }
+    .spinner { display: none; }
+    .btn-submit.loading .spinner { display: inline-block; animation: spin 0.8s linear infinite; }
+    .btn-submit.loading .btn-text { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 480px) {
+      .login-header { padding: 1.5rem 1.25rem 1.25rem; }
+      .login-body { padding: 1.25rem 1.25rem 1.5rem; }
+      .login-logo { width: 60px; height: 60px; }
+      .login-header h1 { font-size: 1.1rem; }
+      .auth-tab { font-size: 0.8rem; padding: 0.5rem; }
+    }
+    .password-strength {
+      height: 4px;
+      border-radius: 2px;
+      margin-top: 6px;
+      background: var(--gray-200);
+      overflow: hidden;
+      transition: var(--transition);
+    }
+    .password-strength-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: 2px;
+      transition: width 0.3s ease, background 0.3s ease;
+    }
+    .strength-weak { width: 25%; background: var(--error); }
+    .strength-fair { width: 50%; background: #F59E0B; }
+    .strength-good { width: 75%; background: var(--info); }
+    .strength-strong { width: 100%; background: var(--success); }
+  </style>
+</head>
+<body>
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-logo">
+          <img src="img/Njala_university_logo.png" alt="Njala University Logo">
+        </div>
+        <h1>NJALA UNIVERSITY</h1>
+        <p>Student Information &amp; Grading Portal</p>
+      </div>
+      <div class="login-body">
+        <div class="login-description">
+          Secure access to academic records, grading services, registration, progress reports, and university administration tools.
+        </div>
+
+        <div class="error-msg" id="loginError"></div>
+        <div class="success-msg" id="loginSuccess"></div>
+
+        <!-- Auth Type Tabs -->
+        <div class="auth-tabs" role="tablist">
+          <button class="auth-tab active" data-tab="student" role="tab" aria-selected="true">
+            <i class="fas fa-graduation-cap"></i> Student Login
+          </button>
+          <button class="auth-tab" data-tab="staff" role="tab" aria-selected="false">
+            <i class="fas fa-user-tie"></i> Staff Login
+          </button>
+        </div>
+
+        <form id="loginForm" autocomplete="off">
+          <div class="form-group">
+            <label for="email" id="emailLabel">Email Address</label>
+            <div class="input-wrapper">
+              <i class="fas fa-envelope input-icon"></i>
+              <input type="email" id="email" placeholder="e.g. johndoe@njala.edu.sl" required autocomplete="email">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-wrapper">
+              <i class="fas fa-lock input-icon"></i>
+              <input type="password" id="password" placeholder="Enter your password" required autocomplete="current-password">
+              <button type="button" class="password-toggle" id="passwordToggle" tabindex="-1" aria-label="Toggle password visibility">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <div class="password-strength" id="passwordStrength">
+              <div class="password-strength-bar" id="strengthBar"></div>
+            </div>
+          </div>
+
+          <button type="button" class="forgot-link" id="forgotLink">
+            <i class="fas fa-key"></i> Forgot Password?
+          </button>
+
+          <button type="submit" class="btn-submit" id="loginBtn">
+            <i class="fas fa-sign-in-alt btn-icon"></i>
+            <span class="btn-text">Sign In</span>
+            <span class="spinner"><i class="fas fa-spinner"></i></span>
+          </button>
+        </form>
+
+        <div class="help-text" id="helpText" style="display:flex;">
+          <i class="fas fa-info-circle"></i>
+          <span>New students should use their Student ID Number as their temporary password. You will be required to change it after first login.</span>
+        </div>
+      </div>
+      <div class="login-footer">
+        <p>&copy; 2026 <strong>Njala University</strong>. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    (function() {
+      const form = document.getElementById('loginForm');
+      const loginBtn = document.getElementById('loginBtn');
+      const errorEl = document.getElementById('loginError');
+      const successEl = document.getElementById('loginSuccess');
+      const emailInput = document.getElementById('email');
+      const passwordInput = document.getElementById('password');
+      const passwordToggle = document.getElementById('passwordToggle');
+      const forgotLink = document.getElementById('forgotLink');
+      const helpText = document.getElementById('helpText');
+      const tabs = document.querySelectorAll('.auth-tab');
+      const strengthBar = document.getElementById('strengthBar');
+
+      let activeTab = 'student';
+
+      // Tab switching
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+          tab.classList.add('active');
+          tab.setAttribute('aria-selected', 'true');
+          activeTab = tab.dataset.tab;
+          hideError();
+          hideSuccess();
+
+          if (activeTab === 'student') {
+            emailInput.placeholder = 'e.g. johndoe@njala.edu.sl';
+            helpText.style.display = 'flex';
+          } else {
+            emailInput.placeholder = 'e.g. staff@njala.edu.sl';
+            helpText.style.display = 'none';
+          }
+        });
+      });
+
+      // Password show/hide toggle
+      passwordToggle.addEventListener('click', () => {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        passwordToggle.querySelector('i').className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+      });
+
+      // Password strength indicator
+      passwordInput.addEventListener('input', () => {
+        const val = passwordInput.value;
+        if (!val) { strengthBar.className = 'password-strength-bar'; return; }
+        let score = 0;
+        if (val.length >= 8) score++;
+        if (val.length >= 12) score++;
+        if (/[A-Z]/.test(val)) score++;
+        if (/[a-z]/.test(val)) score++;
+        if (/[0-9]/.test(val)) score++;
+        if (/[^A-Za-z0-9]/.test(val)) score++;
+        const cls = score <= 2 ? 'strength-weak' : score <= 3 ? 'strength-fair' : score <= 4 ? 'strength-good' : 'strength-strong';
+        strengthBar.className = 'password-strength-bar ' + cls;
+      });
+
+      function showError(msg) { errorEl.textContent = msg; errorEl.classList.add('visible'); }
+      function hideError() { errorEl.classList.remove('visible'); errorEl.textContent = ''; }
+      function showSuccess(msg) { successEl.textContent = msg; successEl.classList.add('visible'); }
+      function hideSuccess() { successEl.classList.remove('visible'); successEl.textContent = ''; }
+
+      function setLoading(loading) {
+        if (loading) {
+          loginBtn.classList.add('loading');
+          loginBtn.disabled = true;
+        } else {
+          loginBtn.classList.remove('loading');
+          loginBtn.disabled = false;
+        }
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideError();
+        hideSuccess();
+
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!email || !password) {
+          showError('Please enter both email and password.');
+          return;
+        }
+
+        setLoading(true);
+
+        try {
+          const json = await SmartCampusAPI.login(email, password, activeTab);
+
+          localStorage.setItem('sc_token', json.token);
+          localStorage.setItem('sc_user', JSON.stringify(json.user));
+
+          if (json.forcePasswordChange) {
+            localStorage.setItem('sc_force_password_change', 'true');
+            window.location.href = 'change-password.html';
+          } else {
+            window.location.href = 'dashboard.html';
+          }
+        } catch (ex) {
+          if (ex.message) {
+            showError(ex.message);
+          } else {
+            showError('Login failed. Please check your credentials and try again.');
+          }
+          setLoading(false);
+        }
+      });
+
+      // Forgot password
+      forgotLink.addEventListener('click', () => {
+        const email = emailInput.value.trim();
+        if (email) {
+          window.location.href = 'forgot-password.html?email=' + encodeURIComponent(email);
+        } else {
+          window.location.href = 'forgot-password.html';
+        }
+      });
+
+      // Check if redirected due to session expiry
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('expired') === 'true') {
+        showSuccess('Your session has expired. Please log in again.');
+      }
+      if (urlParams.get('reset') === 'success') {
+        showSuccess('Password reset successful. Please log in with your new password.');
+      }
+    })();
+  </script>
+</body>
+</html>

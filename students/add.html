@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Student - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .form-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 2rem; max-width: 800px; margin: 1rem 0 2rem; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.5rem; }
+    .form-grid .full-width { grid-column: 1 / -1; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-weight: 600; font-size: .82rem; margin-bottom: .3rem; color: var(--gray-700); }
+    .form-group .required::after { content: ' *'; color: var(--error); }
+    .form-group input, .form-group select, .form-group textarea { padding: .55rem .7rem; border: 1px solid var(--gray-200); border-radius: 6px; font-size: .9rem; font-family: inherit; transition: border-color .2s; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+    .form-group textarea { resize: vertical; min-height: 70px; }
+    .form-group .file-input { padding: .4rem; }
+    .form-actions { display: flex; gap: .75rem; margin-top: 1.5rem; flex-wrap: wrap; }
+    .form-actions button { min-width: 140px; }
+    .photo-preview { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gray-200); margin-top: .5rem; }
+    @media (max-width: 700px) { .form-grid { grid-template-columns: 1fr; } .form-card { padding: 1.25rem; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 id="pageTitle" style="margin:0">Add New Student</h1>
+      <a href="../manage-students.html" class="btn btn-outline btn-sm">&larr; Back to Dashboard</a>
+    </div>
+
+    <div class="breadcrumb" style="display:flex;flex-wrap:wrap;gap:.3rem;font-size:.85rem;padding:.5rem 0;margin-bottom:.5rem">
+      <a href="../manage-students.html">Student Management</a> <span style="color:var(--gray-500)">/</span>
+      <span id="bcCurrent" class="current" style="font-weight:600;color:var(--gray-800)">Add Student</span>
+    </div>
+
+    <div class="form-card">
+      <form id="studentForm" novalidate>
+        <input type="hidden" id="editStudentId">
+
+        <div class="form-grid">
+          <!-- Row 1 -->
+          <div class="form-group">
+            <label class="required">Full Name</label>
+            <input type="text" id="fullName" required placeholder="e.g. Ibrahim Kamara">
+          </div>
+          <div class="form-group">
+            <label class="required">Email</label>
+            <input type="email" id="email" required placeholder="e.g. ibrahim@smartcampus.edu">
+          </div>
+
+          <!-- Row 2 -->
+          <div class="form-group">
+            <label>Default Password</label>
+            <input type="text" id="password" value="1234567890">
+          </div>
+          <div class="form-group">
+            <label>Registration Number</label>
+            <input type="text" id="regNumber" placeholder="e.g. STU-2025-001">
+          </div>
+
+          <!-- Row 3 -->
+          <div class="form-group">
+            <label class="required">School</label>
+            <select id="schoolSelect" required onchange="loadDepts()"><option value="">Select School</option></select>
+          </div>
+          <div class="form-group">
+            <label>Department</label>
+            <select id="deptSelect" onchange="loadProgs()"><option value="">Select Department</option></select>
+          </div>
+
+          <!-- Row 4 -->
+          <div class="form-group">
+            <label>Programme</label>
+            <select id="progSelect"><option value="">Select Programme</option></select>
+          </div>
+          <div class="form-group">
+            <label>Year / Level</label>
+            <select id="yearLevel">
+              <option value="">Select Level</option>
+              <option value="Year 1">Year 1</option>
+              <option value="Year 2">Year 2</option>
+              <option value="Year 3">Year 3</option>
+              <option value="Year 4">Year 4</option>
+            </select>
+          </div>
+
+          <!-- Row 5 -->
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input type="text" id="phone" placeholder="e.g. +232 76 123 456">
+          </div>
+          <div class="form-group">
+            <label>Gender</label>
+            <select id="gender">
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <!-- Row 6 -->
+          <div class="form-group">
+            <label>Date of Birth</label>
+            <input type="date" id="dob">
+          </div>
+          <div class="form-group">
+            <label>Nationality</label>
+            <input type="text" id="nationality" placeholder="e.g. Sierra Leonean">
+          </div>
+
+          <!-- Row 7 -->
+          <div class="form-group">
+            <label>Parent / Guardian</label>
+            <input type="text" id="parentGuardian" placeholder="e.g. Amadu Kamara">
+          </div>
+          <div class="form-group">
+            <label>Parent Phone</label>
+            <input type="text" id="parentPhone" placeholder="e.g. +232 76 789 012">
+          </div>
+
+          <!-- Row 8 -->
+          <div class="form-group">
+            <label>Admission Date</label>
+            <input type="date" id="admissionDate">
+          </div>
+          <div class="form-group">
+            <label>Student Status</label>
+            <select id="studentStatus">
+              <option value="Active">Active</option>
+              <option value="Graduated">Graduated</option>
+              <option value="Suspended">Suspended</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+
+          <!-- Row 9 - Full width -->
+          <div class="form-group full-width">
+            <label>Address</label>
+            <textarea id="address" placeholder="e.g. 123 Main Street, Freetown"></textarea>
+          </div>
+
+          <!-- Row 10 -->
+          <div class="form-group full-width">
+            <label>Student Photo</label>
+            <input type="file" id="photoInput" class="file-input" accept="image/*" onchange="previewPhoto()">
+            <img id="photoPreview" class="photo-preview" style="display:none">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="submitBtn">Save Student</button>
+          <button type="reset" class="btn btn-outline" onclick="resetForm()">Reset Form</button>
+          <a href="../manage-students.html" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    let editId = null;
+    let schoolsCache = [];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin", "School Super Admin"].includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2><p>Only University Super Admin and School Super Admin can manage students.</p><a href="../dashboard.html" class="btn btn-primary">Go to Dashboard</a></div>';
+        return;
+      }
+
+      // Check for edit mode
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("edit")) {
+        editId = params.get("edit");
+        document.getElementById("pageTitle").textContent = "Edit Student";
+        document.getElementById("bcCurrent").textContent = "Edit Student";
+        document.getElementById("submitBtn").textContent = "Update Student";
+        document.getElementById("password").style.display = "none";
+        await loadStudentForEdit(editId);
+      }
+
+      await loadSchools();
+      bindFormSubmit();
+    });
+
+    async function loadSchools() {
+      try {
+        schoolsCache = await SmartCampusAPI.fetchSchools() || [];
+        const sel = document.getElementById("schoolSelect");
+        sel.innerHTML = '<option value="">Select School</option>';
+        schoolsCache.forEach(s => { sel.innerHTML += `<option value="${s.id}">${esc(s.name)}</option>`; });
+      } catch { SmartCampusUI.showToast("Failed to load schools", "error"); }
+    }
+
+    async function loadDepts() {
+      const schoolId = document.getElementById("schoolSelect").value;
+      const deptSel = document.getElementById("deptSelect");
+      const progSel = document.getElementById("progSelect");
+      deptSel.innerHTML = '<option value="">Select Department</option>';
+      progSel.innerHTML = '<option value="">Select Programme</option>';
+      if (!schoolId) return;
+      try {
+        const depts = await SmartCampusAPI.fetchDepartments(schoolId) || [];
+        depts.forEach(d => { deptSel.innerHTML += `<option value="${d.id}">${esc(d.name)}</option>`; });
+      } catch {}
+    }
+
+    async function loadProgs() {
+      const deptId = document.getElementById("deptSelect").value;
+      const progSel = document.getElementById("progSelect");
+      progSel.innerHTML = '<option value="">Select Programme</option>';
+      if (!deptId) return;
+      try {
+        const progs = await SmartCampusAPI.fetchProgrammes(deptId) || [];
+        progs.forEach(p => { progSel.innerHTML += `<option value="${p.id}">${esc(p.name)}</option>`; });
+      } catch {}
+    }
+
+    async function loadStudentForEdit(id) {
+      try {
+        const s = await SmartCampusAPI.fetchUser(id);
+        if (!s) { SmartCampusUI.showToast("Student not found", "error"); return; }
+        document.getElementById("fullName").value = s.name || '';
+        document.getElementById("email").value = s.email || '';
+        document.getElementById("regNumber").value = s.registrationNumber || '';
+        document.getElementById("phone").value = s.phone || '';
+        document.getElementById("gender").value = s.gender || '';
+        document.getElementById("dob").value = s.dateOfBirth || '';
+        document.getElementById("nationality").value = s.nationality || '';
+        document.getElementById("parentGuardian").value = s.parentGuardian || '';
+        document.getElementById("parentPhone").value = s.parentPhone || '';
+        document.getElementById("address").value = s.address || '';
+        document.getElementById("admissionDate").value = s.admissionDate || '';
+        document.getElementById("studentStatus").value = s.studentStatus || 'Active';
+        if (s.yearLevel) document.getElementById("yearLevel").value = s.yearLevel;
+        if (s.photoUrl) {
+          const img = document.getElementById("photoPreview");
+          img.src = getPhotoUrl(s.photoUrl);
+          img.style.display = "block";
+        }
+
+        // Set school, dept, programme
+        if (s.schoolId) {
+          document.getElementById("schoolSelect").value = s.schoolId;
+          await loadDepts();
+          if (s.departmentId) {
+            document.getElementById("deptSelect").value = s.departmentId;
+            await loadProgs();
+            if (s.programmeId) {
+              document.getElementById("progSelect").value = s.programmeId;
+            }
+          }
+        }
+      } catch (ex) { SmartCampusUI.showToast("Failed to load student: " + ex.message, "error"); }
+    }
+
+    function previewPhoto() {
+      const file = document.getElementById("photoInput").files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = document.getElementById("photoPreview");
+        img.src = e.target.result;
+        img.style.display = "block";
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function getPhotoUrl(path) {
+      if (!path) return "";
+      if (path.startsWith("http://") || path.startsWith("https://")) return path;
+      if (path.startsWith("data:")) return path;
+      return "http://localhost:8080/" + path;
+    }
+
+    function bindFormSubmit() {
+      document.getElementById("studentForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const name = document.getElementById("fullName").value.trim();
+        const email = document.getElementById("email").value.trim();
+
+        if (!name) { SmartCampusUI.showToast("Full name is required", "error"); return; }
+        if (!email) { SmartCampusUI.showToast("Email is required", "error"); return; }
+
+        const schoolId = document.getElementById("schoolSelect").value;
+        if (!schoolId) { SmartCampusUI.showToast("School is required", "error"); return; }
+
+        const progId = document.getElementById("progSelect").value;
+        const deptId = document.getElementById("deptSelect").value;
+
+        const submitBtn = document.getElementById("submitBtn");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Saving...";
+
+        try {
+          const userData = {
+            name,
+            email,
+            password: document.getElementById("password").value || "1234567890",
+            role: "Student",
+            schoolId: parseInt(schoolId),
+            departmentId: deptId ? parseInt(deptId) : null,
+            programmeId: progId ? parseInt(progId) : null,
+            yearLevel: document.getElementById("yearLevel").value,
+            registrationNumber: document.getElementById("regNumber").value,
+            phone: document.getElementById("phone").value,
+            gender: document.getElementById("gender").value,
+            dateOfBirth: document.getElementById("dob").value,
+            nationality: document.getElementById("nationality").value,
+            parentGuardian: document.getElementById("parentGuardian").value,
+            parentPhone: document.getElementById("parentPhone").value,
+            address: document.getElementById("address").value,
+            admissionDate: document.getElementById("admissionDate").value,
+            studentStatus: document.getElementById("studentStatus").value
+          };
+
+          // Photo — upload file to server, store path
+          const photoInput = document.getElementById("photoInput");
+          if (photoInput.files && photoInput.files[0]) {
+            try {
+              const path = await SmartCampusAPI.uploadPhoto(photoInput.files[0]);
+              userData.photoUrl = path;
+            } catch (uploadErr) {
+              SmartCampusUI.showToast("Photo upload failed: " + uploadErr.message + ". Student will be saved without photo.", "warning");
+            }
+          }
+
+          if (editId) {
+            await SmartCampusAPI.updateUser(editId, userData);
+            SmartCampusUI.showToast("Student updated successfully!", "success");
+          } else {
+            await SmartCampusAPI.createUser(userData);
+            SmartCampusUI.showToast("Student created! Welcome email sent.", "success");
+          }
+          setTimeout(() => { window.location.href = "../manage-students.html"; }, 1200);
+        } catch (ex) {
+          SmartCampusUI.showToast(ex.message || "Failed to save", "error");
+          submitBtn.disabled = false;
+          submitBtn.textContent = editId ? "Update Student" : "Save Student";
+        }
+      });
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function resetForm() {
+      if (editId) return; // Don't reset in edit mode
+      document.getElementById("studentForm").reset();
+      document.getElementById("photoPreview").style.display = "none";
+      document.getElementById("deptSelect").innerHTML = '<option value="">Select Department</option>';
+      document.getElementById("progSelect").innerHTML = '<option value="">Select Programme</option>';
+    }
+  </script>
+</body>
+</html>

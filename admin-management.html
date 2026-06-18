@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Management - Njala University</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root { --excel-header: #44546a; --excel-border: #d0d7de; }
+    .excel-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .excel-table th { background: var(--excel-header); color: #fff; padding: .55rem .4rem; text-align: left; font-weight: 600; white-space: nowrap; }
+    .excel-table td { padding: .4rem; border: 1px solid var(--excel-border); vertical-align: middle; }
+    .excel-table tr:nth-child(even) { background: #f8f9fa; }
+    .excel-table tr:hover { background: #f5f3ff; }
+    .badge-pending { background: #F59E0B; color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; white-space: nowrap; }
+    .badge-approved { background: #10B981; color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; white-space: nowrap; }
+    .badge-rejected { background: #EF4444; color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; white-space: nowrap; }
+    .badge-suspended { background: #6b7280; color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; white-space: nowrap; }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: .75rem; margin-bottom: 1.5rem; }
+    .stat-card { text-align: center; padding: .75rem; background: var(--gray-50); border-radius: 8px; }
+    .stat-card h4 { font-size: 1.3rem; margin: 0; }
+    .stat-card p { font-size: .65rem; color: var(--gray-600); margin: .1rem 0 0; }
+    .filter-bar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .filter-bar select, .filter-bar input { padding: .45rem .6rem; border: 1px solid var(--gray-200); border-radius: 6px; }
+    .filter-bar input { flex: 1; min-width: 160px; }
+    .modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:#fff;border-radius:12px;padding:2rem;max-width:520px;width:90%;max-height:90vh;overflow-y:auto; }
+    .modal h3 { margin-top: 0; }
+    .modal .form-group { margin-bottom: 1rem; }
+    .modal .form-group label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .3rem; }
+    .modal .form-group input, .modal .form-group select { width: 100%; padding: .5rem; border: 1px solid var(--gray-200); border-radius: 6px; }
+    .empty-state { text-align: center; padding: 4rem 1rem; color: var(--gray-400); }
+    .empty-state i { font-size: 3rem; margin-bottom: .75rem; }
+    .action-cell { display: flex; gap: .3rem; flex-wrap: wrap; }
+    .btn-sm { padding: .25rem .5rem; font-size: .75rem; }
+    .btn-success { background: #10B981; color: #fff; }
+    .btn-success:hover { background: #059669; }
+    .btn-danger { background: #EF4444; color: #fff; }
+    .btn-danger:hover { background: #DC2626; }
+    @media (max-width: 600px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0"><i class="fa-solid fa-user-shield"></i> Admin Management</h1>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-primary" onclick="openAddModal()"><i class="fa-solid fa-plus"></i> Add Admin</button>
+      </div>
+    </div>
+    <p style="color:var(--gray-500);font-size:.85rem;margin:.25rem 0 1rem">Manage School Super Admins and Department Admins — approve, reject, suspend, or edit accounts.</p>
+
+    <div class="stats-row" id="adminStats"></div>
+    <div class="filter-bar">
+      <select id="filterRole" onchange="loadAdmins()">
+        <option value="">All Roles</option>
+        <option value="School Super Admin">School Super Admin</option>
+        <option value="Department Admin">Department Admin</option>
+      </select>
+      <select id="filterStatus" onchange="loadAdmins()">
+        <option value="">All Statuses</option>
+        <option value="Pending">Pending</option>
+        <option value="Approved">Approved</option>
+        <option value="Rejected">Rejected</option>
+        <option value="Suspended">Suspended</option>
+      </select>
+      <select id="filterSchool" onchange="loadAdmins()">
+        <option value="">All Schools</option>
+      </select>
+      <input type="text" id="searchInput" placeholder="Search by name or email..." onkeyup="debouncedSearch()">
+    </div>
+    <div id="adminTableContainer"></div>
+  </div>
+
+  <!-- Add/Edit Admin Modal -->
+  <div class="modal-overlay" id="adminModal">
+    <div class="modal">
+      <h3 id="adminModalTitle">Add New Admin</h3>
+      <form id="adminForm" onsubmit="return false;">
+        <div class="form-group">
+          <label for="modalName">Full Name</label>
+          <input type="text" id="modalName" required>
+        </div>
+        <div class="form-group">
+          <label for="modalEmail">Email Address</label>
+          <input type="email" id="modalEmail" required>
+        </div>
+        <div class="form-group">
+          <label for="modalRole">Admin Role</label>
+          <select id="modalRole" required>
+            <option value="">Select role...</option>
+            <option value="School Super Admin">School Super Admin</option>
+            <option value="Department Admin">Department Admin</option>
+          </select>
+        </div>
+        <div class="form-group" id="modalSchoolGroup" style="display:none">
+          <label for="modalSchool" id="modalSchoolLabel">Select School</label>
+          <select id="modalSchool" required>
+            <option value="">Select school...</option>
+          </select>
+        </div>
+        <div class="form-group" id="modalDeptGroup" style="display:none">
+          <label for="modalDepartment">Select Department</label>
+          <select id="modalDepartment">
+            <option value="">Select department...</option>
+          </select>
+        </div>
+        <div class="form-group" id="modalPasswordGroup">
+          <label for="modalPassword">Password</label>
+          <input type="text" id="modalPassword" placeholder="Leave blank for default (Admin@123)">
+        </div>
+        <div style="display:flex;gap:.5rem;margin-top:1rem">
+          <button type="button" class="btn btn-primary" id="modalSaveBtn" onclick="saveAdmin()"><i class="fa-solid fa-save"></i> Save</button>
+          <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Reject Modal -->
+  <div class="modal-overlay" id="rejectModal">
+    <div class="modal">
+      <h3>Reject Admin</h3>
+      <p style="font-size:.85rem;color:var(--gray-600)">Provide a reason for rejection:</p>
+      <textarea id="rejectReason" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:6px;min-height:80px;box-sizing:border-box"></textarea>
+      <div style="display:flex;gap:.5rem;margin-top:1rem">
+        <button class="btn btn-danger" id="confirmRejectBtn">Reject</button>
+        <button class="btn btn-outline" onclick="closeRejectModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+    function esc(v) { return String(v||'').replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';'); }
+
+    let allAdmins = [], schools = [], searchTimer;
+    let editingId = null, pendingRejectId = null;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin","School Super Admin"].includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>';
+        return;
+      }
+      await loadSchools();
+      await loadAdmins();
+    });
+
+    async function loadSchools() {
+      try {
+        schools = await SmartCampusAPI.fetchSchools() || [];
+        const sel = document.getElementById("filterSchool");
+        const modalSel = document.getElementById("modalSchool");
+        let html = '<option value="">All Schools</option>';
+        let modalHtml = '<option value="">Select school...</option>';
+        schools.forEach(s => {
+          html += `<option value="${s.id}">${esc(s.name)}</option>`;
+          modalHtml += `<option value="${s.id}">${esc(s.name)}</option>`;
+        });
+        sel.innerHTML = html;
+        modalSel.innerHTML = modalHtml;
+
+        modalSel.addEventListener("change", onSchoolChange);
+      } catch {}
+    }
+
+    async function loadDeptDropdown(schoolId, sel, selectedId) {
+      if (!schoolId) { sel.innerHTML = '<option value="">Select department...</option>'; return; }
+      try {
+        const depts = await SmartCampusAPI.fetchDepartments(schoolId) || [];
+        let html = '<option value="">Select department...</option>';
+        depts.forEach(d => {
+          const selAttr = selectedId && String(d.id) === String(selectedId) ? ' selected' : '';
+          html += `<option value="${d.id}"${selAttr}>${esc(d.name)}</option>`;
+        });
+        sel.innerHTML = html;
+      } catch { sel.innerHTML = '<option value="">No departments found</option>'; }
+    }
+
+    async function loadAdmins() {
+      const el = document.getElementById("adminTableContainer");
+      el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</p>';
+      try {
+        const role = document.getElementById("filterRole").value;
+        const status = document.getElementById("filterStatus").value;
+        const schoolId = document.getElementById("filterSchool").value;
+        let url = '/admin-management?';
+        if (role) url += 'role=' + encodeURIComponent(role) + '&';
+        if (status) url += 'status=' + encodeURIComponent(status) + '&';
+        if (schoolId) url += 'schoolId=' + schoolId + '&';
+        allAdmins = await apiFetch(url) || [];
+        renderTable();
+        renderStats();
+      } catch (ex) { el.innerHTML = `<p style="color:var(--error);text-align:center;padding:2rem">${esc(ex.message)}</p>`; }
+    }
+
+    function renderStats() {
+      const total = allAdmins.length;
+      const pending = allAdmins.filter(a => a.loginApprovalStatus === 'Pending').length;
+      const approved = allAdmins.filter(a => a.loginApprovalStatus === 'Approved' || a.loginApprovalStatus === '' || !a.loginApprovalStatus).length;
+      const rejected = allAdmins.filter(a => a.loginApprovalStatus === 'Rejected').length;
+      const suspended = allAdmins.filter(a => a.loginApprovalStatus === 'Suspended').length;
+      const schoolAdmins = allAdmins.filter(a => a.role === 'School Super Admin').length;
+      const deptAdmins = allAdmins.filter(a => a.role === 'Department Admin').length;
+      document.getElementById("adminStats").innerHTML = `
+        <div class="stat-card"><h4>${total}</h4><p>Total Admins</p></div>
+        <div class="stat-card"><h4 style="color:var(--warning)">${pending}</h4><p>Pending</p></div>
+        <div class="stat-card"><h4 style="color:var(--success)">${approved}</h4><p>Approved</p></div>
+        <div class="stat-card"><h4 style="color:var(--error)">${rejected}</h4><p>Rejected</p></div>
+        <div class="stat-card"><h4 style="color:#6b7280">${suspended}</h4><p>Suspended</p></div>
+        <div class="stat-card"><h4>${schoolAdmins}</h4><p>School Admins</p></div>
+        <div class="stat-card"><h4>${deptAdmins}</h4><p>Dept Admins</p></div>
+      `;
+    }
+
+    function renderTable() {
+      const el = document.getElementById("adminTableContainer");
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      let filtered = allAdmins;
+      if (search) filtered = filtered.filter(a => (a.name||'').toLowerCase().includes(search) || (a.email||'').toLowerCase().includes(search));
+
+      if (!filtered.length) {
+        el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-users-slash"></i><p>No admin accounts match the current filters.</p></div>';
+        return;
+      }
+
+      let html = '<div style="overflow-x:auto;border:1px solid var(--excel-border);border-radius:6px"><table class="excel-table"><thead><tr>' +
+        '<th>Name</th><th>Email</th><th>Role</th><th>School</th><th>Department</th><th>Status</th><th>Actions</th>' +
+        '</tr></thead><tbody>';
+      filtered.forEach(a => {
+        const st = a.loginApprovalStatus || 'Approved';
+        const badgeCls = st === 'Approved' ? 'badge-approved' : st === 'Rejected' ? 'badge-rejected' : st === 'Suspended' ? 'badge-suspended' : 'badge-pending';
+        const isPending = st === 'Pending';
+        const isApproved = st === 'Approved' || st === '';
+        const isSuspended = st === 'Suspended';
+        html += `<tr>
+          <td><strong>${esc(a.name)}</strong></td>
+          <td>${esc(a.email)}</td>
+          <td><span class="badge badge-info" style="font-size:.7rem">${esc(a.role)}</span></td>
+          <td>${esc(a.school||'-')}</td>
+          <td>${esc(a.department||'-')}</td>
+          <td><span class="${badgeCls}">${st}</span></td>
+          <td>
+            <div class="action-cell">
+              ${isPending ? `<button class="btn btn-success btn-sm" onclick="approveAdmin(${a.id})" title="Approve"><i class="fa-solid fa-check"></i></button>` : ''}
+              ${isPending ? `<button class="btn btn-danger btn-sm" onclick="openReject(${a.id})" title="Reject"><i class="fa-solid fa-times"></i></button>` : ''}
+              ${isApproved ? `<button class="btn btn-outline btn-sm" onclick="suspendAdmin(${a.id})" title="Suspend"><i class="fa-solid fa-pause"></i></button>` : ''}
+              ${isSuspended ? `<button class="btn btn-success btn-sm" onclick="activateAdmin(${a.id})" title="Activate"><i class="fa-solid fa-play"></i></button>` : ''}
+              <button class="btn btn-outline btn-sm" onclick="editAdmin(${a.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn btn-outline btn-sm" onclick="resetPw(${a.id})" title="Reset Password"><i class="fa-solid fa-key"></i></button>
+              <button class="btn btn-outline btn-sm" onclick="deleteAdmin(${a.id})" title="Delete" style="color:var(--error)"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+      el.innerHTML = html;
+    }
+
+    async function approveAdmin(id) {
+      if (!confirm("Approve this admin account?")) return;
+      try {
+        const user = JSON.parse(localStorage.getItem("sc_user"));
+        await apiFetch(`/admin-management/${id}/approve`, { method: 'PUT', body: JSON.stringify({ approvedBy: user?.name || 'Admin' }) });
+        SmartCampusUI.showToast("Admin approved successfully","success");
+        await loadAdmins();
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message,"error"); }
+    }
+
+    function openReject(id) { pendingRejectId = id; document.getElementById("rejectModal").classList.add("open"); }
+    function closeRejectModal() { pendingRejectId = null; document.getElementById("rejectModal").classList.remove("open"); document.getElementById("rejectReason").value = ''; }
+    document.getElementById("confirmRejectBtn").addEventListener("click", async () => {
+      if (!pendingRejectId) return;
+      try {
+        await apiFetch(`/admin-management/${pendingRejectId}/reject`, { method: 'PUT', body: JSON.stringify({ reason: document.getElementById("rejectReason").value || 'Account request rejected.' }) });
+        SmartCampusUI.showToast("Admin rejected","success");
+        closeRejectModal();
+        await loadAdmins();
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message,"error"); }
+    });
+
+    async function suspendAdmin(id) {
+      if (!confirm("Suspend this admin account?")) return;
+      try {
+        await apiFetch(`/admin-management/${id}/suspend`, { method: 'PUT' });
+        SmartCampusUI.showToast("Admin suspended","success");
+        await loadAdmins();
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message,"error"); }
+    }
+
+    async function activateAdmin(id) {
+      if (!confirm("Activate this admin account?")) return;
+      try {
+        await apiFetch(`/admin-management/${id}/activate`, { method: 'PUT' });
+        SmartCampusUI.showToast("Admin activated","success");
+        await loadAdmins();
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message,"error"); }
+    }
+
+    async function resetPw(id) {
+      const pw = prompt("Enter new password (default: Admin@123):", "Admin@123");
+      if (!pw) return;
+      if (!confirm("Reset password and notify admin via email?")) return;
+      try {
+        await apiFetch(`/admin-management/${id}/reset-password`, { method: 'PUT', body: JSON.stringify({ password: pw }) });
+        SmartCampusUI.showToast("Password reset and emailed","success");
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message,"error"); }
+    }
+
+    async function deleteAdmin(id) {
+      if (!confirm("Permanently delete this admin account? This cannot be undone.")) return;
+      try {
+        await apiFetch(`/admin-management/${id}`, { method: 'DELETE' });
+        SmartCampusUI.showToast("Admin deleted","success");
+        await loadAdmins();
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message,"error"); }
+    }
+
+    // Add/Edit modal
+    function openAddModal() {
+      editingId = null;
+      document.getElementById("adminModalTitle").textContent = "Add New Admin";
+      document.getElementById("modalName").value = '';
+      document.getElementById("modalEmail").value = '';
+      document.getElementById("modalRole").value = '';
+      document.getElementById("modalSchool").value = '';
+      document.getElementById("modalSchoolGroup").style.display = "none";
+      document.getElementById("modalDepartment").innerHTML = '<option value="">Select department...</option>';
+      document.getElementById("modalDeptGroup").style.display = "none";
+      document.getElementById("modalPasswordGroup").style.display = "block";
+      document.getElementById("modalPassword").value = '';
+      document.getElementById("modalSaveBtn").textContent = 'Create Admin';
+      document.getElementById("adminModal").classList.add("open");
+    }
+
+    async function editAdmin(id) {
+      const admin = allAdmins.find(a => a.id === id);
+      if (!admin) return;
+      editingId = id;
+      document.getElementById("adminModalTitle").textContent = "Edit Admin";
+      document.getElementById("modalName").value = admin.name || '';
+      document.getElementById("modalEmail").value = admin.email || '';
+      document.getElementById("modalRole").value = admin.role || '';
+      document.getElementById("modalPasswordGroup").style.display = "none";
+
+      // Show school group and set value
+      document.getElementById("modalSchoolGroup").style.display = "block";
+      document.getElementById("modalSchoolLabel").textContent = "Which School?";
+      document.getElementById("modalSchool").value = admin.schoolId || '';
+
+      // Load departments and select
+      const deptGroup = document.getElementById("modalDeptGroup");
+      const deptSel = document.getElementById("modalDepartment");
+      if (admin.role === "Department Admin" && admin.schoolId) {
+        deptGroup.style.display = "block";
+        const school = schools.find(s => s.id === admin.schoolId);
+        const deptName = admin.department;
+        await loadDeptDropdown(admin.schoolId, deptSel, null);
+        // Find department by name
+        if (deptName && school) {
+          try {
+            const depts = await SmartCampusAPI.fetchDepartments(admin.schoolId) || [];
+            const matched = depts.find(d => d.name === deptName);
+            if (matched) deptSel.value = matched.id;
+          } catch {}
+        }
+      } else {
+        deptGroup.style.display = "none";
+      }
+
+      document.getElementById("adminModal").classList.add("open");
+    }
+
+    function closeModal() {
+      document.getElementById("adminModal").classList.remove("open");
+      editingId = null;
+    }
+
+    async function saveAdmin() {
+      const name = document.getElementById("modalName").value.trim();
+      const email = document.getElementById("modalEmail").value.trim();
+      const role = document.getElementById("modalRole").value;
+      const schoolId = document.getElementById("modalSchool").value;
+      const departmentId = document.getElementById("modalDepartment").value;
+
+      if (!name || !email || !role || !schoolId) {
+        SmartCampusUI.showToast("Please fill in all required fields","error");
+        return;
+      }
+      if (role === "Department Admin" && !departmentId) {
+        SmartCampusUI.showToast("Please select a department for Department Admin","error");
+        return;
+      }
+
+      const data = { name, email, role, schoolId: parseInt(schoolId) };
+      if (departmentId) data.departmentId = parseInt(departmentId);
+      if (!editingId) {
+        const pw = document.getElementById("modalPassword").value.trim();
+        data.password = pw || "Admin@123";
+      }
+
+      try {
+        if (editingId) {
+          await apiFetch(`/admin-management/${editingId}`, { method: 'PUT', body: JSON.stringify(data) });
+          SmartCampusUI.showToast("Admin updated successfully","success");
+        } else {
+          await apiFetch('/admin-management/register', { method: 'POST', body: JSON.stringify(data) });
+          SmartCampusUI.showToast("Admin created and pending approval","success");
+        }
+        closeModal();
+        await loadAdmins();
+      } catch (ex) {
+        SmartCampusUI.showToast("Failed: " + ex.message, "error");
+      }
+    }
+
+    function onSchoolChange() {
+      const role = document.getElementById("modalRole").value;
+      const sid = document.getElementById("modalSchool").value;
+      const deptGroup = document.getElementById("modalDeptGroup");
+      const deptSel = document.getElementById("modalDepartment");
+      if (role === "Department Admin" && sid) {
+        deptGroup.style.display = "block";
+        loadDeptDropdown(sid, deptSel, null);
+      } else {
+        deptGroup.style.display = "none";
+      }
+    }
+
+    // Role change in modal — show school dropdown, hide department
+    document.getElementById("modalRole").addEventListener("change", () => {
+      const role = document.getElementById("modalRole").value;
+      const schoolGroup = document.getElementById("modalSchoolGroup");
+      const schoolLabel = document.getElementById("modalSchoolLabel");
+      const modalSchool = document.getElementById("modalSchool");
+      const deptGroup = document.getElementById("modalDeptGroup");
+      const deptSel = document.getElementById("modalDepartment");
+
+      // Reset school and department
+      modalSchool.value = '';
+      deptGroup.style.display = "none";
+      deptSel.innerHTML = '<option value="">Select department...</option>';
+
+      if (role === "School Super Admin" || role === "Department Admin") {
+        schoolGroup.style.display = "block";
+        schoolLabel.textContent = role === "Department Admin"
+          ? "Step 1: Which School?"
+          : "Which School?";
+      } else {
+        schoolGroup.style.display = "none";
+      }
+    });
+
+    function debouncedSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(() => renderTable(), 300); }
+  </script>
+</body>
+</html>

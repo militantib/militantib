@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enrollments - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <h1>Student Enrollments</h1>
+    <div class="card">
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:end">
+        <div><label style="font-weight:600;font-size:.85rem">Student</label><select id="enrollStudent"></select></div>
+        <div><label style="font-weight:600;font-size:.85rem">Course</label><select id="enrollCourse"></select></div>
+        <div><label style="font-weight:600;font-size:.85rem">Year</label><select id="enrollYear"><option>2024/2025</option><option>2025/2026</option></select></div>
+        <div><label style="font-weight:600;font-size:.85rem">Semester</label><select id="enrollSem"><option>Semester1</option><option>Semester2</option></select></div>
+        <button class="btn btn-primary" id="enrollBtn">Enroll</button>
+      </div>
+    </div>
+    <div class="card table-responsive" id="enrollmentsContainer"></div>
+  </div>
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+</body>
+</html>

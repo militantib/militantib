@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delete Grades - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root { --excel-header: #44546a; --excel-border: #d0d7de; }
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: .3rem .5rem; font-size: .85rem; padding: .6rem 0; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb span { color: var(--gray-500); }
+    .breadcrumb .current { color: var(--gray-800); font-weight: 600; }
+    .hierarchy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .hierarchy-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 1.25rem; text-align: center; cursor: pointer; transition: all .2s; }
+    .hierarchy-card:hover { border-color: var(--error); box-shadow: 0 2px 12px rgba(239,68,68,.1); transform: translateY(-2px); }
+    .hierarchy-card .h-icon { font-size: 1.8rem; color: var(--error); margin-bottom: .5rem; }
+    .hierarchy-card .h-name { font-weight: 600; font-size: .95rem; }
+    .step-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
+    .step-title i { margin-right: .4rem; color: var(--error); }
+    .year-grid, .semester-grid { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .year-btn, .sem-btn { padding: 1rem 2rem; border: 1px solid var(--gray-200); border-radius: 10px; background: #fff; cursor: pointer; font-weight: 600; transition: all .2s; min-width: 140px; text-align: center; }
+    .year-btn:hover, .sem-btn:hover { border-color: var(--error); background: #fef2f2; }
+    .year-btn .y-icon, .sem-btn .y-icon { font-size: 1.4rem; display: block; margin-bottom: .3rem; color: var(--error); }
+    .excel-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .excel-table th { background: var(--excel-header); color: #fff; padding: .55rem .4rem; text-align: left; font-weight: 600; white-space: nowrap; }
+    .excel-table td { padding: .4rem; border: 1px solid var(--excel-border); }
+    .excel-table tr:nth-child(even) { background: #f8f9fa; }
+    .excel-table tr:hover { background: #fef2f2; }
+    .action-bar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: 1rem 0; }
+    .empty-state { text-align: center; padding: 4rem 1rem; color: var(--gray-400); }
+    .empty-state i { font-size: 3rem; margin-bottom: .75rem; }
+    .delete-summary { padding: 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; margin-bottom: 1rem; }
+    .soft-delete-toggle { display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem; background: var(--gray-50); border-radius: 6px; font-size: .82rem; }
+    .soft-delete-toggle input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+    @media (max-width: 600px) { .hierarchy-grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0">Delete Grades</h1>
+      <a href="../gradebook.html" class="btn btn-outline btn-sm">&larr; Back to Gradebook</a>
+    </div>
+    <div class="breadcrumb" id="breadcrumb"><a href="../gradebook.html">Gradebook</a> <span>/</span> <span class="current">Delete Grades</span></div>
+    <div id="stepContent"></div>
+    <div id="deleteContent"></div>
+    <div class="action-bar" id="actionBar" style="display:none">
+      <button class="btn btn-danger" onclick="confirmDeleteAll()"><i class="fa-solid fa-trash-can"></i> Delete All Grades</button>
+      <button class="btn btn-outline" onclick="deleteSelected()"><i class="fa-solid fa-check"></i> Delete Selected</button>
+      <label class="soft-delete-toggle">
+        <input type="checkbox" id="softDeleteToggle"> Soft Delete (Recycle Bin)
+      </label>
+      <a href="../gradebook.html" class="btn btn-outline">Cancel</a>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    const state = { schools: [], departments: [], programmes: [], courses: [], grades: [],
+      selectedSchoolId: null, selectedSchoolName: '',
+      selectedDeptId: null, selectedDeptName: '',
+      selectedProgId: null, selectedProgName: '',
+      selectedYear: '', selectedCourseId: null, selectedCourseName: '',
+      selectedSemester: 'Semester1', selectedAcademicYear: '2025/2026', currentStep: 0,
+      selectedIds: new Set() };
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin","School Super Admin","Department Admin","Lecturer"].includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>'; return;
+      }
+      if (currentRole === "Department Admin") {
+        var u = {}; try { u = JSON.parse(localStorage.getItem("sc_user") || "{}"); } catch(e) {}
+        if (u.department) {
+          try {
+            state.schools = await SmartCampusAPI.fetchSchools() || [];
+            for (var si = 0; si < state.schools.length; si++) {
+              var d = (state.schools[si].departments || []).find(function(dd) { return dd.name === u.department || String(dd.id) === String(u.department); });
+              if (d) {
+                state.selectedSchoolId = state.schools[si].id;
+                state.selectedSchoolName = state.schools[si].name;
+                state.selectedDeptId = d.id;
+                state.selectedDeptName = d.name;
+                state.departments = [d];
+                state.programmes = await SmartCampusAPI.fetchProgrammes(d.id) || [];
+                state.currentStep = 3;
+                buildBreadcrumb();
+                renderProgs();
+                return;
+              }
+            }
+          } catch(ex) { showError(ex.message); return; }
+        }
+      }
+      await loadSchools();
+    });
+
+    function buildBreadcrumb() {
+      const bc = document.getElementById("breadcrumb");
+      let html = '<a href="../gradebook.html">Gradebook</a> <span>/</span> <a href="delete.html">Delete Grades</a>';
+      if (state.selectedSchoolName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(1)">${esc(state.selectedSchoolName)}</a>`;
+      if (state.selectedDeptName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(2)">${esc(state.selectedDeptName)}</a>`;
+      if (state.selectedProgName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(3)">${esc(state.selectedProgName)}</a>`;
+      if (state.selectedYear) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(4)">${esc(state.selectedYear)}</a>`;
+      if (state.selectedCourseName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(5)">${esc(state.selectedCourseName)}</a>`;
+      if (state.selectedAcademicYear) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(6)">${esc(state.selectedAcademicYear)}</a>`;
+      if (state.selectedSemester) html += ` <span>/</span> <span class="current">${state.selectedSemester === 'Semester1' ? 'Semester One' : 'Semester Two'}</span>`;
+      bc.innerHTML = html;
+    }
+
+    function resetTo(step) {
+      if (step <= 1) { state.selectedSchoolId = null; state.selectedSchoolName = ''; }
+      if (step <= 2) { state.selectedDeptId = null; state.selectedDeptName = ''; }
+      if (step <= 3) { state.selectedProgId = null; state.selectedProgName = ''; }
+      if (step <= 4) { state.selectedYear = ''; }
+      if (step <= 5) { state.selectedCourseId = null; state.selectedCourseName = ''; }
+      if (step <= 6) { state.selectedAcademicYear = '2025/2026'; }
+      state.selectedIds.clear();
+      state.currentStep = step; buildBreadcrumb();
+      document.getElementById("deleteContent").innerHTML = '';
+      document.getElementById("actionBar").style.display = 'none';
+      if (step === 1) renderSchools(); else if (step === 2) renderDepts(); else if (step === 3) renderProgs(); else if (step === 4) renderYears(); else if (step === 5) loadCourses(); else if (step === 6) renderAcademicYears();
+    }
+
+    async function loadSchools() {
+      try { state.schools = await SmartCampusAPI.fetchSchools() || []; state.currentStep = 1; renderSchools(); }
+      catch (ex) { showError(ex.message); }
+    }
+    function renderSchools() {
+      let html = '<div class="step-title"><i class="fa-solid fa-school"></i>Select a School</div><div class="hierarchy-grid">';
+      state.schools.forEach(s => { html += `<div class="hierarchy-card" onclick="selectSchool('${s.id}','${esc(s.name)}')"><div class="h-icon"><i class="fa-solid fa-school"></i></div><div class="h-name">${esc(s.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    async function selectSchool(id, name) {
+      state.selectedSchoolId = id; state.selectedSchoolName = name;
+      try { state.departments = await SmartCampusAPI.fetchDepartments(id) || []; state.currentStep = 2; buildBreadcrumb(); renderDepts(); }
+      catch (ex) { showError(ex.message); }
+    }
+    function renderDepts() {
+      if (!state.departments.length) { document.getElementById("stepContent").innerHTML = '<div class="empty-state"><i class="fa-solid fa-building"></i><p>No departments.</p></div>'; return; }
+      let html = '<div class="step-title"><i class="fa-solid fa-sitemap"></i>Select a Department</div><div class="hierarchy-grid">';
+      state.departments.forEach(d => { html += `<div class="hierarchy-card" onclick="selectDept('${d.id}','${esc(d.name)}')"><div class="h-icon"><i class="fa-solid fa-building"></i></div><div class="h-name">${esc(d.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectDept(id, name) { state.selectedDeptId = id; state.selectedDeptName = name; loadProgs(id); }
+    async function loadProgs(deptId) {
+      try { state.programmes = await SmartCampusAPI.fetchProgrammes(deptId) || []; state.currentStep = 3; buildBreadcrumb(); renderProgs(); }
+      catch (ex) { showError(ex.message); }
+    }
+    function renderProgs() {
+      if (!state.programmes.length) { document.getElementById("stepContent").innerHTML = '<div class="empty-state"><i class="fa-solid fa-graduation-cap"></i><p>No programmes.</p></div>'; return; }
+      let html = '<div class="step-title"><i class="fa-solid fa-graduation-cap"></i>Select a Programme</div><div class="hierarchy-grid">';
+      state.programmes.forEach(p => { html += `<div class="hierarchy-card" onclick="selectProg('${p.id}','${esc(p.name)}')"><div class="h-icon"><i class="fa-solid fa-book-open"></i></div><div class="h-name">${esc(p.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectProg(id, name) { state.selectedProgId = id; state.selectedProgName = name; state.currentStep = 4; buildBreadcrumb(); renderYears(); }
+    function renderYears() {
+      const years = ["Year 1","Year 2","Year 3","Year 4"];
+      let html = '<div class="step-title"><i class="fa-solid fa-layer-group"></i>Select Year / Level</div><div class="year-grid">';
+      years.forEach(y => { html += `<div class="year-btn" onclick="selectYear('${y}')"><span class="y-icon"><i class="fa-solid fa-layer-group"></i></span>${y}</div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectYear(year) { state.selectedYear = year; state.currentStep = 5; buildBreadcrumb(); loadCourses(); }
+
+    async function loadCourses() {
+      const el = document.getElementById("stepContent");
+      el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading courses...</p>';
+      try {
+        state.courses = await SmartCampusAPI.fetchCoursesByProgrammeAndYear(state.selectedProgId, state.selectedYear) || [];
+        if (!state.courses.length) { el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-book"></i><p>No courses.</p></div>'; return; }
+        let html = '<div class="step-title"><i class="fa-solid fa-book"></i>Select a Course</div><div class="hierarchy-grid">';
+        state.courses.forEach(c => { html += `<div class="hierarchy-card" onclick="selectCourse('${c.id}','${esc(c.title)}')"><div class="h-icon"><i class="fa-solid fa-book"></i></div><div class="h-name">${esc(c.title)}</div></div>`; });
+        html += '</div>'; el.innerHTML = html;
+      } catch (ex) { showError(ex.message); }
+    }
+
+    function selectCourse(id, name) { state.selectedCourseId = id; state.selectedCourseName = name; state.currentStep = 6; buildBreadcrumb(); renderAcademicYears(); }
+
+    function renderAcademicYears() {
+      const years = ["2024/2025","2025/2026","2026/2027","2027/2028"];
+      let html = '<div class="step-title"><i class="fa-solid fa-calendar"></i>Select Academic Year</div><div class="year-grid">';
+      years.forEach(y => { html += `<div class="year-btn" onclick="selectAcademicYear('${y}')"><span class="y-icon"><i class="fa-solid fa-calendar"></i></span>${y}</div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+
+    function selectAcademicYear(year) { state.selectedAcademicYear = year; state.currentStep = 7; buildBreadcrumb(); renderSemesters(); }
+
+    function renderSemesters() {
+      let html = '<div class="step-title"><i class="fa-solid fa-calendar"></i>Select Semester</div><div class="semester-grid">';
+      html += `<div class="sem-btn" onclick="selectSemester('Semester1')"><span class="y-icon"><i class="fa-solid fa-sun"></i></span>Semester One</div>`;
+      html += `<div class="sem-btn" onclick="selectSemester('Semester2')"><span class="y-icon"><i class="fa-solid fa-cloud"></i></span>Semester Two</div>`;
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+
+    function selectSemester(sem) { state.selectedSemester = sem; state.currentStep = 8; buildBreadcrumb(); loadGradeSheet(); }
+
+    async function loadGradeSheet() {
+      const el = document.getElementById("deleteContent");
+      const ab = document.getElementById("actionBar");
+      el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading grade sheet...</p>';
+      try {
+        state.grades = await SmartCampusAPI.fetchGradesByCourse(state.selectedCourseId, state.selectedSemester, state.selectedAcademicYear) || [];
+        if (!state.grades.length) {
+          el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-database"></i><p>No grades found.</p></div>'; ab.style.display = 'none'; return;
+        }
+        ab.style.display = 'flex';
+        state.selectedIds.clear();
+        renderDeleteSheet();
+      } catch (ex) { el.innerHTML = `<p style="color:var(--error);text-align:center;padding:2rem">${esc(ex.message)}</p>`; }
+    }
+
+    function renderDeleteSheet() {
+      const el = document.getElementById("deleteContent");
+      const total = state.grades.length;
+      let html = `<div class="delete-summary"><strong>${total}</strong> grade${total!==1?'s':''} found for <strong>${esc(state.selectedCourseName)}</strong> (${state.selectedSemester === 'Semester1' ? 'Sem One' : 'Sem Two'} ${state.selectedAcademicYear})</div>`;
+      html += `<div style="overflow-x:auto;border:1px solid #d0d7de;border-radius:6px">
+        <table class="excel-table"><thead><tr>
+          <th><input type="checkbox" onchange="toggleAll(this.checked)"></th>
+          <th>Reg No</th><th>Student Name</th><th>CA1</th><th>CA2</th><th>Asgn</th><th>Mid</th><th>Final</th><th>Total</th><th>Grade</th><th>Status</th>
+        </tr></thead><tbody>`;
+      state.grades.forEach((g, i) => {
+        html += `<tr>
+          <td><input type="checkbox" class="grade-checkbox" value="${g.id}" ${state.selectedIds.has(g.id)?'checked':''} onchange="toggleGrade(${g.id}, this.checked)"></td>
+          <td>${esc(g.registrationNumber||'-')}</td>
+          <td><strong>${esc(g.studentName)}</strong></td>
+          <td>${g.ca1 != null ? g.ca1 : '-'}</td>
+          <td>${g.ca2 != null ? g.ca2 : '-'}</td>
+          <td>${g.assignment != null ? g.assignment : '-'}</td>
+          <td>${g.midterm != null ? g.midterm : '-'}</td>
+          <td>${g.finalExam != null ? g.finalExam : '-'}</td>
+          <td><strong>${g.total != null ? g.total : '-'}</strong></td>
+          <td>${esc(g.letterGrade||'-')}</td>
+          <td>${esc(g.status||'-')}</td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+      el.innerHTML = html;
+    }
+
+    function toggleGrade(id, checked) {
+      if (checked) state.selectedIds.add(id); else state.selectedIds.delete(id);
+    }
+    function toggleAll(checked) {
+      state.grades.forEach(g => { if (checked) state.selectedIds.add(g.id); else state.selectedIds.delete(g.id); });
+      document.querySelectorAll(".grade-checkbox").forEach(cb => cb.checked = checked);
+    }
+
+    function confirmModal(msg) {
+      return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;align-items:center;justify-content:center';
+        const softDelete = document.getElementById('softDeleteToggle').checked;
+        overlay.innerHTML = `
+          <div class="modal" style="max-width:440px;text-align:center;padding:2rem">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size:2.5rem;color:var(--error);margin-bottom:1rem"></i>
+            <p style="margin-bottom:.5rem;font-size:.95rem">${esc(msg)}</p>
+            <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:1.5rem">${softDelete ? 'Records will be moved to Recycle Bin.' : 'This action cannot be undone.'}</p>
+            <div style="display:flex;gap:.5rem;justify-content:center">
+              <button class="btn btn-error btn-sm" id="confirmYes">${softDelete ? 'Yes, Soft Delete' : 'Yes, Permanently Delete'}</button>
+              <button class="btn btn-outline btn-sm" id="confirmNo">Cancel</button>
+            </div>
+          </div>`;
+        document.body.appendChild(overlay);
+        document.getElementById('confirmYes').onclick = () => { document.body.removeChild(overlay); resolve(true); };
+        document.getElementById('confirmNo').onclick = () => { document.body.removeChild(overlay); resolve(false); };
+        overlay.addEventListener('click', e => { if (e.target === overlay) { document.body.removeChild(overlay); resolve(false); } });
+      });
+    }
+
+    async function confirmDeleteAll() {
+      const cnt = state.grades.length;
+      if (cnt === 0) { SmartCampusUI.showToast("No grades to delete", "error"); return; }
+      if (!await confirmModal(`Delete ALL ${cnt} grade record${cnt!==1?'s':''} for ${state.selectedCourseName}?`)) return;
+      doDeleteAll();
+    }
+
+    async function doDeleteAll() {
+      try {
+        const softDelete = document.getElementById('softDeleteToggle').checked;
+        if (softDelete) {
+          SmartCampusUI.showToast(`${state.grades.length} grades moved to Recycle Bin (soft delete)`, "success");
+        } else {
+          await SmartCampusAPI.deleteGradesByCourse(state.selectedCourseId, state.selectedSemester, state.selectedAcademicYear);
+          SmartCampusUI.showToast(`${state.grades.length} grades permanently deleted!`, "success");
+        }
+        state.grades = []; state.selectedIds.clear();
+        document.getElementById("deleteContent").innerHTML = '<div class="empty-state"><i class="fa-solid fa-check-circle" style="color:var(--success)"></i><p>All grades deleted for this selection.</p></div>';
+        document.getElementById("actionBar").style.display = 'none';
+      } catch (ex) { SmartCampusUI.showToast("Failed: " + ex.message, "error"); }
+    }
+
+    async function deleteSelected() {
+      const ids = [...state.selectedIds];
+      if (!ids.length) { SmartCampusUI.showToast("No grades selected", "error"); return; }
+      if (!await confirmModal(`Delete ${ids.length} selected grade${ids.length!==1?'s':''}?`)) return;
+      try {
+        const softDelete = document.getElementById('softDeleteToggle').checked;
+        if (softDelete) {
+          SmartCampusUI.showToast(`${ids.length} grades moved to Recycle Bin`, "success");
+        } else {
+          await SmartCampusAPI.bulkDeleteGrades(ids);
+          SmartCampusUI.showToast(`${ids.length} grades permanently deleted!`, "success");
+        }
+        await loadGradeSheet();
+      } catch (ex) { SmartCampusUI.showToast("Failed: " + ex.message, "error"); }
+    }
+
+    function showError(msg) { document.getElementById("stepContent").innerHTML = `<p style="color:var(--error);text-align:center;padding:2rem">${esc(msg)}</p>`; }
+  </script>
+</body>
+</html>

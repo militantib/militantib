@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finance Portal - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    .finance-tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid var(--gray-200); }
+    .finance-tabs button { padding: .75rem 1.25rem; border: none; background: none; font-weight: 600; font-size: .9rem; color: var(--gray-600); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .2s; }
+    .finance-tabs button:hover { color: var(--primary); }
+    .finance-tabs button.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { text-align: center; padding: 1.25rem; background: var(--gray-100); border-radius: 10px; }
+    .stat-card h3 { font-size: 1.6rem; margin-bottom: .25rem; }
+    .stat-card p { font-size: .8rem; color: var(--gray-600); }
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+    .chart-row .card { padding: 1rem; }
+    .chart-row canvas { max-height: 280px; }
+    .filters { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .filters input, .filters select { padding: .5rem; border: 1px solid var(--gray-200); border-radius: 6px; }
+    .filters input { flex: 1; min-width: 200px; }
+    .badge-success { background: var(--success); color: #fff; padding: .25rem .6rem; border-radius: 20px; font-size: .75rem; }
+    .badge-warning { background: var(--warning); color: #fff; padding: .25rem .6rem; border-radius: 20px; font-size: .75rem; }
+    .badge-error { background: var(--error); color: #fff; padding: .25rem .6rem; border-radius: 20px; font-size: .75rem; }
+    .badge-info { background: var(--info); color: #fff; padding: .25rem .6rem; border-radius: 20px; font-size: .75rem; }
+    .action-btns { display: flex; gap: .3rem; flex-wrap: wrap; }
+    .action-btns button { font-size: .72rem; padding: .25rem .5rem; }
+    .modal-form label { font-weight: 600; font-size: .85rem; display: block; margin-top: .6rem; margin-bottom: .2rem; }
+    .modal-form input, .modal-form select, .modal-form textarea { width: 100%; padding: .5rem; border: 1px solid var(--gray-200); border-radius: 6px; box-sizing: border-box; font-family: inherit; }
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem 1rem; }
+    .profile-grid label { font-weight: 600; font-size: .8rem; color: var(--gray-600); margin-top: .5rem; display: block; }
+    .profile-grid input { width: 100%; padding: .4rem; border: 1px solid var(--gray-200); border-radius: 5px; box-sizing: border-box; }
+    @media (max-width:768px) { .chart-row, .profile-grid { grid-template-columns: 1fr; } }
+    .hierarchy-tree { font-size: .9rem; }
+    .hierarchy-node { display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem; cursor: pointer; border-radius: 6px; transition: background .15s; }
+    .hierarchy-node:hover { background: var(--gray-100); }
+    .hierarchy-toggle { font-size: .7rem; width: 1rem; color: var(--gray-500); }
+    .hierarchy-icon { font-size: 1.1rem; }
+    .hierarchy-count { font-size: .78rem; color: var(--gray-500); margin-left: auto; }
+    .hierarchy-school > .hierarchy-node { font-size: 1rem; }
+    .hierarchy-dept > .hierarchy-node { font-weight: 500; }
+    .hierarchy-student { font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <h1>Finance Portal</h1>
+
+    <!-- Tabs -->
+    <div class="finance-tabs">
+      <button class="active" onclick="switchTab('dashboard')">Dashboard</button>
+      <button onclick="switchTab('feerecords')">Fee Records</button>
+      <button onclick="switchTab('departments')">Departments</button>
+      <button onclick="switchTab('reports')">Reports</button>
+      <button onclick="switchTab('broadcast')">Broadcast</button>
+      <button onclick="switchTab('audit')">Audit Log</button>
+      <button onclick="switchTab('fees')">Fee Structures</button>
+      <button onclick="switchTab('hierarchy')">Hierarchy</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard" class="tab-panel active">
+      <div class="stat-grid" id="dashStats"></div>
+      <div class="chart-row">
+        <div class="card"><h3 style="margin-bottom:.75rem;font-size:.95rem">Monthly Collections</h3><canvas id="monthlyChart"></canvas></div>
+        <div class="card"><h3 style="margin-bottom:.75rem;font-size:.95rem">Revenue by Department</h3><canvas id="deptChart"></canvas></div>
+      </div>
+      <div class="card"><h3>Recent Payments</h3><div class="table-responsive" id="recentPaymentsContainer"></div></div>
+    </div>
+
+    <!-- FEE RECORDS -->
+    <div id="tab-feerecords" class="tab-panel">
+      <div class="filters">
+        <input id="studentSearch" placeholder="Search by name, email, ID or department..." oninput="renderFinanceStudents()">
+        <button class="btn btn-primary" onclick="showAddFeeModal()">+ Add Fee Record</button>
+        <button class="btn" onclick="showAddStudentModal()">+ Add Student (Legacy)</button>
+        <button class="btn" onclick="showBulkNotifyModal()">Notify All</button>
+      </div>
+      <div class="card"><div class="table-responsive" id="studentTableContainer"></div></div>
+    </div>
+
+    <!-- DEPARTMENTS -->
+    <div id="tab-departments" class="tab-panel">
+      <div class="card"><div class="table-responsive" id="deptTableContainer"></div></div>
+    </div>
+
+    <!-- REPORTS -->
+    <div id="tab-reports" class="tab-panel">
+      <div class="filters">
+        <select id="reportPeriod"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly" selected>Monthly</option></select>
+        <button class="btn btn-primary" onclick="loadReportSummary()">View</button>
+        <button class="btn" onclick="exportCsv()">Export CSV</button>
+      </div>
+      <div class="stat-grid" id="reportSummary"></div>
+      <div class="card"><h3>Student Fee Statement Export</h3><p style="color:var(--gray-600);margin-bottom:.75rem">Download complete fee report for all students.</p><button class="btn btn-primary" onclick="exportCsv()">Download CSV Report</button></div>
+    </div>
+
+    <!-- AUDIT LOG -->
+    <div id="tab-audit" class="tab-panel">
+      <div class="card"><div class="table-responsive" id="auditLogContainer"></div></div>
+    </div>
+
+    <!-- BROADCAST -->
+    <div id="tab-broadcast" class="tab-panel">
+      <div class="card"><div id="broadcastContainer"></div></div>
+    </div>
+
+    <!-- FEE STRUCTURES -->
+    <div id="tab-fees" class="tab-panel">
+      <button class="btn btn-primary" style="margin-bottom:1rem" onclick="showAddFeeStructureModal()">+ Add Fee Structure</button>
+      <div class="card"><div class="table-responsive" id="feeStructureContainer"></div></div>
+    </div>
+
+    <!-- HIERARCHY -->
+    <div id="tab-hierarchy" class="tab-panel">
+      <div id="hierarchyContainer"></div>
+    </div>
+  </div>
+
+  <!-- Fee Record Modal -->
+  <div class="modal-overlay" id="feeModal" style="display:none" onclick="if(event.target===this)closeModal('feeModal')">
+    <div class="modal" style="max-width:500px">
+      <h3 id="feeModalTitle">Add Fee Record</h3>
+      <form class="modal-form" id="feeForm">
+        <input type="hidden" id="editFeeId">
+        <label>Student ID</label><input type="number" id="feeStudentId" required>
+        <label>Academic Year</label><select id="feeYear"><option>2024/2025</option><option>2025/2026</option><option>2026/2027</option></select>
+        <label>Semester</label><select id="feeSemester"><option>Semester1</option><option>Semester2</option></select>
+        <label>Total Fee (NLE)</label><input type="number" id="feeTotal" required>
+        <label>Paid Amount (NLE)</label><input type="number" id="feePaid" value="0">
+        <label>Status</label><select id="feeStatus"><option value="Unpaid">Unpaid</option><option value="Partial">Partial</option><option value="Paid">Paid</option></select>
+        <div style="margin-top:1rem;display:flex;gap:.5rem"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn" onclick="closeModal('feeModal')">Cancel</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Fee Structure Modal -->
+  <div class="modal-overlay" id="feeStructureModal" style="display:none" onclick="if(event.target===this)closeModal('feeStructureModal')">
+    <div class="modal" style="max-width:450px">
+      <h3>Add Fee Structure</h3>
+      <form class="modal-form" id="feeStructureForm">
+        <label>Academic Year</label><select id="fsYear"><option>2024/2025</option><option>2025/2026</option><option>2026/2027</option></select>
+        <label>Semester</label><select id="fsSemester"><option>Semester1</option><option>Semester2</option></select>
+        <label>Programme</label><input id="fsProgramme" placeholder="e.g. BSc Computer Science">
+        <label>Year/Level</label><input id="fsYearLevel" placeholder="e.g. Year1">
+        <label>Fee Type</label><select id="fsFeeType"><option>Tuition</option><option>Registration</option><option>Examination</option><option>Hostel</option><option>Other</option></select>
+        <label>Amount (NLE)</label><input type="number" id="fsAmount" required>
+        <div style="margin-top:1rem;display:flex;gap:.5rem"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn" onclick="closeModal('feeStructureModal')">Cancel</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notify Modal -->
+  <div class="modal-overlay" id="notifyModal" style="display:none" onclick="if(event.target===this)closeModal('notifyModal')">
+    <div class="modal" style="max-width:500px">
+      <h3 id="notifyModalTitle">Send Fee Reminder</h3>
+      <p id="notifyStudentInfo" style="color:var(--gray-600);font-size:.9rem"></p>
+      <form class="modal-form" id="notifyForm">
+        <input type="hidden" id="notifyStudentId">
+        <label>Message</label>
+        <textarea id="notifyMessage" rows="5">Dear Student, this is a reminder that you have outstanding fee balance. Please make payment at the finance office as soon as possible. Thank you.</textarea>
+        <div style="margin-top:1rem;display:flex;gap:.5rem"><button type="submit" class="btn btn-primary">Send Email</button><button type="button" class="btn" onclick="closeModal('notifyModal')">Cancel</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Student Modal -->
+  <div class="modal-overlay" id="studentModal" style="display:none" onclick="if(event.target===this)closeModal('studentModal')">
+    <div class="modal" style="max-width:450px">
+      <h3 id="studentModalTitle">Add New Student</h3>
+      <form class="modal-form" id="studentForm">
+        <input type="hidden" id="editStudentId">
+        <label>Full Name</label><input type="text" id="studentName" required>
+        <label>Email</label><input type="email" id="studentEmail" required>
+        <label>Default Password</label><input type="text" id="studentPassword" value="1234567890">
+        <label>School</label>
+        <select id="studentSchool" onchange="loadStudentDepts()" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:6px">
+          <option value="">Select School</option>
+        </select>
+        <label>Department</label>
+        <select id="studentDept" onchange="loadStudentProgrammes()" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:6px">
+          <option value="">Select Department</option>
+        </select>
+        <label>Programme</label>
+        <select id="studentProgram" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:6px">
+          <option value="">Select Programme</option>
+        </select>
+        <label>Year / Level</label><input id="studentYearLevel" placeholder="e.g. Year 1">
+        <label>Registration Number</label><input id="studentRegNumber" placeholder="e.g. STU-2025-001">
+        <label>Phone</label><input id="studentPhone" placeholder="e.g. +232 76 123 456">
+        <div style="margin-top:1rem;display:flex;gap:.5rem"><button type="submit" class="btn btn-primary" id="studentFormSubmitBtn">Create Student</button><button type="button" class="btn" onclick="closeModal('studentModal')">Cancel</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Student Profile Modal -->
+  <div class="modal-overlay" id="profileModal" style="display:none" onclick="if(event.target===this)closeModal('profileModal')">
+    <div class="modal" style="max-width:700px">
+      <h3 id="profileModalTitle">Student Financial Profile</h3>
+      <div id="profileContent"></div>
+    </div>
+  </div>
+
+  <!-- Payment Edit Modal -->
+  <div class="modal-overlay" id="editPaymentModal" style="display:none" onclick="if(event.target===this)closeModal('editPaymentModal')">
+    <div class="modal" style="max-width:500px">
+      <h3>Edit Payment</h3>
+      <form class="modal-form" id="editPaymentForm">
+        <input type="hidden" id="editPaymentId">
+        <label>Amount (NLE)</label><input type="number" id="editPayAmount" required>
+        <label>Method</label><select id="editPayMethod"><option>Bank Transfer</option><option>Cash</option><option>Mobile Money</option><option>Cheque</option></select>
+        <label>Reference</label><input id="editPayRef">
+        <label>Reason for modification</label><textarea id="editPayReason" rows="3" required></textarea>
+        <div style="margin-top:1rem;display:flex;gap:.5rem"><button type="submit" class="btn btn-primary">Update</button><button type="button" class="btn" onclick="closeModal('editPaymentModal')">Cancel</button></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => { renderFinancePanel(); });
+    document.getElementById("feeForm")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const editId = document.getElementById("editFeeId").value;
+      const record = {
+        studentId: parseInt(document.getElementById("feeStudentId").value),
+        totalFee: parseFloat(document.getElementById("feeTotal").value),
+        paidAmount: parseFloat(document.getElementById("feePaid").value),
+        status: document.getElementById("feeStatus").value,
+        academicYear: document.getElementById("feeYear").value,
+        semester: document.getElementById("feeSemester").value
+      };
+      try {
+        if (editId) {
+          await SmartCampusAPI.updateFeeRecord(editId, record);
+          SmartCampusUI.showToast("Fee record updated.", "success");
+        } else {
+          await SmartCampusAPI.createFeeRecord(record);
+          SmartCampusUI.showToast("Fee record created.", "success");
+        }
+        closeModal("feeModal");
+        renderFinanceStudents();
+      } catch (ex) { SmartCampusUI.showToast("Error: " + ex.message, "error"); }
+    });
+    document.getElementById("feeStructureForm")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fs = {
+        academicYear: document.getElementById("fsYear").value,
+        semester: document.getElementById("fsSemester").value,
+        programme: document.getElementById("fsProgramme").value,
+        yearLevel: document.getElementById("fsYearLevel").value,
+        feeType: document.getElementById("fsFeeType").value,
+        amount: parseFloat(document.getElementById("fsAmount").value)
+      };
+      try {
+        await SmartCampusAPI.createFeeStructure(fs);
+        SmartCampusUI.showToast("Fee structure created.", "success");
+        closeModal("feeStructureModal");
+        renderFinanceFeeStructures();
+      } catch (ex) { SmartCampusUI.showToast("Error: " + ex.message, "error"); }
+    });
+    document.getElementById("notifyForm")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const sid = document.getElementById("notifyStudentId").value;
+      const msg = document.getElementById("notifyMessage").value;
+      try {
+        if (sid) {
+          await SmartCampusAPI.notifyStudent(sid, msg);
+        } else {
+          await SmartCampusAPI.notifyAllStudents(msg);
+        }
+        SmartCampusUI.showToast("Email sent.", "success");
+        closeModal("notifyModal");
+      } catch (ex) { SmartCampusUI.showToast("Error: " + ex.message, "error"); }
+    });
+    document.getElementById("studentForm")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const deptVal = document.getElementById("studentDept").value;
+      const progVal = document.getElementById("studentProgram").value;
+      const user = {
+        name: document.getElementById("studentName").value,
+        email: document.getElementById("studentEmail").value,
+        password: document.getElementById("studentPassword").value,
+        role: "Student",
+        school: document.getElementById("studentSchool").options[document.getElementById("studentSchool").selectedIndex]?.text || "",
+        department: deptVal ? deptVal.split("__")[1] : "",
+        program: progVal ? progVal.split("__")[1] : "",
+        yearLevel: document.getElementById("studentYearLevel").value,
+        registrationNumber: document.getElementById("studentRegNumber").value,
+        phone: document.getElementById("studentPhone").value
+      };
+      try {
+        await SmartCampusAPI.createUser(user);
+        SmartCampusUI.showToast("Student created.", "success");
+        closeModal("studentModal");
+      } catch (ex) { SmartCampusUI.showToast("Error: " + ex.message, "error"); }
+    });
+    document.getElementById("editPaymentForm")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const paymentId = document.getElementById("editPaymentId").value;
+      const data = {
+        amount: parseFloat(document.getElementById("editPayAmount").value),
+        method: document.getElementById("editPayMethod").value,
+        reference: document.getElementById("editPayRef").value,
+        reason: document.getElementById("editPayReason").value
+      };
+      try {
+        await SmartCampusAPI.updatePayment(paymentId, data);
+        SmartCampusUI.showToast("Payment updated.", "success");
+        closeModal("editPaymentModal");
+      } catch (ex) { SmartCampusUI.showToast("Error: " + ex.message, "error"); }
+    });
+
+    async function loadReportSummary() {
+      const period = document.getElementById("reportPeriod").value;
+      try {
+        const res = await SmartCampusAPI.fetchReportSummary(period);
+        const d = res.data || res;
+        document.getElementById("reportSummary").innerHTML = `
+          <div class="stat-card"><h3>NLE${(d.total || 0).toLocaleString()}</h3><p>Total (${d.label})</p></div>
+          <div class="stat-card"><h3>${d.count || 0}</h3><p>Transactions</p></div>
+        `;
+      } catch { SmartCampusUI.showToast("Failed to load report.", "error"); }
+    }
+    async function exportCsv() {
+      try {
+        const csv = await SmartCampusAPI.exportReportCsv();
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'fee_report.csv';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      } catch { SmartCampusUI.showToast("Export failed.", "error"); }
+    }
+
+    async function renderFinanceFeeStructures() {
+      const container = document.getElementById("feeStructureContainer");
+      if (!container) return;
+      try {
+        const res = await SmartCampusAPI.fetchFeeStructures();
+        const data = res.data || res || [];
+        container.innerHTML = data.length
+          ? `<table><thead><tr><th>Year</th><th>Semester</th><th>Programme</th><th>Level</th><th>Type</th><th>Amount</th></tr></thead><tbody>`
+              + data.map(f => `<tr><td>${f.academicYear}</td><td>${f.semester}</td><td>${f.programme}</td><td>${f.yearLevel}</td><td>${f.feeType}</td><td>NLE${(f.amount||0).toLocaleString()}</td></tr>`).join("")
+              + '</tbody></table>'
+          : '<p style="color:var(--gray-300);text-align:center;padding:1rem">No fee structures defined.</p>';
+      } catch { container.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:1rem">Could not load.</p>'; }
+    }
+
+    async function renderFinanceDepartments() {
+      const container = document.getElementById("deptTableContainer");
+      if (!container) return;
+      try {
+        const res = await SmartCampusAPI.fetchDeptRevenue();
+        const depts = res.data || res || [];
+        container.innerHTML = depts.length
+          ? `<table><thead><tr><th>Department</th><th>Students</th><th>Revenue</th><th>Outstanding</th><th>Fully Paid</th><th>Partial</th><th>Unpaid</th></tr></thead><tbody>`
+              + depts.map(d => `<tr><td><strong>${d.department}</strong></td><td>${d.totalStudents}</td><td>NLE${(d.totalRevenue||0).toLocaleString()}</td><td>NLE${(d.outstanding||0).toLocaleString()}</td><td>${d.fullyPaid||0}</td><td>${d.partial||0}</td><td>${d.unpaid||0}</td></tr>`).join("")
+              + '</tbody></table>'
+          : '<p style="color:var(--gray-300)">No data</p>';
+      } catch { container.innerHTML = '<p style="color:var(--gray-300)">Could not load</p>'; }
+    }
+
+    async function renderFinanceAudit() {
+      const container = document.getElementById("auditLogContainer");
+      if (!container) return;
+      try {
+        const res = await SmartCampusAPI.fetchAuditLogs();
+        const logs = res.data || res || [];
+        container.innerHTML = logs.length
+          ? `<table><thead><tr><th>Date</th><th>Action</th><th>Type</th><th>By</th><th>Details</th></tr></thead><tbody>`
+              + logs.slice(0, 100).map(l => `<tr><td>${l.createdAt ? new Date(l.createdAt).toLocaleString() : ''}</td><td>${l.action}</td><td>${l.entityType}</td><td>${l.performedBy||'system'}</td><td>${l.details||''}</td></tr>`).join("")
+              + '</tbody></table>'
+          : '<p style="color:var(--gray-300)">No audit logs</p>';
+      } catch { container.innerHTML = '<p style="color:var(--gray-300)">Could not load</p>'; }
+    }
+
+    async function renderFinanceBroadcast() {
+      const container = document.getElementById("broadcastContainer");
+      if (!container) return;
+      container.innerHTML = `
+        <h3>Send Broadcast Email</h3>
+        <div style="display:grid;gap:.75rem;max-width:500px">
+          <div><label style="font-weight:600;font-size:.85rem">Message</label><textarea id="broadcastMsg" rows="5" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:6px">Dear Student, this is a reminder regarding your fee payment. Please visit the finance office to clear any outstanding balances. Thank you.</textarea></div>
+          <button class="btn btn-primary" id="sendBroadcastBtn">Send to All Students</button>
+        </div>`;
+      document.getElementById("sendBroadcastBtn")?.addEventListener("click", async () => {
+        const msg = document.getElementById("broadcastMsg").value;
+        try { await SmartCampusAPI.notifyAllStudents(msg); SmartCampusUI.showToast("Broadcast sent.", "success"); }
+        catch { SmartCampusUI.showToast("Failed to send.", "error"); }
+      });
+    }
+
+    async function renderFinanceHierarchy() {
+      const container = document.getElementById("hierarchyContainer");
+      if (!container) return;
+      try {
+        const res = await Promise.race([
+          SmartCampusAPI.fetchProgrammes(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000))
+        ]);
+        const programmes = Array.isArray(res) ? res : (res.data || []);
+        const grouped = {};
+        programmes.forEach(p => {
+          const dept = p.departmentName || 'Unknown';
+          if (!grouped[dept]) grouped[dept] = [];
+          grouped[dept].push(p);
+        });
+        container.innerHTML = '<h3>Programme Hierarchy</h3>' + Object.entries(grouped).map(([dept, progs]) =>
+          `<div class="hierarchy-dept"><div class="hierarchy-node"><span class="hierarchy-toggle"><i class="fa-solid fa-caret-right"></i></span><span class="hierarchy-icon"><i class="fa-solid fa-sitemap"></i></span>${dept} <span class="hierarchy-count">${progs.length}</span></div>`
+          + progs.map(p => `<div class="hierarchy-student" style="padding-left:2.5rem">&nbsp;&nbsp;&nbsp;<i class="fa-solid fa-graduation-cap" style="color:var(--primary);margin-right:.4rem"></i>${p.name}</div>`).join("")
+          + '</div>'
+        ).join("");
+      } catch {
+        container.innerHTML = '<p style="color:var(--gray-300)">Could not load hierarchy</p>';
+      }
+    }
+  </script>
+</body>
+</html>

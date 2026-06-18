@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Update Lecturer - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root { --excel-header: #44546a; --excel-border: #d0d7de; }
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: .3rem .5rem; font-size: .85rem; padding: .6rem 0; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb span { color: var(--gray-500); }
+    .breadcrumb .current { color: var(--gray-800); font-weight: 600; }
+    .hierarchy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .hierarchy-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 1.25rem; text-align: center; cursor: pointer; transition: all .2s; }
+    .hierarchy-card:hover { border-color: var(--warning); box-shadow: 0 2px 12px rgba(0,0,0,.08); transform: translateY(-2px); }
+    .hierarchy-card .h-icon { font-size: 1.8rem; color: var(--warning); margin-bottom: .5rem; }
+    .hierarchy-card .h-name { font-weight: 600; font-size: .95rem; }
+    .step-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
+    .step-title i { margin-right: .4rem; color: var(--warning); }
+    .excel-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .excel-table th { background: var(--excel-header); color: #fff; padding: .55rem .4rem; text-align: left; font-weight: 600; white-space: nowrap; }
+    .excel-table td { padding: .4rem; border: 1px solid var(--excel-border); }
+    .excel-table tr:nth-child(even) { background: #f8f9fa; }
+    .excel-table tr:hover { background: #fefce8; }
+    .search-box { padding: .45rem .6rem; border: 1px solid var(--gray-200); border-radius: 6px; width: 100%; max-width: 300px; box-sizing: border-box; }
+    .badge-active { background: var(--success); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-inactive { background: #9ca3af; color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-pending { background: var(--warning); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-approved { background: var(--success); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-rejected { background: var(--error); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-suspended { background: var(--gray-500); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .empty-state { text-align: center; padding: 4rem 1rem; color: var(--gray-400); }
+    .empty-state i { font-size: 3rem; margin-bottom: .75rem; }
+    .action-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: .5rem; margin-top: 1rem; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; font-size: .82rem; margin-bottom: 1rem; background: var(--gray-50); padding: 1rem; border-radius: 8px; }
+    .audit-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .audit-table th { background: var(--gray-100); padding: .4rem; text-align: left; font-weight: 600; }
+    .audit-table td { padding: .3rem .4rem; border-bottom: 1px solid var(--gray-200); }
+    @media (max-width: 600px) { .hierarchy-grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0">Update Lecturer</h1>
+      <a href="../manage-lecturers.html" class="btn btn-outline btn-sm">&larr; Back</a>
+    </div>
+    <div class="breadcrumb" id="breadcrumb"><a href="../manage-lecturers.html">Manage Lecturers</a> <span>/</span> <span class="current">Update Lecturer</span></div>
+    <div id="stepContent"></div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    const state = { schools: [], departments: [], programmes: [], lecturers: [],
+      selectedSchoolId: null, selectedSchoolName: '', selectedDeptId: null, selectedDeptName: '', selectedProgId: null, selectedProgName: '', currentStep: 0 };
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin","School Super Admin","Department Admin"].includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>'; return;
+      }
+      await loadSchools();
+    });
+
+    function buildBreadcrumb() {
+      const bc = document.getElementById("breadcrumb");
+      let html = '<a href="../manage-lecturers.html">Manage Lecturers</a> <span>/</span> <a href="update.html">Update Lecturer</a>';
+      if (state.selectedSchoolName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(1)">${esc(state.selectedSchoolName)}</a>`;
+      if (state.selectedDeptName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(2)">${esc(state.selectedDeptName)}</a>`;
+      if (state.selectedProgName) html += ` <span>/</span> <span class="current">${esc(state.selectedProgName)}</span>`;
+      bc.innerHTML = html;
+    }
+
+    function resetTo(step) {
+      if (step <= 1) { state.selectedSchoolId = null; state.selectedSchoolName = ''; }
+      if (step <= 2) { state.selectedDeptId = null; state.selectedDeptName = ''; }
+      if (step <= 3) { state.selectedProgId = null; state.selectedProgName = ''; }
+      state.currentStep = step; buildBreadcrumb();
+      document.getElementById("stepContent").innerHTML = '';
+      if (step === 1) renderSchools(); else if (step === 2) renderDepts(); else if (step === 3) loadLecturers();
+    }
+
+    async function loadSchools() {
+      try { state.schools = await SmartCampusAPI.fetchSchools() || []; state.currentStep = 1; renderSchools(); } catch (ex) { showError(ex.message); }
+    }
+    function renderSchools() {
+      let html = '<div class="step-title"><i class="fa-solid fa-school"></i>Select a School</div><div class="hierarchy-grid">';
+      state.schools.forEach(s => { html += `<div class="hierarchy-card" onclick="selectSchool('${s.id}','${esc(s.name)}')"><div class="h-icon"><i class="fa-solid fa-school"></i></div><div class="h-name">${esc(s.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    async function selectSchool(id, name) {
+      state.selectedSchoolId = id; state.selectedSchoolName = name;
+      try { state.departments = await SmartCampusAPI.fetchDepartments(id) || []; state.currentStep = 2; buildBreadcrumb(); renderDepts(); } catch (ex) { showError(ex.message); }
+    }
+    function renderDepts() {
+      if (!state.departments.length) { document.getElementById("stepContent").innerHTML = '<div class="empty-state"><i class="fa-solid fa-building"></i><p>No departments.</p></div>'; return; }
+      let html = '<div class="step-title"><i class="fa-solid fa-sitemap"></i>Select a Department</div><div class="hierarchy-grid">';
+      state.departments.forEach(d => { html += `<div class="hierarchy-card" onclick="selectDept('${d.id}','${esc(d.name)}')"><div class="h-icon"><i class="fa-solid fa-building"></i></div><div class="h-name">${esc(d.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectDept(id, name) { state.selectedDeptId = id; state.selectedDeptName = name; loadProgs(id); }
+    async function loadProgs(deptId) {
+      try { state.programmes = await SmartCampusAPI.fetchProgrammes(deptId) || []; state.currentStep = 3; buildBreadcrumb(); renderProgs(); } catch (ex) { showError(ex.message); }
+    }
+    function renderProgs() {
+      if (!state.programmes.length) { document.getElementById("stepContent").innerHTML = '<div class="empty-state"><i class="fa-solid fa-graduation-cap"></i><p>No programmes.</p></div>'; return; }
+      let html = '<div class="step-title"><i class="fa-solid fa-graduation-cap"></i>Select a Programme</div><div class="hierarchy-grid">';
+      state.programmes.forEach(p => { html += `<div class="hierarchy-card" onclick="selectProg('${p.id}','${esc(p.name)}')"><div class="h-icon"><i class="fa-solid fa-book-open"></i></div><div class="h-name">${esc(p.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    async function selectProg(id, name) {
+      state.selectedProgId = id; state.selectedProgName = name;
+      state.currentStep = 4; buildBreadcrumb();
+      const el = document.getElementById("stepContent");
+      el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</p>';
+      try {
+        const lecturers = await apiFetch(`/lecturers?programmeId=${id}`) || [];
+        if (!lecturers.length) { el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-chalkboard-user"></i><p>No lecturers in this programme.</p></div>'; return; }
+        let html = '<div class="step-title"><i class="fa-solid fa-chalkboard-user"></i>Select a Lecturer to Update</div><input class="search-box" id="lecSearch" placeholder="Search by name or ID..." onkeyup="filterLecturers(this.value)"><div style="margin-top:1rem;overflow-x:auto;border:1px solid var(--excel-border);border-radius:6px"><table class="excel-table"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Login</th><th>Actions</th></tr></thead><tbody id="lecTableBody">';
+        lecturers.forEach(l => {
+          const ls = l.loginApprovalStatus||'Pending';
+          const lsCls = ls === 'Approved' ? 'badge-approved' : ls === 'Rejected' ? 'badge-rejected' : 'badge-pending';
+          html += `<tr class="lec-row" data-name="${esc(l.name)}" data-id="${esc(l.lecturerId||'')}"><td>${esc(l.lecturerId||'-')}</td><td><strong>${esc(l.name)}</strong></td><td>${esc(l.email)}</td><td>${esc(l.phone||'-')}</td><td><span class="${l.status==='Active'?'badge-active':'badge-inactive'}">${l.status||'Active'}</span></td><td><span class="${lsCls}">${ls}</span></td><td><a href="add.html?lecturerId=${l.id}" class="btn btn-outline btn-sm"><i class="fa-solid fa-pen"></i> Edit</a></td></tr>`;
+        });
+        html += '</tbody></table></div>';
+        el.innerHTML = html;
+        window._lecData = lecturers;
+      } catch (ex) { el.innerHTML = `<p style="color:var(--error);text-align:center;padding:2rem">${esc(ex.message)}</p>`; }
+    }
+
+    function filterLecturers(q) {
+      q = q.toLowerCase();
+      document.querySelectorAll(".lec-row").forEach(r => {
+        const name = (r.getAttribute("data-name")||'').toLowerCase();
+        const lid = (r.getAttribute("data-id")||'').toLowerCase();
+        r.style.display = (!q || name.includes(q) || lid.includes(q)) ? '' : 'none';
+      });
+    }
+
+    function showError(msg) { document.getElementById("stepContent").innerHTML = `<p style="color:var(--error);text-align:center;padding:2rem">${esc(msg)}</p>`; }
+
+    // --- Quick Action Functions ---
+    async function toggleAccountStatus(id, currentStatus) {
+      const action = currentStatus === 'Active' ? 'Deactivate' : 'Activate';
+      if (!confirm(`${action} this account?`)) return;
+      try {
+        await apiFetch(`/lecturers/${id}/toggle-status`, { method: 'PUT', body: JSON.stringify({ status: currentStatus === 'Active' ? 'Inactive' : 'Active', changedBy: currentUser?.name || 'Admin' }) });
+        SmartCampusUI.showToast(`Account ${action.toLowerCase()}d`, "success");
+        await selectProg(state.selectedProgId, state.selectedProgName);
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message, "error"); }
+    }
+
+    async function resetPassword(id) {
+      if (!confirm("Reset password to 1234567890 and email to lecturer?")) return;
+      try {
+        await apiFetch(`/lecturers/${id}/reset-password`, { method: 'PUT', body: JSON.stringify({ password: '1234567890' }) });
+        SmartCampusUI.showToast("Password reset! Email sent.", "success");
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message, "error"); }
+    }
+
+    async function quickApprove(id) {
+      if (!confirm("Approve lecturer login?")) return;
+      try {
+        await apiFetch(`/lecturers/${id}/approve`, { method: 'PUT', body: JSON.stringify({ approvedBy: currentUser?.name || 'Admin' }) });
+        SmartCampusUI.showToast("Lecturer approved! Email sent.", "success");
+        await selectProg(state.selectedProgId, state.selectedProgName);
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message, "error"); }
+    }
+  </script>
+</body>
+</html>

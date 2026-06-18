@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Record Payment - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .pay-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .pay-panel .card { padding: 1.25rem; }
+    .pay-panel label { font-weight: 600; font-size: .85rem; display: block; margin-top: .75rem; margin-bottom: .25rem; }
+    .pay-panel input, .pay-panel select { width: 100%; padding: .5rem; border: 1px solid var(--gray-200); border-radius: 6px; box-sizing: border-box; }
+    .pay-panel input:disabled { background: #f4f4f4; }
+    .student-result { cursor: pointer; padding: .6rem; border-bottom: 1px solid var(--gray-200); }
+    .student-result:hover { background: var(--gray-100); }
+    .student-result:last-child { border-bottom: none; }
+    .search-wrap { display: flex; gap: .5rem; margin-bottom: 1rem; }
+    .search-wrap input { flex: 1; padding: .6rem; border: 1px solid var(--gray-200); border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <h1>Record Payment</h1>
+    <p style="color:var(--gray-600);margin-bottom:1rem">Search for a student, then record a payment against their account.</p>
+
+    <div class="pay-panel">
+      <div class="card">
+        <h3>Select Student</h3>
+        <div class="search-wrap">
+          <input id="studentSearchPay" placeholder="Search by name or email...">
+          <button class="btn btn-primary" onclick="searchStudent()">Search</button>
+        </div>
+        <div id="studentResults" style="max-height:400px;overflow-y:auto"></div>
+      </div>
+
+      <div class="card">
+        <h3>Payment Details</h3>
+        <form id="recordPaymentForm">
+          <input type="hidden" id="payStudentId">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem">
+            <div><label>Student ID</label><input id="payStudentIdDisplay" placeholder="Type ID and press Enter or Tab" onchange="lookupStudent()"></div>
+            <div><label>Student Name</label><input id="payName"></div>
+            <div><label>Email</label><input id="payEmail"></div>
+            <div><label>Phone No</label><input id="payPhone"></div>
+            <div><label>School</label><input id="paySchool"></div>
+            <div><label>Department</label><input id="payDept"></div>
+            <div><label>Program</label><input id="payProgram"></div>
+            <div><label>Year / Level</label><input id="payYearLevel"></div>
+          </div>
+          <hr style="margin:1rem 0">
+          <label>Outstanding Balance</label>
+          <input id="payBalance" style="font-size:1.1rem;font-weight:700;color:var(--error)">
+          <label>Amount Paid (NLE)</label>
+          <input type="number" id="payAmount" required>
+          <label>Method</label>
+          <select id="payMethod"><option>Bank Transfer</option><option>Cash</option><option>Mobile Money</option><option>Cheque</option></select>
+          <label>Confirmation / Reference</label>
+          <input id="payRef" placeholder="e.g. TXN-999">
+          <div style="margin-top:1rem">
+            <button type="submit" class="btn btn-primary" style="width:100%">Record Payment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+</body>
+</html>

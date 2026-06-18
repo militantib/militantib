@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Approval Reports - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <h1>Approval Reports</h1>
+    <p style="color:var(--gray-600)">Real-time analytics and reports on the grading approval workflow.</p>
+
+    <!-- Filters -->
+    <div class="filter-row">
+      <select id="filterSchool"><option value="">All Schools</option></select>
+      <select id="filterDepartment"><option value="">All Departments</option></select>
+      <select id="filterProgramme"><option value="">All Programmes</option></select>
+      <select id="filterSemester"><option value="">All Semesters</option><option>Semester 1</option><option>Semester 2</option></select>
+      <select id="filterAcademicYear"><option value="">All Years</option><option>2025/2026</option><option>2026/2027</option><option>2027/2028</option></select>
+      <button class="btn btn-primary" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row" id="reportStats"></div>
+
+    <!-- Charts -->
+    <div class="chart-row" style="margin-bottom:1rem">
+      <div class="card"><h3 style="font-size:.9rem;margin-bottom:.75rem">Grade Status Distribution</h3><canvas id="statusDistChart"></canvas></div>
+      <div class="card"><h3 style="font-size:.9rem;margin-bottom:.75rem">Approval Timeline</h3><canvas id="timelineChart"></canvas></div>
+    </div>
+
+    <!-- Approval history table -->
+    <div class="card">
+      <h3>Recent Approval Activity</h3>
+      <div class="table-responsive"><table id="historyTable"><thead><tr><th>Date</th><th>Grade ID</th><th>Student</th><th>Course</th><th>Action</th><th>From</th><th>To</th><th>By</th><th>Comments</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+    </div>
+  </div>
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const allowed = ["University Super Admin","School Super Admin","Department Admin"];
+      if (!allowed.includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>';
+        return;
+      }
+      await loadFilters();
+      await loadReport();
+      document.getElementById("refreshBtn").addEventListener("click", loadReport);
+      document.querySelectorAll(".filter-row select").forEach(s => s.addEventListener("change", loadReport));
+    });
+
+    async function loadFilters() {
+      try {
+        const data = await apiFetch('/programmes/hierarchy');
+        if (data && data.data) {
+          const schools = data.data;
+          const schoolSel = document.getElementById("filterSchool");
+          const deptSel = document.getElementById("filterDepartment");
+          const progSel = document.getElementById("filterProgramme");
+          schools.forEach(s => {
+            const o = document.createElement("option");
+            o.value = s.id; o.textContent = s.name; schoolSel.appendChild(o);
+            (s.departments || []).forEach(d => {
+              const o2 = document.createElement("option");
+              o2.value = d.id; o2.textContent = d.name; deptSel.appendChild(o2);
+              (d.programmes || []).forEach(p => {
+                const o3 = document.createElement("option");
+                o3.value = p.id; o3.textContent = p.name; progSel.appendChild(o3);
+              });
+            });
+          });
+        }
+      } catch {}
+    }
+
+    let chartInstances = [];
+
+    async function loadReport() {
+      try {
+        const params = new URLSearchParams();
+        const schoolId = document.getElementById("filterSchool").value;
+        const deptId = document.getElementById("filterDepartment").value;
+        const semester = document.getElementById("filterSemester").value;
+        const academicYear = document.getElementById("filterAcademicYear").value;
+        if (schoolId) params.set("schoolId", schoolId);
+        if (deptId) params.set("departmentId", deptId);
+        if (semester) params.set("semester", semester);
+        if (academicYear) params.set("academicYear", academicYear);
+
+        const data = await apiFetch(`/approval/dashboard?${params}`);
+        if (!data || !data.data) return;
+        const d = data.data;
+
+        // Stats
+        const stats = d.stageDistribution || {};
+        document.getElementById("reportStats").innerHTML = `
+          <div class="stat-card"><h4>${d.total || 0}</h4><p>Total</p></div>
+          <div class="stat-card"><h4>${stats["Draft"] || 0}</h4><p>Draft</p></div>
+          <div class="stat-card"><h4 style="color:var(--warning)">${stats["Submitted to Department"] || 0}</h4><p>Submitted</p></div>
+          <div class="stat-card"><h4 style="color:var(--info)">${stats["Department Approved"] || 0}</h4><p>Dept Approved</p></div>
+          <div class="stat-card"><h4 style="color:var(--purple)">${stats["School Approved"] || 0}</h4><p>School Approved</p></div>
+          <div class="stat-card"><h4 style="color:var(--navy)">${stats["University Approved"] || 0}</h4><p>Univ Approved</p></div>
+          <div class="stat-card"><h4 style="color:var(--error)">${stats["Returned for Correction"] || 0}</h4><p>Returned</p></div>
+          <div class="stat-card"><h4 style="color:var(--success)">${stats["Published"] || 0}</h4><p>Published</p></div>`;
+
+        // Status distribution chart
+        const labels = Object.keys(stats);
+        const values = Object.values(stats);
+        const colors = ["#6b7280","#f59e0b","#3b82f6","#8b5cf6","#1e3a5f","#ef4444","#22c55e"];
+        chartInstances.forEach(c => c.destroy());
+        chartInstances = [];
+        chartInstances.push(new Chart(document.getElementById("statusDistChart"), {
+          type: 'doughnut',
+          data: { labels, datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length) }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, padding: 8, font: { size: 11 } } } } }
+        }));
+
+        // Timeline chart (last 7 stages counts)
+        chartInstances.push(new Chart(document.getElementById("timelineChart"), {
+          type: 'bar',
+          data: { labels, datasets: [{ label: 'Grades', data: values, backgroundColor: colors.slice(0, labels.length) }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        }));
+
+        // History table
+        renderHistory(d.grades || []);
+      } catch {}
+    }
+
+    function renderHistory(grades) {
+      const tbody = document.getElementById("historyBody");
+      if (!grades.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray-500)">No data</td></tr>';
+        return;
+      }
+      tbody.innerHTML = grades.slice(0, 100).map(g => `
+        <tr>
+          <td>${g.submittedAt ? new Date(g.submittedAt).toLocaleDateString() : '-'}</td>
+          <td>${g.id || '-'}</td>
+          <td>${esc(g.studentName || 'N/A')}</td>
+          <td>${esc(g.courseCode || '')} ${esc(g.courseTitle || '')}</td>
+          <td><span class="badge ${statusBadge(g.status)}">${esc(g.status || '')}</span></td>
+          <td>${g.submittedBy || '-'}</td>
+          <td>${g.departmentApprovedBy || '-'}</td>
+          <td>${g.schoolApprovedBy || '-'}</td>
+          <td>${g.universityApprovedBy || '-'}</td>
+        </tr>`).join('');
+    }
+
+    function statusBadge(s) {
+      if (!s) return 'badge-default';
+      if (s === 'Published' || s === 'University Approved') return 'badge-success';
+      if (s === 'Returned for Correction') return 'badge-error';
+      if (s === 'Submitted to Department') return 'badge-warning';
+      if (s === 'Department Approved') return 'badge-info';
+      if (s === 'School Approved') return 'badge-primary';
+      return 'badge-default';
+    }
+  </script>
+</body>
+</html>

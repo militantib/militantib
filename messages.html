@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .msg-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .msg-list { max-height: 500px; overflow-y: auto; }
+    .msg-item { padding: .75rem; border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background .15s; }
+    .msg-item:hover { background: var(--gray-100); }
+    .msg-item.unread { background: #eef4ff; font-weight: 600; }
+    .msg-item small { display: block; font-weight: 400; font-size: .78rem; color: var(--gray-300); margin-top: .2rem; }
+    .compose-form label { font-weight: 600; font-size: .85rem; display: block; margin-bottom: .25rem; }
+    .compose-form select, .compose-form input, .compose-form textarea { width: 100%; padding: .5rem; border: 1px solid var(--gray-200); border-radius: 6px; margin-bottom: .75rem; }
+    .compose-form textarea { min-height: 100px; resize: vertical; }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <h1>Messages</h1>
+    <div style="margin-bottom:1rem;display:flex;gap:.5rem">
+      <button class="btn btn-primary" id="showInbox">Inbox</button>
+      <button class="btn btn-outline" id="showSent">Sent</button>
+      <button class="btn btn-outline" id="showCompose">+ Compose</button>
+    </div>
+    <div class="msg-layout">
+      <div class="card" id="messageListPanel">
+        <h3 id="msgListTitle">Inbox</h3>
+        <div class="msg-list" id="messageList"></div>
+      </div>
+      <div class="card" id="messageDetailPanel">
+        <h3>Message</h3>
+        <div id="messageDetail">
+          <p style="color:var(--gray-300)">Select a message to read</p>
+        </div>
+      </div>
+    </div>
+    <div class="card compose-form" id="composePanel" style="display:none">
+      <h3>Compose Message</h3>
+      <label>To</label><select id="composeTo"></select>
+      <label>Subject</label><input id="composeSubject">
+      <label>Message</label><textarea id="composeBody"></textarea>
+      <button class="btn btn-primary" id="composeSend">Send</button>
+    </div>
+  </div>
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+</body>
+</html>

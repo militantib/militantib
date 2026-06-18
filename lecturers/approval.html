@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lecturer Login Approval - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root { --excel-header: #44546a; --excel-border: #d0d7de; }
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: .3rem .5rem; font-size: .85rem; padding: .6rem 0; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb span { color: var(--gray-500); }
+    .breadcrumb .current { color: var(--gray-800); font-weight: 600; }
+    .excel-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .excel-table th { background: var(--excel-header); color: #fff; padding: .55rem .4rem; text-align: left; font-weight: 600; white-space: nowrap; }
+    .excel-table td { padding: .4rem; border: 1px solid var(--excel-border); }
+    .excel-table tr:nth-child(even) { background: #f8f9fa; }
+    .excel-table tr:hover { background: #f5f3ff; }
+    .badge-approved { background: var(--success); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-pending { background: var(--warning); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-rejected { background: var(--error); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-suspended { background: #6b7280; color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .filter-bar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .filter-bar select { padding: .45rem .6rem; border: 1px solid var(--gray-200); border-radius: 6px; }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: .75rem; margin-bottom: 1.5rem; }
+    .stat-card { text-align: center; padding: .65rem; background: var(--gray-50); border-radius: 8px; }
+    .stat-card h4 { font-size: 1.2rem; margin: 0; }
+    .stat-card p { font-size: .65rem; color: var(--gray-600); margin: .1rem 0 0; }
+    .modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:#fff;border-radius:12px;padding:2rem;max-width:500px;width:90%; }
+    .empty-state { text-align: center; padding: 4rem 1rem; color: var(--gray-400); }
+    .empty-state i { font-size: 3rem; margin-bottom: .75rem; }
+    .audit-log { font-size: .8rem; }
+    .audit-log div { padding: .35rem 0; border-bottom: 1px solid var(--gray-100); }
+    .audit-log div:last-child { border-bottom: none; }
+    @media (max-width: 600px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0">Lecturer Login Approval</h1>
+      <a href="../manage-lecturers.html" class="btn btn-outline btn-sm">&larr; Back</a>
+    </div>
+    <div class="breadcrumb"><a href="../manage-lecturers.html">Manage Lecturers</a> <span>/</span> <span class="current">Login Approval</span></div>
+
+    <div class="stats-row" id="approvalStats"></div>
+
+    <div class="filter-bar">
+      <select id="filterStatus" onchange="loadApprovals()">
+        <option value="">All Statuses</option>
+        <option value="Pending" selected>Pending</option>
+        <option value="Approved">Approved</option>
+        <option value="Rejected">Rejected</option>
+        <option value="Suspended">Suspended</option>
+      </select>
+      <input type="text" id="searchInput" placeholder="Search by name or email..." style="padding:.45rem .6rem;border:1px solid var(--gray-200);border-radius:6px;flex:1;min-width:180px" onkeyup="debouncedSearch()">
+    </div>
+    <div id="approvalTableContainer"></div>
+  </div>
+
+  <!-- Reject Modal -->
+  <div class="modal-overlay" id="rejectModal">
+    <div class="modal"><h3>Reject Lecturer</h3><p style="font-size:.85rem;color:var(--gray-600)">Provide a reason for rejection:</p><textarea id="rejectReason" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:6px;min-height:80px;box-sizing:border-box"></textarea><div style="display:flex;gap:.5rem;margin-top:1rem"><button class="btn btn-danger" id="confirmRejectBtn">Reject</button><button class="btn btn-outline" onclick="closeRejectModal()">Cancel</button></div></div>
+  </div>
+
+  <!-- Audit Trail Modal -->
+  <div class="modal-overlay" id="auditModal">
+    <div class="modal" style="max-width:550px"><h3>Audit Trail</h3><div id="auditBody" class="audit-log"></div><button class="btn btn-outline btn-sm" onclick="closeAuditModal()" style="margin-top:1rem">Close</button></div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    let pendingRejectId = null, allLecturers = [], searchTimer;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin","School Super Admin","Department Admin"].includes(currentRole)) { document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>'; return; }
+      await loadApprovals();
+    });
+
+    async function loadApprovals() {
+      const el = document.getElementById("approvalTableContainer");
+      el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</p>';
+      try {
+        allLecturers = await apiFetch('/lecturers') || [];
+        renderApprovalTable();
+        renderStats();
+      } catch (ex) { el.innerHTML = `<p style="color:var(--error);text-align:center;padding:2rem">${esc(ex.message)}</p>`; }
+    }
+
+    function renderStats() {
+      const total = allLecturers.length;
+      const pending = allLecturers.filter(l => l.loginApprovalStatus === 'Pending').length;
+      const approved = allLecturers.filter(l => l.loginApprovalStatus === 'Approved').length;
+      const rejected = allLecturers.filter(l => l.loginApprovalStatus === 'Rejected').length;
+      const suspended = allLecturers.filter(l => l.loginApprovalStatus === 'Suspended').length;
+      document.getElementById("approvalStats").innerHTML = `
+        <div class="stat-card"><h4>${total}</h4><p>Total</p></div>
+        <div class="stat-card"><h4 style="color:var(--warning)">${pending}</h4><p>Pending</p></div>
+        <div class="stat-card"><h4 style="color:var(--success)">${approved}</h4><p>Approved</p></div>
+        <div class="stat-card"><h4 style="color:var(--error)">${rejected}</h4><p>Rejected</p></div>
+        <div class="stat-card"><h4 style="color:#6b7280">${suspended}</h4><p>Suspended</p></div>
+      `;
+    }
+
+    function renderApprovalTable() {
+      const el = document.getElementById("approvalTableContainer");
+      const filter = document.getElementById("filterStatus").value;
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      let filtered = allLecturers;
+      if (filter) filtered = filtered.filter(l => l.loginApprovalStatus === filter);
+      if (search) filtered = filtered.filter(l => (l.name||'').toLowerCase().includes(search) || (l.email||'').toLowerCase().includes(search));
+
+      if (!filtered.length) { el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-check-circle"></i><p>No lecturers match the current filters.</p></div>'; return; }
+
+      let html = `<div style="overflow-x:auto;border:1px solid var(--excel-border);border-radius:6px"><table class="excel-table"><thead><tr>
+        <th>ID</th><th>Full Name</th><th>Email</th><th>Department</th><th>Programme</th><th>Status</th><th>Actions</th>
+      </tr></thead><tbody>`;
+      filtered.forEach(l => {
+        const ls = l.loginApprovalStatus||'Pending';
+        const cls = ls === 'Approved' ? 'badge-approved' : ls === 'Rejected' ? 'badge-rejected' : ls === 'Suspended' ? 'badge-suspended' : 'badge-pending';
+        html += `<tr>
+          <td>${esc(l.lecturerId||'-')}</td>
+          <td><strong>${esc(l.name)}</strong></td>
+          <td>${esc(l.email)}</td>
+          <td>${esc(l.department||'-')}</td>
+          <td>${esc(l.program||'-')}</td>
+          <td><span class="${cls}">${ls}</span></td>
+          <td>
+            ${ls !== 'Approved' ? `<button class="btn btn-success btn-sm" onclick="approve(${l.id})" title="Approve"><i class="fa-solid fa-check"></i></button>` : ''}
+            ${ls !== 'Rejected' ? `<button class="btn btn-danger btn-sm" onclick="openReject(${l.id})" title="Reject"><i class="fa-solid fa-times"></i></button>` : ''}
+            <button class="btn btn-outline btn-sm" onclick="toggleSuspend(${l.id},'${ls}')" title="${ls === 'Suspended' ? 'Unsuspend' : 'Suspend'}"><i class="fa-solid fa-${ls === 'Suspended' ? 'unlock' : 'lock'}"></i></button>
+            <button class="btn btn-outline btn-sm" onclick="resetPw(${l.id})" title="Reset Password"><i class="fa-solid fa-key"></i></button>
+            <button class="btn btn-outline btn-sm" onclick="viewAudit(${l.id})" title="Audit Trail"><i class="fa-solid fa-clock-rotate-left"></i></button>
+          </td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+      el.innerHTML = html;
+    }
+
+    async function approve(id) {
+      if (!confirm("Approve this lecturer's login?")) return;
+      try { await apiFetch(`/lecturers/${id}/approve`, { method: 'PUT', body: JSON.stringify({ approvedBy: currentUser?.name || 'Admin' }) }); SmartCampusUI.showToast("Lecturer approved! Email sent.","success"); await loadApprovals(); }
+      catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message,"error"); }
+    }
+
+    function openReject(id) { pendingRejectId = id; document.getElementById("rejectModal").classList.add("open"); }
+    function closeRejectModal() { pendingRejectId = null; document.getElementById("rejectModal").classList.remove("open"); document.getElementById("rejectReason").value = ''; }
+    document.getElementById("confirmRejectBtn").addEventListener("click", async () => {
+      if (!pendingRejectId) return;
+      try { await apiFetch(`/lecturers/${pendingRejectId}/reject`, { method: 'PUT', body: JSON.stringify({ reason: document.getElementById("rejectReason").value || 'Account rejected.' }) }); SmartCampusUI.showToast("Lecturer rejected","success"); closeRejectModal(); await loadApprovals(); }
+      catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message,"error"); }
+    });
+
+    async function toggleSuspend(id, currentStatus) {
+      if (currentStatus === 'Suspended') {
+        if (!confirm("Unsuspend this account?")) return;
+        try { await apiFetch(`/lecturers/${id}/approve`, { method: 'PUT', body: JSON.stringify({ approvedBy: 'Admin' }) }); SmartCampusUI.showToast("Account unsuspended","success"); await loadApprovals(); }
+        catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message,"error"); }
+      } else {
+        if (!confirm("Suspend this account?")) return;
+        try { await apiFetch(`/lecturers/${id}/suspend`, { method: 'PUT' }); SmartCampusUI.showToast("Account suspended","success"); await loadApprovals(); }
+        catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message,"error"); }
+      }
+    }
+
+    async function resetPw(id) {
+      if (!confirm("Reset password to 1234567890 and email to lecturer?")) return;
+      try { await apiFetch(`/lecturers/${id}/reset-password`, { method: 'PUT', body: JSON.stringify({ password: '1234567890' }) }); SmartCampusUI.showToast("Password reset! Email sent.","success"); }
+      catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message,"error"); }
+    }
+
+    function debouncedSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(() => renderApprovalTable(), 300); }
+
+    async function viewAudit(id) {
+      const el = document.getElementById("auditBody");
+      el.innerHTML = '<p style="color:var(--gray-300);text-align:center"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</p>';
+      try {
+        const logs = await apiFetch(`/lecturers/${id}/audit`) || [];
+        if (!logs.length) { el.innerHTML = '<p style="color:var(--gray-400);text-align:center">No audit records found.</p>'; }
+        else {
+          let html = '';
+          logs.forEach(log => {
+            html += `<div><strong>${esc(log.action||'Action')}</strong> by ${esc(log.performedBy||'System')} — <span style="color:var(--gray-500)">${esc(log.timestamp||'')}</span>`;
+            if (log.details) html += `<br><span style="color:var(--gray-600);font-size:.75rem">${esc(log.details)}</span>`;
+            html += '</div>';
+          });
+          el.innerHTML = html;
+        }
+        document.getElementById("auditModal").classList.add("open");
+      } catch { el.innerHTML = '<p style="color:var(--gray-400);text-align:center">Unable to load audit trail.</p>'; document.getElementById("auditModal").classList.add("open"); }
+    }
+    function closeAuditModal() { document.getElementById("auditModal").classList.remove("open"); }
+  </script>
+</body>
+</html>

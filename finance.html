@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finance Management - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .dash-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 2rem; }
+    .dash-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: all .25s; text-decoration: none; color: inherit; display: block; }
+    .dash-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-3px); border-color: var(--primary); }
+    .dash-card .icon { font-size: 2.5rem; margin-bottom: 1rem; color: var(--primary); }
+    .dash-card h3 { margin: 0 0 .3rem; font-size: 1.15rem; }
+    .dash-card p { margin: 0; font-size: .85rem; color: var(--gray-600); }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+    .stat-card { text-align: center; padding: 1rem; background: var(--gray-100); border-radius: 8px; }
+    .stat-card h4 { font-size: 1.4rem; margin: 0; }
+    .stat-card p { font-size: .75rem; color: var(--gray-600); margin: .2rem 0 0; }
+    .notif-badge { display: inline-block; font-size: .65rem; background: var(--error); color: #fff; border-radius: 10px; padding: .1rem .45rem; margin-left: .4rem; vertical-align: top; }
+    .restricted-badge { display: inline-block; font-size: .7rem; background: var(--gray-200); color: var(--gray-600); border-radius: 4px; padding: .15rem .5rem; margin-top: .5rem; }
+    @media (max-width: 900px) { .dash-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .dash-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0">Finance Management</h1>
+    </div>
+    <p style="color:var(--gray-600);margin:.5rem 0 0">Read-only view of all financial records. Manage payments, records, and approvals from the Finance Department portal.</p>
+    <div style="margin-top:.3rem"><span class="restricted-badge"><i class="fa-solid fa-eye"></i> View-only access</span></div>
+
+    <!-- Stats -->
+    <div class="stats-row" id="dashStats"></div>
+
+    <!-- Action Cards -->
+    <div class="dash-grid">
+      <a href="finance/browse.html" class="dash-card">
+        <div class="icon"><i class="fa-solid fa-file-invoice"></i></div>
+        <h3>Browse Financial Records</h3>
+        <p>Drill down by school &rarr; department &rarr; programme &rarr; year to view student payment records.</p>
+      </a>
+      <a href="finance/payments.html" class="dash-card">
+        <div class="icon"><i class="fa-solid fa-credit-card"></i></div>
+        <h3>View Student Payments</h3>
+        <p>Search and view detailed payment history for any student.</p>
+      </a>
+      <a href="finance/reports.html" class="dash-card">
+        <div class="icon"><i class="fa-solid fa-chart-simple"></i></div>
+        <h3>Financial Reports</h3>
+        <p>Generate and export reports by school, department, programme, level, and payment status.</p>
+      </a>
+      <a href="finance/analytics.html" class="dash-card">
+        <div class="icon"><i class="fa-solid fa-chart-line"></i></div>
+        <h3>Payment Analytics</h3>
+        <p>View analytics dashboards with revenue breakdowns, trends, and distribution charts.</p>
+      </a>
+    </div>
+
+    <!-- Recent Activity -->
+    <div style="margin-top:2.5rem">
+      <h2 style="font-size:1.1rem;margin-bottom:1rem"><i class="fa-solid fa-clock-rotate-left" style="margin-right:.4rem"></i>Recent Payments</h2>
+      <div class="card"><div class="table-responsive" id="recentPaymentsContainer"></div></div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin", "School Super Admin"].includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2><p>Only University Super Admin and School Super Admin can access Finance Management.</p><a href="dashboard.html" class="btn btn-primary">Go to Dashboard</a></div>';
+        return;
+      }
+      loadDashboardStats();
+      loadRecentPayments();
+    });
+
+    async function loadDashboardStats() {
+      try {
+        const res = await SmartCampusAPI.withFallback(
+          () => SmartCampusAPI.fetchFinanceAnalytics(),
+          () => ({ data: { totalRevenue: 0, outstandingRevenue: 0, totalStudents: 0, totalTransactions: 0, fullyPaidStudents: 0, partiallyPaidStudents: 0, outstandingStudents: 0, todayCollections: 0, monthCollections: 0 } })
+        );
+        const d = res.data || res;
+        document.getElementById("dashStats").innerHTML = `
+          <div class="stat-card"><h4 style="color:var(--primary)">NLE${(d.totalRevenue || 0).toLocaleString()}</h4><p>Total Revenue</p></div>
+          <div class="stat-card"><h4 style="color:var(--error)">NLE${(d.outstandingRevenue || 0).toLocaleString()}</h4><p>Outstanding Revenue</p></div>
+          <div class="stat-card"><h4 style="color:var(--success)">${d.fullyPaidStudents || 0}</h4><p>Fully Paid</p></div>
+          <div class="stat-card"><h4 style="color:var(--warning)">${d.partiallyPaidStudents || 0}</h4><p>Partially Paid</p></div>
+          <div class="stat-card"><h4 style="color:var(--error)">${d.outstandingStudents || 0}</h4><p>Outstanding</p></div>
+          <div class="stat-card"><h4 style="color:var(--info)">${d.totalTransactions || 0}</h4><p>Transactions</p></div>
+        `;
+      } catch {}
+    }
+
+    async function loadRecentPayments() {
+      const container = document.getElementById("recentPaymentsContainer");
+      if (!container) return;
+      try {
+        const res = await SmartCampusAPI.fetchRecentPayments();
+        const payments = res.data || res || [];
+        if (!payments.length) {
+          container.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:1rem">No payments yet.</p>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Date</th><th>Student</th><th>Reg No</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead><tbody>';
+        payments.slice(0, 15).forEach(p => {
+          html += `<tr><td>${esc(p.date || '')}</td><td><strong>${esc(p.studentName || '')}</strong></td><td>${esc(p.registrationNumber || '-')}</td><td>NLE${(p.amount || 0).toLocaleString()}</td><td>${esc(p.method || '')}</td><td>${esc(p.reference || '')}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      } catch {
+        container.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:1rem">Could not load recent payments.</p>';
+      }
+    }
+  </script>
+</body>
+</html>

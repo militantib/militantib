@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timetable - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .timetable-wrapper { position: relative; }
+    .timetable-controls { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem; justify-content: space-between; }
+    .timetable-controls-left { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .timetable-controls-right { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .week-nav { display: flex; gap: 0.25rem; align-items: center; }
+    .week-nav button { padding: 0.4rem 0.75rem; font-size: 0.85rem; }
+    .week-nav .current-week-label { font-weight: 600; font-size: 0.95rem; color: var(--navy); min-width: 200px; text-align: center; }
+    .view-toggle { display: flex; gap: 0.25rem; }
+    .view-toggle .btn { font-size: 0.85rem; padding: 0.4rem 0.75rem; }
+    .view-toggle .btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; margin-bottom: 1rem; padding: 1rem; background: white; border-radius: var(--border-radius); box-shadow: var(--box-shadow); }
+    .filter-bar .form-group { margin-bottom: 0; min-width: 150px; }
+    .filter-bar .form-group label { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.15rem; }
+    .filter-bar .form-group select, .filter-bar .form-group input { padding: 0.4rem 0.6rem; font-size: 0.85rem; }
+
+    .timetable-grid { display: grid; grid-template-columns: 70px repeat(5, 1fr); border: 1px solid var(--gray-200); border-radius: var(--border-radius); overflow: hidden; background: white; position: relative; }
+    .tt-header { background: var(--navy); color: white; font-weight: 600; padding: 0.6rem 0.5rem; text-align: center; font-size: 0.85rem; border-right: 1px solid rgba(255,255,255,0.15); }
+    .tt-header:last-child { border-right: none; }
+    .tt-col-time { position: relative; border-right: 1px solid var(--gray-200); }
+    .tt-col-day { position: relative; border-right: 1px solid var(--gray-200); min-height: 720px; }
+    .tt-col-day:last-child { border-right: none; }
+    .tt-col-day:nth-child(odd) { background: var(--gray-100); }
+    .tt-col-day:nth-child(even) { background: white; }
+    .tt-time-mark { position: absolute; left: 0; right: 0; height: 1px; background: var(--gray-200); pointer-events: none; }
+    .tt-time-mark.major { background: var(--gray-300); height: 1px; }
+    .tt-time-label { position: absolute; right: 6px; font-size: 0.72rem; color: var(--gray-700); font-weight: 500; transform: translateY(-50%); white-space: nowrap; }
+
+    .tt-block { position: absolute; left: 2px; right: 2px; border-radius: 6px; padding: 4px 6px; cursor: pointer; overflow: hidden; z-index: 2; transition: transform 0.15s, box-shadow 0.15s; border-left: 3px solid rgba(0,0,0,0.2); }
+    .tt-block:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 5; }
+    .tt-block .tt-course-code { font-weight: 700; font-size: 0.8rem; line-height: 1.2; }
+    .tt-block .tt-course-title { font-size: 0.7rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tt-block .tt-lecturer { font-size: 0.65rem; line-height: 1.2; opacity: 0.85; }
+    .tt-block .tt-room { font-size: 0.65rem; line-height: 1.2; opacity: 0.75; }
+    .timetable-core { background: #DBEAFE; color: #1E40AF; border-color: #3B82F6; }
+    .timetable-elective { background: #D1FAE5; color: #065F46; border-color: #10B981; }
+    .timetable-lab { background: #FEEBC8; color: #92400E; border-color: #F59E0B; }
+    .timetable-tutorial { background: #E9D5FF; color: #5B21B6; border-color: #8B5CF6; }
+
+    .current-time-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--error); z-index: 10; pointer-events: none; }
+    .current-time-line::before { content: ''; position: absolute; left: -4px; top: -4px; width: 10px; height: 10px; background: var(--error); border-radius: 50%; }
+
+    .daily-view .daily-entry { display: flex; gap: 1rem; padding: 0.75rem; border-bottom: 1px solid var(--gray-200); align-items: flex-start; }
+    .daily-view .daily-entry:last-child { border-bottom: none; }
+    .daily-view .daily-time { font-weight: 600; color: var(--navy); min-width: 100px; font-size: 0.9rem; }
+    .daily-view .daily-details { flex: 1; }
+    .daily-view .daily-details h4 { margin: 0 0 0.25rem; font-size: 0.95rem; }
+    .daily-view .daily-details p { margin: 0; font-size: 0.85rem; color: var(--gray-700); }
+
+    .tt-list-view table th { cursor: pointer; user-select: none; white-space: nowrap; }
+    .tt-list-view table th:hover { background: var(--gray-200); }
+    .tt-list-view table th .sort-icon { margin-left: 0.25rem; font-size: 0.7rem; }
+
+    .tt-empty { color: var(--gray-300); text-align: center; padding: 1rem; font-size: 0.85rem; }
+
+    .exam-section { margin-top: 2rem; }
+    .exam-near { background: #FEE2E2; }
+    .exam-this-month { background: #FEF3C7; }
+    .exam-future { background: #D1FAE5; }
+
+    .admin-entries-list .entry-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--gray-100); font-size: 0.85rem; }
+    .admin-entries-list .entry-row:last-child { border-bottom: none; }
+    .admin-entries-list .entry-actions { display: flex; gap: 0.25rem; }
+
+    .tt-legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; font-size: 0.8rem; }
+    .tt-legend-item { display: flex; align-items: center; gap: 0.4rem; }
+    .tt-legend-swatch { width: 14px; height: 14px; border-radius: 3px; }
+
+    .subtitle-role { color: var(--gray-700); font-size: 0.9rem; margin-bottom: 1rem; }
+
+    @media (max-width: 768px) {
+      .timetable-grid { font-size: 0.75rem; grid-template-columns: 50px repeat(5, 1fr); }
+      .tt-time-label { height: 50px; font-size: 0.65rem; padding: 0 0.25rem; }
+      .tt-block { padding: 2px 4px; }
+      .tt-block .tt-course-code { font-size: 0.7rem; }
+      .tt-block .tt-course-title, .tt-block .tt-lecturer, .tt-block .tt-room { display: none; }
+      .tt-header { font-size: 0.7rem; padding: 0.4rem 0.25rem; }
+      .filter-bar .form-group { min-width: 120px; }
+      .week-nav .current-week-label { min-width: 120px; font-size: 0.8rem; }
+      .daily-view .daily-time { min-width: 70px; font-size: 0.8rem; }
+    }
+
+    @media print {
+      .sidebar, .top-bar, .filter-bar, .timetable-controls, .btn, .menu-toggle, .role-selector { display: none !important; }
+      .main-content { margin-left: 0 !important; padding: 0.5in; }
+      .timetable-grid { break-inside: avoid; border: 1px solid #000; }
+      .tt-block { break-inside: avoid; }
+      .tt-day-cell { border-color: #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem">
+        <div>
+          <h1 style="margin:0"><i class="fa-solid fa-calendar-days" style="color:var(--info)"></i> Timetable &amp; Scheduling</h1>
+          <p class="subtitle-role" id="timetableSubtitle">View your schedule</p>
+        </div>
+        <div id="currentWeekDisplay" style="font-size:0.9rem;color:var(--gray-700);background:var(--gray-100);padding:0.4rem 0.75rem;border-radius:6px;white-space:nowrap"></div>
+      </div>
+    </div>
+
+    <div class="timetable-controls">
+      <div class="timetable-controls-left">
+        <div class="week-nav">
+          <button class="btn btn-outline" id="prevWeekBtn" type="button"><i class="fa-solid fa-chevron-left"></i></button>
+          <span class="current-week-label" id="weekLabel">This Week</span>
+          <button class="btn btn-outline" id="nextWeekBtn" type="button"><i class="fa-solid fa-chevron-right"></i></button>
+          <button class="btn btn-outline" id="thisWeekBtn" type="button">This Week</button>
+        </div>
+      </div>
+      <div class="timetable-controls-right">
+        <div class="view-toggle" id="viewToggle">
+          <button class="btn btn-outline active" data-view="weekly" type="button"><i class="fa-solid fa-calendar-week"></i> Weekly</button>
+          <button class="btn btn-outline" data-view="daily" type="button"><i class="fa-solid fa-calendar-day"></i> Daily</button>
+          <button class="btn btn-outline" data-view="list" type="button"><i class="fa-solid fa-list"></i> List</button>
+        </div>
+        <button class="btn btn-primary" id="adminAddEntryBtn" style="display:none" type="button"><i class="fa-solid fa-plus"></i> Add Entry</button>
+      </div>
+    </div>
+
+    <div class="filter-bar" id="filterBar">
+      <div class="form-group">
+        <label>View as</label>
+        <select id="filterRole"><option value="all">All Roles</option><option value="student">Student</option><option value="lecturer">Lecturer</option></select>
+      </div>
+      <div class="form-group">
+        <label>Semester</label>
+        <select id="filterSemester"><option value="Semester1">Semester 1</option><option value="Semester2">Semester 2</option></select>
+      </div>
+      <div class="form-group">
+        <label>Academic Year</label>
+        <select id="filterYear"><option value="2025/2026">2025/2026</option><option value="2024/2025">2024/2025</option></select>
+      </div>
+      <div class="form-group" id="deptFilterGroup">
+        <label>Department</label>
+        <select id="filterDepartment"><option value="">All Departments</option></select>
+      </div>
+      <div class="form-group" id="progFilterGroup">
+        <label>Programme</label>
+        <select id="filterProgramme"><option value="">All Programmes</option></select>
+      </div>
+      <div class="form-group">
+        <label>Search</label>
+        <input type="text" id="filterSearch" placeholder="Course code or name..." style="min-width:180px">
+      </div>
+    </div>
+
+    <div class="tt-legend" id="ttLegend">
+      <span class="tt-legend-item"><span class="tt-legend-swatch timetable-core"></span> Core</span>
+      <span class="tt-legend-item"><span class="tt-legend-swatch timetable-elective"></span> Elective</span>
+      <span class="tt-legend-item"><span class="tt-legend-swatch timetable-lab"></span> Lab</span>
+      <span class="tt-legend-item"><span class="tt-legend-swatch timetable-tutorial"></span> Tutorial</span>
+    </div>
+
+    <div id="timetableViewContainer"></div>
+
+    <div class="exam-section card" id="examSection">
+      <h2><i class="fa-solid fa-pencil" style="color:var(--error)"></i> Examination Schedule</h2>
+      <div id="examContainer" class="table-responsive"></div>
+    </div>
+
+    <div class="card" id="adminSection" style="display:none">
+      <h2><i class="fa-solid fa-gear"></i> Admin - Timetable Management</h2>
+      <div id="adminEntriesList" class="admin-entries-list"></div>
+    </div>
+  </div>
+
+  <div class="modal-root" id="detailModal">
+    <div class="modal-backdrop" onclick="closeDetailModal()"></div>
+    <div class="modal-dialog" style="max-width:550px">
+      <div class="modal-dialog-header">
+        <h3 id="detailModalTitle">Course Details</h3>
+        <button type="button" class="btn-icon btn-icon-plain modal-close-btn" onclick="closeDetailModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-dialog-body" id="detailModalBody"></div>
+    </div>
+  </div>
+
+  <div class="modal-root" id="adminEntryModal">
+    <div class="modal-backdrop" onclick="closeAdminEntryModal()"></div>
+    <div class="modal-dialog" style="max-width:550px">
+      <div class="modal-dialog-header">
+        <h3 id="adminEntryModalTitle">Add Timetable Entry</h3>
+        <button type="button" class="btn-icon btn-icon-plain modal-close-btn" onclick="closeAdminEntryModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-dialog-body">
+        <div class="form-group"><label>Day</label><select id="entryDay"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option></select></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+          <div class="form-group"><label>Start Time</label><input type="time" id="entryStartTime" value="08:00"></div>
+          <div class="form-group"><label>End Time</label><input type="time" id="entryEndTime" value="10:00"></div>
+        </div>
+        <div class="form-group"><label>Course Code</label><select id="entryCourse"></select></div>
+        <div class="form-group"><label>Lecturer</label><select id="entryLecturer"></select></div>
+        <div class="form-group"><label>Room</label><select id="entryRoom"></select></div>
+        <div class="form-group"><label>Type</label><select id="entryType"><option value="Core">Core</option><option value="Elective">Elective</option><option value="Lab">Lab</option><option value="Tutorial">Tutorial</option></select></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+          <div class="form-group"><label>Semester</label><select id="entrySemester"><option value="Semester1">Semester 1</option><option value="Semester2">Semester 2</option></select></div>
+          <div class="form-group"><label>Academic Year</label><select id="entryAcYear"><option value="2025/2026">2025/2026</option><option value="2024/2025">2024/2025</option></select></div>
+        </div>
+      </div>
+      <div class="modal-dialog-footer">
+        <button type="button" class="btn btn-outline" onclick="closeAdminEntryModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveEntryBtn">Save Entry</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+    var currentWeekOffset = 0;
+    var currentView = 'weekly';
+    var selectedDay = null;
+    var editingEntryId = null;
+    var nextEntryId = 100;
+    var nextExamId = 50;
+
+    var DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    var HOURS = [];
+    for (var h = 7; h <= 19; h++) { HOURS.push(h); }
+
+    var lecturersList = ['Dr. Smith', 'Prof. Johnson', 'Dr. Adams', 'Prof. Lee', 'Dr. Williams', 'Dr. Brown', 'Prof. Davis', 'Dr. Miller', 'Prof. Wilson', 'Dr. Moore'];
+    var roomsList = ['LT-A1', 'LT-B2', 'LT-C3', 'Lab-101', 'Lab-102', 'Room-201', 'Room-202', 'Room-301', 'Auditorium', 'Seminar Hall'];
+    var departments = ['Computer Science', 'Mathematics', 'Physics', 'Engineering', 'Business'];
+    var programmes = ['BSc Computer Science', 'BSc Mathematics', 'BSc Physics', 'BEng Software Engineering', 'BBA Information Systems'];
+
+    var mockTimetable = [
+      { id: 1, day: "Monday", startTime: "08:00", endTime: "10:00", courseCode: "CS301", courseTitle: "Software Engineering", lecturer: "Dr. Smith", room: "LT-A1", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Computer Science", programme: "BSc Computer Science", enrolled: 85 },
+      { id: 2, day: "Monday", startTime: "10:00", endTime: "12:00", courseCode: "MATH301", courseTitle: "Advanced Mathematics", lecturer: "Prof. Johnson", room: "LT-B2", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Mathematics", programme: "BSc Mathematics", enrolled: 62 },
+      { id: 3, day: "Monday", startTime: "13:00", endTime: "15:00", courseCode: "CS302", courseTitle: "Operating Systems", lecturer: "Dr. Adams", room: "Lab-101", type: "Lab", semester: "Semester1", academicYear: "2025/2026", department: "Computer Science", programme: "BSc Computer Science", enrolled: 45 },
+      { id: 4, day: "Monday", startTime: "15:00", endTime: "17:00", courseCode: "PHY301", courseTitle: "Quantum Mechanics", lecturer: "Prof. Lee", room: "Room-201", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Physics", programme: "BSc Physics", enrolled: 38 },
+      { id: 5, day: "Tuesday", startTime: "08:00", endTime: "10:00", courseCode: "CS303", courseTitle: "Database Systems", lecturer: "Dr. Williams", room: "LT-A1", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Computer Science", programme: "BSc Computer Science", enrolled: 78 },
+      { id: 6, day: "Tuesday", startTime: "10:00", endTime: "12:00", courseCode: "MATH302", courseTitle: "Linear Algebra", lecturer: "Dr. Brown", room: "LT-C3", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Mathematics", programme: "BSc Mathematics", enrolled: 55 },
+      { id: 7, day: "Tuesday", startTime: "12:00", endTime: "14:00", courseCode: "CS304", courseTitle: "Computer Networks", lecturer: "Dr. Smith", room: "Lab-102", type: "Lab", semester: "Semester1", academicYear: "2025/2026", department: "Computer Science", programme: "BSc Computer Science", enrolled: 48 },
+      { id: 8, day: "Tuesday", startTime: "14:00", endTime: "16:00", courseCode: "ENG301", courseTitle: "Digital Logic Design", lecturer: "Prof. Wilson", room: "Room-301", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Engineering", programme: "BEng Software Engineering", enrolled: 52 },
+      { id: 9, day: "Wednesday", startTime: "08:00", endTime: "10:00", courseCode: "CS305", courseTitle: "Artificial Intelligence", lecturer: "Dr. Adams", room: "LT-B2", type: "Elective", semester: "Semester1", academicYear: "2025/2026", department: "Computer Science", programme: "BSc Computer Science", enrolled: 92 },
+      { id: 10, day: "Wednesday", startTime: "10:00", endTime: "12:00", courseCode: "MATH303", courseTitle: "Calculus III", lecturer: "Prof. Johnson", room: "Room-202", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Mathematics", programme: "BSc Mathematics", enrolled: 60 },
+      { id: 11, day: "Wednesday", startTime: "13:00", endTime: "15:00", courseCode: "PHY302", courseTitle: "Electromagnetism", lecturer: "Prof. Lee", room: "Lab-101", type: "Lab", semester: "Semester1", academicYear: "2025/2026", department: "Physics", programme: "BSc Physics", enrolled: 35 },
+      { id: 12, day: "Wednesday", startTime: "15:00", endTime: "17:00", courseCode: "BUS301", courseTitle: "Business Analytics", lecturer: "Dr. Moore", room: "LT-A1", type: "Elective", semester: "Semester1", academicYear: "2025/2026", department: "Business", programme: "BBA Information Systems", enrolled: 70 },
+      { id: 13, day: "Thursday", startTime: "08:00", endTime: "10:00", courseCode: "CS306", courseTitle: "Web Technologies", lecturer: "Dr. Williams", room: "Lab-102", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Computer Science", programme: "BSc Computer Science", enrolled: 82 },
+      { id: 14, day: "Thursday", startTime: "10:00", endTime: "12:00", courseCode: "ENG302", courseTitle: "Embedded Systems", lecturer: "Prof. Wilson", room: "Room-301", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Engineering", programme: "BEng Software Engineering", enrolled: 44 },
+      { id: 15, day: "Thursday", startTime: "13:00", endTime: "15:00", courseCode: "CS307", courseTitle: "Cybersecurity", lecturer: "Dr. Smith", room: "LT-C3", type: "Elective", semester: "Semester1", academicYear: "2025/2026", department: "Computer Science", programme: "BSc Computer Science", enrolled: 67 },
+      { id: 16, day: "Thursday", startTime: "15:00", endTime: "17:00", courseCode: "MATH304", courseTitle: "Numerical Methods", lecturer: "Dr. Brown", room: "Room-201", type: "Tutorial", semester: "Semester1", academicYear: "2025/2026", department: "Mathematics", programme: "BSc Mathematics", enrolled: 30 },
+      { id: 17, day: "Friday", startTime: "08:00", endTime: "10:00", courseCode: "CS308", courseTitle: "Machine Learning", lecturer: "Dr. Adams", room: "LT-A1", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Computer Science", programme: "BSc Computer Science", enrolled: 90 },
+      { id: 18, day: "Friday", startTime: "10:00", endTime: "12:00", courseCode: "PHY303", courseTitle: "Thermodynamics", lecturer: "Prof. Lee", room: "LT-B2", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Physics", programme: "BSc Physics", enrolled: 40 },
+      { id: 19, day: "Friday", startTime: "12:00", endTime: "14:00", courseCode: "BUS302", courseTitle: "Project Management", lecturer: "Dr. Moore", room: "Room-202", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Business", programme: "BBA Information Systems", enrolled: 58 },
+      { id: 20, day: "Friday", startTime: "14:00", endTime: "16:00", courseCode: "CS309", courseTitle: "Mobile App Development", lecturer: "Dr. Williams", room: "Lab-101", type: "Lab", semester: "Semester1", academicYear: "2025/2026", department: "Computer Science", programme: "BSc Computer Science", enrolled: 50 },
+      { id: 21, day: "Monday", startTime: "07:00", endTime: "08:00", courseCode: "MATH305", courseTitle: "Statistics for Engineers", lecturer: "Dr. Brown", room: "Room-301", type: "Tutorial", semester: "Semester1", academicYear: "2025/2026", department: "Mathematics", programme: "BSc Mathematics", enrolled: 25 },
+      { id: 22, day: "Tuesday", startTime: "16:00", endTime: "18:00", courseCode: "ENG303", courseTitle: "Robotics", lecturer: "Prof. Wilson", room: "Lab-102", type: "Lab", semester: "Semester1", academicYear: "2025/2026", department: "Engineering", programme: "BEng Software Engineering", enrolled: 33 },
+      { id: 23, day: "Wednesday", startTime: "07:00", endTime: "08:00", courseCode: "CS310", courseTitle: "Discrete Structures", lecturer: "Dr. Smith", room: "Room-201", type: "Tutorial", semester: "Semester1", academicYear: "2025/2026", department: "Computer Science", programme: "BSc Computer Science", enrolled: 28 },
+      { id: 24, day: "Thursday", startTime: "07:00", endTime: "08:00", courseCode: "PHY304", courseTitle: "Optics", lecturer: "Prof. Lee", room: "Seminar Hall", type: "Tutorial", semester: "Semester1", academicYear: "2025/2026", department: "Physics", programme: "BSc Physics", enrolled: 20 },
+      { id: 25, day: "Friday", startTime: "16:00", endTime: "18:00", courseCode: "BUS303", courseTitle: "E-Commerce", lecturer: "Dr. Moore", room: "Auditorium", type: "Elective", semester: "Semester1", academicYear: "2025/2026", department: "Business", programme: "BBA Information Systems", enrolled: 65 },
+      { id: 26, day: "Monday", startTime: "17:00", endTime: "19:00", courseCode: "CS311", courseTitle: "Cloud Computing", lecturer: "Dr. Adams", room: "LT-C3", type: "Elective", semester: "Semester1", academicYear: "2025/2026", department: "Computer Science", programme: "BSc Computer Science", enrolled: 73 },
+      { id: 27, day: "Tuesday", startTime: "07:00", endTime: "08:00", courseCode: "ENG304", courseTitle: "Technical Writing", lecturer: "Dr. Miller", room: "Room-202", type: "Core", semester: "Semester1", academicYear: "2025/2026", department: "Engineering", programme: "BEng Software Engineering", enrolled: 42 }
+    ];
+
+    var mockExams = [
+      { id: 1, date: "2026-07-15", startTime: "09:00", endTime: "12:00", course: "CS301 - Software Engineering", venue: "Main Hall A", duration: "3 hours", invigilator: "Dr. Smith" },
+      { id: 2, date: "2026-07-16", startTime: "09:00", endTime: "12:00", course: "MATH301 - Advanced Mathematics", venue: "Main Hall B", duration: "3 hours", invigilator: "Prof. Johnson" },
+      { id: 3, date: "2026-07-17", startTime: "14:00", endTime: "17:00", course: "CS302 - Operating Systems", venue: "Lab Complex 1", duration: "3 hours", invigilator: "Dr. Adams" },
+      { id: 4, date: "2026-07-18", startTime: "09:00", endTime: "12:00", course: "PHY301 - Quantum Mechanics", venue: "Science Hall", duration: "3 hours", invigilator: "Prof. Lee" },
+      { id: 5, date: "2026-07-19", startTime: "09:00", endTime: "12:00", course: "CS305 - Artificial Intelligence", venue: "Main Hall A", duration: "3 hours", invigilator: "Dr. Adams" },
+      { id: 6, date: "2026-08-01", startTime: "09:00", endTime: "11:00", course: "ENG301 - Digital Logic Design", venue: "Engineering Lab", duration: "2 hours", invigilator: "Prof. Wilson" },
+      { id: 7, date: "2026-08-05", startTime: "14:00", endTime: "17:00", course: "CS308 - Machine Learning", venue: "Main Hall A", duration: "3 hours", invigilator: "Dr. Adams" },
+      { id: 8, date: "2026-08-10", startTime: "09:00", endTime: "12:00", course: "CS303 - Database Systems", venue: "Main Hall B", duration: "3 hours", invigilator: "Dr. Williams" },
+      { id: 9, date: "2026-08-15", startTime: "09:00", endTime: "12:00", course: "BUS301 - Business Analytics", venue: "Business Block", duration: "3 hours", invigilator: "Dr. Moore" },
+      { id: 10, date: "2026-08-20", startTime: "14:00", endTime: "16:00", course: "CS307 - Cybersecurity", venue: "Lab Complex 2", duration: "2 hours", invigilator: "Dr. Smith" }
+    ];
+
+    async function loadData() {
+      try {
+        var ttResult = await SmartCampusAPI.withFallback(
+          function() { return SmartCampusAPI.fetchTimetable({ semester: 'Semester1', academicYear: '2025/2026' }); },
+          function() { return null; }
+        );
+        if (ttResult) {
+          var slots = Array.isArray(ttResult) ? ttResult : (ttResult.data && Array.isArray(ttResult.data) ? ttResult.data : null);
+          if (Array.isArray(slots)) mockTimetable = slots;
+        }
+      } catch (e) { /* keep mock fallback */ }
+
+      try {
+        var examResult = await SmartCampusAPI.withFallback(
+          function() { return SmartCampusAPI.fetchExamSchedules({ semester: 'Semester1', academicYear: '2025/2026' }); },
+          function() { return null; }
+        );
+        if (examResult) {
+          var schedules = Array.isArray(examResult) ? examResult : (examResult.data && Array.isArray(examResult.data) ? examResult.data : null);
+          if (Array.isArray(schedules)) mockExams = schedules;
+        }
+      } catch (e) { /* keep mock fallback */ }
+    }
+
+    function esc(v) { return String(v).replace(/[&<>"']/g, function(c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+
+    function getWeekDates(offset) {
+      var now = new Date();
+      var dayOfWeek = now.getDay();
+      var diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      var monday = new Date(now);
+      monday.setDate(now.getDate() + diff + (offset * 7));
+      var dates = [];
+      for (var i = 0; i < 5; i++) {
+        var d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        dates.push(d);
+      }
+      return { monday: monday, dates: dates };
+    }
+
+    function formatDate(d) {
+      var dd = String(d.getDate()).padStart(2, '0');
+      var mm = String(d.getMonth() + 1).padStart(2, '0');
+      var yyyy = d.getFullYear();
+      return dd + '/' + mm + '/' + yyyy;
+    }
+
+    function getMonday(d) {
+      var date = new Date(d);
+      var day = date.getDay();
+      var diff = day === 0 ? -6 : 1 - day;
+      date.setDate(date.getDate() + diff);
+      return date;
+    }
+
+    function isCurrentWeek() {
+      return currentWeekOffset === 0;
+    }
+
+    function getCurrentTimeLinePercent() {
+      var now = new Date();
+      var hours = now.getHours() + now.getMinutes() / 60;
+      if (hours < 7) return 0;
+      if (hours > 19) return 100;
+      return ((hours - 7) / 12) * 100;
+    }
+
+    function getCurrentDayIndex() {
+      var day = new Date().getDay();
+      return day >= 1 && day <= 5 ? day - 1 : -1;
+    }
+
+    function getTimeBlockTop(startTime) {
+      var parts = startTime.split(':');
+      var hours = parseInt(parts[0]) + parseInt(parts[1]) / 60;
+      return ((hours - 7) / 12) * 100;
+    }
+
+    function getTimeBlockHeight(startTime, endTime) {
+      var sp = startTime.split(':');
+      var ep = endTime.split(':');
+      var sh = parseInt(sp[0]) + parseInt(sp[1]) / 60;
+      var eh = parseInt(ep[0]) + parseInt(ep[1]) / 60;
+      return ((eh - sh) / 12) * 100;
+    }
+
+    var HOUR_SLOTS = [];
+    for (var s = 0; s < 12; s++) {
+      var hh = 7 + s;
+      HOUR_SLOTS.push({ hour: hh, label: (hh < 10 ? '0' : '') + hh + ':00', pct: (s / 12) * 100 });
+    }
+
+    function getTypeClass(type) {
+      var map = { 'Core': 'timetable-core', 'Elective': 'timetable-elective', 'Lab': 'timetable-lab', 'Tutorial': 'timetable-tutorial' };
+      return map[type] || 'timetable-core';
+    }
+
+    function getFilteredEntries() {
+      var role = document.getElementById('filterRole').value;
+      var semester = document.getElementById('filterSemester').value;
+      var year = document.getElementById('filterYear').value;
+      var dept = document.getElementById('filterDepartment').value;
+      var prog = document.getElementById('filterProgramme').value;
+      var search = document.getElementById('filterSearch').value.toLowerCase().trim();
+
+      var entries = mockTimetable.slice();
+
+      if (role === 'student') {
+        entries = entries.filter(function(e) { return e.department === 'Computer Science' || e.department === 'Mathematics'; });
+      } else if (role === 'lecturer') {
+        entries = entries.filter(function(e) { return e.lecturer === 'Dr. Smith' || e.lecturer === 'Dr. Adams'; });
+      }
+
+      entries = entries.filter(function(e) { return e.semester === semester && e.academicYear === year; });
+
+      if (dept) { entries = entries.filter(function(e) { return e.department === dept; }); }
+      if (prog) { entries = entries.filter(function(e) { return e.programme === prog; }); }
+      if (search) { entries = entries.filter(function(e) { return e.courseCode.toLowerCase().includes(search) || e.courseTitle.toLowerCase().includes(search) || e.lecturer.toLowerCase().includes(search); }); }
+
+      return entries;
+    }
+
+    function renderTimetable() {
+      var container = document.getElementById('timetableViewContainer');
+      var view = currentView;
+
+      var weekInfo = getWeekDates(currentWeekOffset);
+      document.getElementById('weekLabel').textContent = 'Week of ' + formatDate(weekInfo.dates[0]) + ' - ' + formatDate(weekInfo.dates[4]);
+      document.getElementById('currentWeekDisplay').textContent = 'Week ' + (currentWeekOffset < 0 ? '' : '+') + currentWeekOffset + ' | ' + formatDate(weekInfo.dates[0]) + ' - ' + formatDate(weekInfo.dates[4]);
+
+      var entries = getFilteredEntries();
+
+      if (view === 'weekly') {
+        renderWeeklyView(container, entries, weekInfo);
+      } else if (view === 'daily') {
+        renderDailyView(container, entries, weekInfo);
+      } else {
+        renderListView(container, entries);
+      }
+    }
+
+    function renderWeeklyView(container, entries, weekInfo) {
+      var html = '<div class="timetable-wrapper"><div class="timetable-grid">';
+
+      html += '<div class="tt-header" style="z-index:3">Time</div>';
+      for (var d = 0; d < 5; d++) {
+        html += '<div class="tt-header" style="z-index:3">' + DAYS[d] + '<br><span style="font-weight:400;font-size:0.75rem;opacity:0.8">' + formatDate(weekInfo.dates[d]) + '</span></div>';
+      }
+
+      html += '<div class="tt-col-time" style="grid-row:2;height:720px">';
+      for (var s = 0; s < HOUR_SLOTS.length; s++) {
+        var sl = HOUR_SLOTS[s];
+        html += '<div class="tt-time-label" style="top:' + sl.pct + '%">' + sl.label + '</div>';
+        html += '<div class="tt-time-mark major" style="top:' + sl.pct + '%"></div>';
+      }
+      html += '<div class="tt-time-mark major" style="top:100%"></div>';
+      html += '</div>';
+
+      for (var d2 = 0; d2 < 5; d2++) {
+        html += '<div class="tt-col-day" id="tt-col-' + DAYS[d2] + '" style="grid-row:2;height:720px">';
+        for (var s2 = 0; s2 < HOUR_SLOTS.length; s2++) {
+          html += '<div class="tt-time-mark" style="top:' + HOUR_SLOTS[s2].pct + '%"></div>';
+        }
+        html += '<div class="tt-time-mark major" style="top:100%"></div>';
+        html += '</div>';
+      }
+
+      html += '</div></div>';
+
+      container.innerHTML = html;
+
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i];
+        var dayIdx = DAYS.indexOf(e.day);
+        if (dayIdx === -1) continue;
+
+        var topP = getTimeBlockTop(e.startTime);
+        var heightP = getTimeBlockHeight(e.startTime, e.endTime);
+        if (heightP <= 0) continue;
+
+        var colDay = document.getElementById('tt-col-' + e.day);
+        if (!colDay) continue;
+
+        var typeClass = getTypeClass(e.type);
+        var block = document.createElement('div');
+        block.className = 'tt-block ' + typeClass;
+        block.style.top = topP + '%';
+        block.style.height = heightP + '%';
+        block.setAttribute('data-entry-id', e.id);
+        block.innerHTML = '<div class="tt-course-code">' + esc(e.courseCode) + '</div><div class="tt-course-title" title="' + esc(e.courseTitle) + '">' + esc(e.courseTitle) + '</div><div class="tt-lecturer">' + esc(e.lecturer) + '</div><div class="tt-room">' + esc(e.room) + '</div>';
+        block.addEventListener('click', function(entry) {
+          return function() { openDetailModal(entry); };
+        }(e));
+        colDay.appendChild(block);
+      }
+
+      if (isCurrentWeek()) {
+        var timeLineP = getCurrentTimeLinePercent();
+        if (timeLineP >= 0 && timeLineP <= 100) {
+          for (var c = 0; c < 5; c++) {
+            var dayName = DAYS[c];
+            var col = document.getElementById('tt-col-' + dayName);
+            if (col) {
+              var line = document.createElement('div');
+              line.className = 'current-time-line';
+              line.style.top = timeLineP + '%';
+              col.appendChild(line);
+            }
+          }
+        }
+      }
+    }
+
+    function renderDailyView(container, entries, weekInfo) {
+      if (!selectedDay) { selectedDay = DAYS[getCurrentDayIndex()] || 'Monday'; }
+      var dayEntries = entries.filter(function(e) { return e.day === selectedDay; });
+      dayEntries.sort(function(a, b) { return a.startTime.localeCompare(b.startTime); });
+
+      var dayIdx = DAYS.indexOf(selectedDay);
+      var dateStr = dayIdx >= 0 ? formatDate(weekInfo.dates[dayIdx]) : '';
+      var html = '<div class="card"><div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">';
+      for (var i = 0; i < DAYS.length; i++) {
+        var active = DAYS[i] === selectedDay ? ' btn-primary' : ' btn-outline';
+        html += '<button class="btn' + active + ' daily-day-btn" data-day="' + DAYS[i] + '" type="button">' + DAYS[i] + '</button>';
+      }
+      html += '</div><h3>' + esc(selectedDay) + ' - ' + dateStr + '</h3><div class="daily-view">';
+
+      if (dayEntries.length === 0) {
+        html += '<div class="tt-empty">No classes scheduled for this day.</div>';
+      } else {
+        for (var j = 0; j < dayEntries.length; j++) {
+          var e = dayEntries[j];
+          var typeClass = getTypeClass(e.type);
+          html += '<div class="daily-entry" style="border-left:4px solid;border-left-color:' + getTypeColor(e.type) + ';padding-left:1rem">';
+          html += '<div class="daily-time">' + esc(e.startTime) + ' - ' + esc(e.endTime) + '</div>';
+          html += '<div class="daily-details">';
+          html += '<h4>' + esc(e.courseCode) + ' - ' + esc(e.courseTitle) + ' <span class="badge ' + typeClass + '" style="font-size:0.7rem">' + esc(e.type) + '</span></h4>';
+          html += '<p><i class="fa-solid fa-chalkboard-user"></i> ' + esc(e.lecturer) + ' &middot; <i class="fa-solid fa-location-dot"></i> ' + esc(e.room) + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--gray-300)">' + (e.department || '') + ' &middot; ' + (e.programme || '') + ' &middot; ' + (e.enrolled || 0) + ' enrolled</p>';
+          html += '</div></div>';
+        }
+      }
+
+      html += '</div></div>';
+      container.innerHTML = html;
+
+      container.querySelectorAll('.daily-day-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          selectedDay = btn.getAttribute('data-day');
+          renderTimetable();
+        });
+      });
+    }
+
+    function getTypeColor(type) {
+      var map = { 'Core': '#3B82F6', 'Elective': '#10B981', 'Lab': '#F59E0B', 'Tutorial': '#8B5CF6' };
+      return map[type] || '#3B82F6';
+    }
+
+    function renderListView(container, entries) {
+      entries.sort(function(a, b) {
+        var dayCmp = DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
+        if (dayCmp !== 0) return dayCmp;
+        return a.startTime.localeCompare(b.startTime);
+      });
+
+      var html = '<div class="tt-list-view table-responsive"><table><thead><tr>';
+      html += '<th data-sort="day">Day <span class="sort-icon">&#x25B4;&#x25BE;</span></th>';
+      html += '<th data-sort="time">Time <span class="sort-icon">&#x25B4;&#x25BE;</span></th>';
+      html += '<th data-sort="course">Course <span class="sort-icon">&#x25B4;&#x25BE;</span></th>';
+      html += '<th data-sort="lecturer">Lecturer <span class="sort-icon">&#x25B4;&#x25BE;</span></th>';
+      html += '<th data-sort="room">Room <span class="sort-icon">&#x25B4;&#x25BE;</span></th>';
+      html += '<th data-sort="type">Type <span class="sort-icon">&#x25B4;&#x25BE;</span></th>';
+      html += '</tr></thead><tbody>';
+
+      if (entries.length === 0) {
+        html += '<tr><td colspan="6" class="tt-empty">No timetable entries match the current filters.</td></tr>';
+      } else {
+        for (var i = 0; i < entries.length; i++) {
+          var e = entries[i];
+          var typeClass = getTypeClass(e.type);
+          html += '<tr>';
+          html += '<td>' + esc(e.day) + '</td>';
+          html += '<td>' + esc(e.startTime) + ' - ' + esc(e.endTime) + '</td>';
+          html += '<td><strong>' + esc(e.courseCode) + '</strong> - ' + esc(e.courseTitle) + '</td>';
+          html += '<td>' + esc(e.lecturer) + '</td>';
+          html += '<td>' + esc(e.room) + '</td>';
+          html += '<td><span class="badge ' + typeClass + '" style="font-size:0.7rem">' + esc(e.type) + '</span></td>';
+          html += '</tr>';
+        }
+      }
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+
+      container.querySelectorAll('th[data-sort]').forEach(function(th) {
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', function() {
+          sortListTable(th.getAttribute('data-sort'));
+        });
+      });
+    }
+
+    var listSortAsc = {};
+    function sortListTable(col) {
+      var entries = getFilteredEntries();
+      var asc = !listSortAsc[col];
+      listSortAsc[col] = asc;
+
+      entries.sort(function(a, b) {
+        var va, vb;
+        if (col === 'day') { va = DAYS.indexOf(a.day); vb = DAYS.indexOf(b.day); }
+        else if (col === 'time') { va = a.startTime; vb = b.startTime; }
+        else if (col === 'course') { va = a.courseCode + a.courseTitle; vb = b.courseCode + b.courseTitle; }
+        else if (col === 'lecturer') { va = a.lecturer; vb = b.lecturer; }
+        else if (col === 'room') { va = a.room; vb = b.room; }
+        else if (col === 'type') { va = a.type; vb = b.type; }
+        else return 0;
+
+        if (typeof va === 'string') va = va.toLowerCase();
+        if (typeof vb === 'string') vb = vb.toLowerCase();
+        if (va < vb) return asc ? -1 : 1;
+        if (va > vb) return asc ? 1 : -1;
+        return 0;
+      });
+
+      var container = document.getElementById('timetableViewContainer');
+      renderListView(container, entries);
+    }
+
+    function openDetailModal(entry) {
+      var modal = document.getElementById('detailModal');
+      var title = document.getElementById('detailModalTitle');
+      var body = document.getElementById('detailModalBody');
+      var typeClass = getTypeClass(entry.type);
+
+      title.textContent = entry.courseCode + ' - ' + entry.courseTitle;
+      body.innerHTML = '<div style="display:grid;gap:1rem">' +
+        '<div style="display:flex;gap:0.75rem;align-items:center"><span class="badge ' + typeClass + '" style="font-size:0.85rem;padding:0.35rem 1rem">' + esc(entry.type) + '</span><span class="badge badge-info">' + (entry.enrolled || 0) + ' students</span></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">' +
+          '<div><label style="font-weight:600;font-size:0.8rem;color:var(--gray-700)">Course Code</label><p style="margin:0">' + esc(entry.courseCode) + '</p></div>' +
+          '<div><label style="font-weight:600;font-size:0.8rem;color:var(--gray-700)">Course Title</label><p style="margin:0">' + esc(entry.courseTitle) + '</p></div>' +
+          '<div><label style="font-weight:600;font-size:0.8rem;color:var(--gray-700)">Day / Time</label><p style="margin:0">' + esc(entry.day) + ', ' + esc(entry.startTime) + ' - ' + esc(entry.endTime) + '</p></div>' +
+          '<div><label style="font-weight:600;font-size:0.8rem;color:var(--gray-700)">Room</label><p style="margin:0">' + esc(entry.room) + '</p></div>' +
+          '<div><label style="font-weight:600;font-size:0.8rem;color:var(--gray-700)">Lecturer</label><p style="margin:0">' + esc(entry.lecturer) + ' <span style="font-size:0.8rem;color:var(--gray-300)">lecturer@smartcampus.edu</span></p></div>' +
+          '<div><label style="font-weight:600;font-size:0.8rem;color:var(--gray-700)">Department</label><p style="margin:0">' + esc(entry.department || 'N/A') + '</p></div>' +
+          '<div><label style="font-weight:600;font-size:0.8rem;color:var(--gray-700)">Programme</label><p style="margin:0">' + esc(entry.programme || 'N/A') + '</p></div>' +
+          '<div><label style="font-weight:600;font-size:0.8rem;color:var(--gray-700)">Recurrence</label><p style="margin:0">Weekly (' + esc(entry.semester) + ', ' + esc(entry.academicYear) + ')</p></div>' +
+        '</div>' +
+      '</div>';
+
+      modal.classList.add('is-open');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeDetailModal() {
+      var modal = document.getElementById('detailModal');
+      modal.classList.remove('is-open');
+      document.body.classList.remove('modal-open');
+    }
+
+    function renderExams() {
+      var container = document.getElementById('examContainer');
+      var now = new Date();
+      var html = '<table><thead><tr><th>Date</th><th>Time</th><th>Course</th><th>Venue</th><th>Duration</th><th>Invigilator</th></tr></thead><tbody>';
+
+      mockExams.sort(function(a, b) { return a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime); });
+
+      for (var i = 0; i < mockExams.length; i++) {
+        var ex = mockExams[i];
+        var examDate = new Date(ex.date);
+        var diffDays = Math.ceil((examDate - now) / (1000 * 60 * 60 * 24));
+        var rowClass = '';
+        if (diffDays <= 7) rowClass = 'exam-near';
+        else if (diffDays <= 30) rowClass = 'exam-this-month';
+        else rowClass = 'exam-future';
+
+        html += '<tr class="' + rowClass + '">';
+        html += '<td>' + esc(ex.date) + '</td>';
+        html += '<td>' + esc(ex.startTime) + ' - ' + esc(ex.endTime) + '</td>';
+        html += '<td>' + esc(ex.course) + '</td>';
+        html += '<td>' + esc(ex.venue) + '</td>';
+        html += '<td>' + esc(ex.duration) + '</td>';
+        html += '<td>' + esc(ex.invigilator) + '</td>';
+        html += '</tr>';
+      }
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    function initAdminSection() {
+      var adminSection = document.getElementById('adminSection');
+      var addBtn = document.getElementById('adminAddEntryBtn');
+      var isAdmin = currentRole === 'University Super Admin' || currentRole === 'School Super Admin' || currentRole === 'Department Admin';
+
+      if (isAdmin) {
+        adminSection.style.display = 'block';
+        addBtn.style.display = 'inline-flex';
+        populateAdminSelects();
+        renderAdminEntries();
+      } else {
+        adminSection.style.display = 'none';
+        addBtn.style.display = 'none';
+      }
+    }
+
+    function populateAdminSelects() {
+      var courseSel = document.getElementById('entryCourse');
+      var lecturerSel = document.getElementById('entryLecturer');
+      var roomSel = document.getElementById('entryRoom');
+
+      var courses = [];
+      var seen = {};
+      for (var i = 0; i < mockTimetable.length; i++) {
+        var key = mockTimetable[i].courseCode + '|' + mockTimetable[i].courseTitle;
+        if (!seen[key]) { seen[key] = true; courses.push({ code: mockTimetable[i].courseCode, title: mockTimetable[i].courseTitle }); }
+      }
+
+      courseSel.innerHTML = courses.map(function(c) { return '<option value="' + esc(c.code) + '|' + esc(c.title) + '">' + esc(c.code) + ' - ' + esc(c.title) + '</option>'; }).join('');
+
+      var seenL = {};
+      var list = [];
+      for (var j = 0; j < mockTimetable.length; j++) {
+        if (!seenL[mockTimetable[j].lecturer]) { seenL[mockTimetable[j].lecturer] = true; list.push(mockTimetable[j].lecturer); }
+      }
+      lecturerSel.innerHTML = list.map(function(l) { return '<option value="' + esc(l) + '">' + esc(l) + '</option>'; }).join('');
+
+      var seenR = {};
+      var rlist = [];
+      for (var k = 0; k < mockTimetable.length; k++) {
+        if (!seenR[mockTimetable[k].room]) { seenR[mockTimetable[k].room] = true; rlist.push(mockTimetable[k].room); }
+      }
+      roomSel.innerHTML = rlist.map(function(r) { return '<option value="' + esc(r) + '">' + esc(r) + '</option>'; }).join('');
+    }
+
+    function renderAdminEntries() {
+      var container = document.getElementById('adminEntriesList');
+      var html = '<div class="table-responsive"><table><thead><tr><th>Day</th><th>Time</th><th>Course</th><th>Lecturer</th><th>Room</th><th>Type</th><th>Actions</th></tr></thead><tbody>';
+
+      if (mockTimetable.length === 0) {
+        html += '<tr><td colspan="7" class="tt-empty">No entries yet.</td></tr>';
+      } else {
+        for (var i = 0; i < mockTimetable.length; i++) {
+          var e = mockTimetable[i];
+          var typeClass = getTypeClass(e.type);
+          html += '<tr>';
+          html += '<td>' + esc(e.day) + '</td>';
+          html += '<td>' + esc(e.startTime) + ' - ' + esc(e.endTime) + '</td>';
+          html += '<td><strong>' + esc(e.courseCode) + '</strong></td>';
+          html += '<td>' + esc(e.lecturer) + '</td>';
+          html += '<td>' + esc(e.room) + '</td>';
+          html += '<td><span class="badge ' + typeClass + '" style="font-size:0.7rem">' + esc(e.type) + '</span></td>';
+          html += '<td><div class="entry-actions"><button class="btn btn-outline" onclick="editEntry(' + e.id + ')" style="font-size:0.75rem;padding:0.2rem 0.5rem"><i class="fa-solid fa-pen"></i></button><button class="btn btn-outline" onclick="deleteEntry(' + e.id + ')" style="font-size:0.75rem;padding:0.2rem 0.5rem;color:var(--error)"><i class="fa-solid fa-trash"></i></button></div></td>';
+          html += '</tr>';
+        }
+      }
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    function openAdminEntryModal() {
+      document.getElementById('adminEntryModalTitle').textContent = 'Add Timetable Entry';
+      document.getElementById('saveEntryBtn').textContent = 'Save Entry';
+      editingEntryId = null;
+      document.getElementById('entryDay').value = 'Monday';
+      document.getElementById('entryStartTime').value = '08:00';
+      document.getElementById('entryEndTime').value = '10:00';
+      document.getElementById('entryType').value = 'Core';
+      document.getElementById('entrySemester').value = 'Semester1';
+      document.getElementById('entryAcYear').value = '2025/2026';
+      populateAdminSelects();
+      openModal('adminEntryModal');
+    }
+
+    function closeAdminEntryModal() {
+      document.getElementById('adminEntryModal').classList.remove('is-open');
+      document.body.classList.remove('modal-open');
+    }
+
+    function editEntry(id) {
+      var e = null;
+      for (var i = 0; i < mockTimetable.length; i++) {
+        if (mockTimetable[i].id === id) { e = mockTimetable[i]; break; }
+      }
+      if (!e) return;
+
+      editingEntryId = id;
+      document.getElementById('adminEntryModalTitle').textContent = 'Edit Timetable Entry';
+      document.getElementById('saveEntryBtn').textContent = 'Update Entry';
+      document.getElementById('entryDay').value = e.day;
+      document.getElementById('entryStartTime').value = e.startTime;
+      document.getElementById('entryEndTime').value = e.endTime;
+      document.getElementById('entryType').value = e.type;
+      document.getElementById('entrySemester').value = e.semester;
+      document.getElementById('entryAcYear').value = e.academicYear;
+
+      var courseSel = document.getElementById('entryCourse');
+      for (var j = 0; j < courseSel.options.length; j++) {
+        if (courseSel.options[j].value.indexOf(e.courseCode) === 0) { courseSel.value = courseSel.options[j].value; break; }
+      }
+      var lecturerSel = document.getElementById('entryLecturer');
+      for (var k = 0; k < lecturerSel.options.length; k++) {
+        if (lecturerSel.options[k].value === e.lecturer) { lecturerSel.value = e.lecturer; break; }
+      }
+      var roomSel = document.getElementById('entryRoom');
+      for (var l = 0; l < roomSel.options.length; l++) {
+        if (roomSel.options[l].value === e.room) { roomSel.value = e.room; break; }
+      }
+
+      openModal('adminEntryModal');
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.add('is-open');
+      document.body.classList.add('modal-open');
+    }
+
+    function deleteEntry(id) {
+      if (!confirm('Delete this timetable entry?')) return;
+      for (var i = 0; i < mockTimetable.length; i++) {
+        if (mockTimetable[i].id === id) { mockTimetable.splice(i, 1); break; }
+      }
+      if (typeof SmartCampusUI !== 'undefined' && SmartCampusUI.showToast) {
+        SmartCampusUI.showToast('Entry deleted.', 'success');
+      }
+      renderAdminEntries();
+      renderTimetable();
+    }
+
+    function saveEntry() {
+      var day = document.getElementById('entryDay').value;
+      var startTime = document.getElementById('entryStartTime').value;
+      var endTime = document.getElementById('entryEndTime').value;
+      var courseVal = document.getElementById('entryCourse').value;
+      var lecturer = document.getElementById('entryLecturer').value;
+      var room = document.getElementById('entryRoom').value;
+      var type = document.getElementById('entryType').value;
+      var semester = document.getElementById('entrySemester').value;
+      var acYear = document.getElementById('entryAcYear').value;
+
+      var parts = courseVal.split('|');
+      var courseCode = parts[0] || '';
+      var courseTitle = parts[1] || '';
+
+      if (!day || !startTime || !endTime || !courseCode) {
+        if (typeof SmartCampusUI !== 'undefined' && SmartCampusUI.showToast) {
+          SmartCampusUI.showToast('Please fill in all required fields.', 'warning');
+        }
+        return;
+      }
+
+      if (editingEntryId) {
+        for (var i = 0; i < mockTimetable.length; i++) {
+          if (mockTimetable[i].id === editingEntryId) {
+            mockTimetable[i].day = day;
+            mockTimetable[i].startTime = startTime;
+            mockTimetable[i].endTime = endTime;
+            mockTimetable[i].courseCode = courseCode;
+            mockTimetable[i].courseTitle = courseTitle;
+            mockTimetable[i].lecturer = lecturer;
+            mockTimetable[i].room = room;
+            mockTimetable[i].type = type;
+            mockTimetable[i].semester = semester;
+            mockTimetable[i].academicYear = acYear;
+            break;
+          }
+        }
+        if (typeof SmartCampusUI !== 'undefined' && SmartCampusUI.showToast) {
+          SmartCampusUI.showToast('Entry updated.', 'success');
+        }
+      } else {
+        var newEntry = {
+          id: nextEntryId++,
+          day: day,
+          startTime: startTime,
+          endTime: endTime,
+          courseCode: courseCode,
+          courseTitle: courseTitle,
+          lecturer: lecturer,
+          room: room,
+          type: type,
+          semester: semester,
+          academicYear: acYear,
+          department: 'Computer Science',
+          programme: 'BSc Computer Science',
+          enrolled: 0
+        };
+        mockTimetable.push(newEntry);
+        if (typeof SmartCampusUI !== 'undefined' && SmartCampusUI.showToast) {
+          SmartCampusUI.showToast('Entry added.', 'success');
+        }
+      }
+
+      closeAdminEntryModal();
+      renderAdminEntries();
+      renderTimetable();
+    }
+
+    function updateSubtitle() {
+      var el = document.getElementById('timetableSubtitle');
+      var role = currentRole || 'Student';
+      var parts = [];
+      if (role === 'Student') parts.push('Viewing your class timetable');
+      else if (role === 'Lecturer') parts.push('Viewing your teaching schedule');
+      else if (role === 'University Super Admin' || role === 'School Super Admin' || role === 'Department Admin') parts.push('Full timetable management');
+      else parts.push('Viewing schedule');
+      el.textContent = parts.join(' | ') + ' | ' + role;
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+      await loadData();
+      updateSubtitle();
+      renderExams();
+      renderTimetable();
+      initAdminSection();
+
+      document.getElementById('prevWeekBtn').addEventListener('click', function() {
+        currentWeekOffset--;
+        renderTimetable();
+      });
+      document.getElementById('nextWeekBtn').addEventListener('click', function() {
+        currentWeekOffset++;
+        renderTimetable();
+      });
+      document.getElementById('thisWeekBtn').addEventListener('click', function() {
+        currentWeekOffset = 0;
+        renderTimetable();
+      });
+
+      document.querySelectorAll('#viewToggle .btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('#viewToggle .btn').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          currentView = btn.getAttribute('data-view');
+          renderTimetable();
+        });
+      });
+
+      document.getElementById('filterRole').addEventListener('change', renderTimetable);
+      document.getElementById('filterSemester').addEventListener('change', renderTimetable);
+      document.getElementById('filterYear').addEventListener('change', renderTimetable);
+      document.getElementById('filterDepartment').addEventListener('change', renderTimetable);
+      document.getElementById('filterProgramme').addEventListener('change', renderTimetable);
+      document.getElementById('filterSearch').addEventListener('input', function() {
+        clearTimeout(window._searchTimer);
+        window._searchTimer = setTimeout(renderTimetable, 250);
+      });
+
+      document.getElementById('adminAddEntryBtn').addEventListener('click', openAdminEntryModal);
+      document.getElementById('saveEntryBtn').addEventListener('click', saveEntry);
+
+      var deptFilter = document.getElementById('filterDepartment');
+      for (var i = 0; i < departments.length; i++) {
+        deptFilter.innerHTML += '<option value="' + esc(departments[i]) + '">' + esc(departments[i]) + '</option>';
+      }
+      var progFilter = document.getElementById('filterProgramme');
+      for (var j = 0; j < programmes.length; j++) {
+        progFilter.innerHTML += '<option value="' + esc(programmes[j]) + '">' + esc(programmes[j]) + '</option>';
+      }
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          closeDetailModal();
+          closeAdminEntryModal();
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    .attendance-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+    .attendance-header h1 { margin-bottom: 0.25rem; }
+    .attendance-header .subtitle { color: var(--gray-700); font-size: 0.9rem; }
+    .header-clock { font-size: 0.85rem; color: var(--gray-700); background: var(--gray-100); padding: 0.5rem 1rem; border-radius: 6px; display: flex; align-items: center; gap: 0.5rem; }
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: white; border-radius: var(--border-radius); box-shadow: var(--box-shadow); padding: 1.25rem; text-align: center; }
+    .stat-card h3 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+    .stat-card p { font-size: 0.8rem; color: var(--gray-700); margin: 0; }
+    .stat-card .stat-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .circular-chart { width: 120px; height: 120px; display: block; margin: 0 auto; }
+    .circular-chart .circle-bg { fill: none; stroke: var(--gray-200); stroke-width: 3.8; }
+    .circular-chart .circle { fill: none; stroke-width: 3.8; stroke-linecap: round; animation: progress 1s ease-out forwards; }
+    .circular-chart .circle.good { stroke: var(--success); }
+    .circular-chart .circle.warning { stroke: var(--warning); }
+    .circular-chart .circle.poor { stroke: var(--error); }
+    .circular-chart .percentage { fill: var(--navy); font-size: 0.5em; text-anchor: middle; font-weight: 700; }
+    .circular-chart .percentage-label { fill: var(--gray-700); font-size: 0.25em; text-anchor: middle; }
+    @keyframes progress { 0% { stroke-dasharray: 0, 100; } }
+    .gauge-wrapper { text-align: center; padding: 1rem; }
+    .gauge-wrapper h4 { margin-bottom: 0.75rem; }
+    .radio-group { display: flex; gap: 0.5rem; align-items: center; }
+    .radio-group label { display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 400; font-size: 0.85rem; cursor: pointer; margin: 0; }
+    .radio-group input[type="radio"] { width: auto; margin: 0; }
+    .attendance-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .session-form { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
+    .session-form .form-group { margin-bottom: 0; }
+    .session-form label { font-size: 0.85rem; }
+    .qr-placeholder { width: 160px; height: 160px; background: white; border: 2px dashed var(--gray-300); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 0.5rem; margin: 0 auto; }
+    .qr-placeholder canvas { display: block; }
+    .hierarchy-nav { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem; }
+    .hierarchy-nav select { width: auto; min-width: 180px; }
+    .alert-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--gray-200); gap: 0.75rem; flex-wrap: wrap; }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-student-info { flex: 1; min-width: 200px; }
+    .alert-student-info strong { display: block; font-size: 0.9rem; }
+    .alert-student-info span { font-size: 0.8rem; color: var(--gray-700); }
+    .alert-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+    .report-filters { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1rem; }
+    .report-filters .form-group { margin-bottom: 0; }
+    .report-filters label { font-size: 0.85rem; }
+    .section-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: var(--navy); display: flex; align-items: center; gap: 0.5rem; }
+    .section-title i { color: var(--info); }
+    .hidden-role { display: none; }
+    .mark-all-btn { font-size: 0.85rem; }
+    .session-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+    .session-badge.present { background: #d1fae5; color: #065f46; }
+    .session-badge.absent { background: #fee2e2; color: #991b1b; }
+    .session-badge.late { background: #fef3c7; color: #92400e; }
+    .session-badge.excused { background: #dbeafe; color: #1e40af; }
+    .status-good { color: var(--success); }
+    .status-warning { color: var(--warning); }
+    .status-poor { color: var(--error); }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+    @media (max-width: 768px) { .stat-row { grid-template-columns: repeat(3, 1fr); } .attendance-header { flex-direction: column; } }
+    @media (max-width: 480px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div class="attendance-header">
+      <div>
+        <h1>Attendance Management</h1>
+        <p class="subtitle" id="roleSubtitle">View your attendance records</p>
+      </div>
+      <div class="header-clock" id="headerClock"><i class="fa-solid fa-clock"></i> <span id="clockDisplay"></span></div>
+    </div>
+
+    <div id="studentView" data-role="Student">
+      <div class="stat-row" id="summaryStats"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="gauge-wrapper">
+            <h4>Overall Attendance</h4>
+            <svg viewBox="0 0 36 36" class="circular-chart" id="attendanceGauge">
+              <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="circle" id="gaugeCircle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <text x="18" y="20.35" class="percentage" id="gaugePercent">0%</text>
+              <text x="18" y="24.5" class="percentage-label">attendance</text>
+            </svg>
+          </div>
+        </div>
+        <div class="card">
+          <h4 class="section-title"><i class="fa-solid fa-chart-line"></i> Weekly Attendance Trend</h4>
+          <canvas id="weeklyChart" height="200"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <h4 class="section-title"><i class="fa-solid fa-book"></i> Per-Course Attendance</h4>
+        <div class="table-responsive"><table><thead><tr><th>Course</th><th>Sessions Held</th><th>Attended</th><th>Missed</th><th>%</th><th>Status</th></tr></thead><tbody id="courseTableBody"></tbody></table></div>
+      </div>
+      <div class="card">
+        <h4 class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> Recent Sessions</h4>
+        <div class="table-responsive"><table><thead><tr><th>Date</th><th>Course</th><th>Time</th><th>Status</th><th>Marked By</th></tr></thead><tbody id="recentSessionsBody"></tbody></table></div>
+      </div>
+    </div>
+
+    <div id="lecturerView" data-role="Lecturer">
+      <div class="grid-2">
+        <div class="card">
+          <h4 class="section-title"><i class="fa-solid fa-chart-simple"></i> Quick Stats</h4>
+          <div class="stat-row" id="lecturerStats" style="grid-template-columns:repeat(2,1fr);margin-bottom:0;"></div>
+        </div>
+        <div class="card">
+          <h4 class="section-title"><i class="fa-solid fa-calendar-day"></i> New Session</h4>
+          <div class="session-form" id="sessionForm">
+            <div class="form-group" style="min-width:160px"><label>Course</label><select id="lecturerCourseSelect"></select></div>
+            <div class="form-group" style="min-width:140px"><label>Date</label><input type="date" id="sessionDate"></div>
+            <div class="form-group" style="min-width:120px"><label>Start</label><input type="time" id="sessionStart" value="08:00"></div>
+            <div class="form-group" style="min-width:120px"><label>End</label><input type="time" id="sessionEnd" value="10:00"></div>
+            <button class="btn btn-primary" id="createSessionBtn" type="button"><i class="fa-solid fa-plus"></i> Create Session</button>
+          </div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h4 class="section-title"><i class="fa-solid fa-qrcode"></i> QR Code for Current Session</h4>
+          <div style="text-align:center">
+            <div class="qr-placeholder" id="qrDisplay"><canvas id="qrCanvas" width="120" height="120"></canvas></div>
+            <p style="font-size:0.8rem;color:var(--gray-700);margin-top:0.5rem" id="qrSessionInfo">Select a course and create a session</p>
+            <button class="btn btn-outline btn-sm" id="refreshQrBtn" type="button"><i class="fa-solid fa-rotate"></i> Regenerate</button>
+          </div>
+        </div>
+        <div class="card">
+          <h4 class="section-title"><i class="fa-solid fa-users"></i> Mark Attendance</h4>
+          <div class="attendance-actions">
+            <button class="btn btn-outline btn-sm mark-all-btn" id="markAllPresentBtn" type="button"><i class="fa-solid fa-check-double"></i> Mark All Present</button>
+            <button class="btn btn-primary btn-sm" id="submitAttendanceBtn" type="button"><i class="fa-solid fa-check"></i> Submit Attendance</button>
+          </div>
+          <div class="table-responsive"><table><thead><tr><th>#</th><th>Name</th><th>Reg No</th><th>Status</th></tr></thead><tbody id="enrolledStudentsBody"></tbody></table></div>
+        </div>
+      </div>
+      <div class="card">
+        <h4 class="section-title"><i class="fa-solid fa-list-check"></i> Today's Sessions</h4>
+        <div class="table-responsive"><table><thead><tr><th>Time</th><th>Course</th><th>Present</th><th>Absent</th><th>Late</th><th>Total</th></tr></thead><tbody id="todaySessionsBody"></tbody></table></div>
+      </div>
+    </div>
+
+    <div id="adminView" data-role="Department Admin,School Super Admin,University Super Admin">
+      <div class="card">
+        <h4 class="section-title"><i class="fa-solid fa-sitemap"></i> Hierarchy Navigation</h4>
+        <div class="hierarchy-nav" id="hierarchyNav">
+          <span id="adminSchoolGroup"><select id="adminSchoolSelect"><option value="">Select School</option></select></span>
+          <select id="adminDeptSelect" disabled><option value="">Select Department</option></select>
+          <select id="adminProgrammeSelect" disabled><option value="">Select Programme</option></select>
+          <select id="adminCourseSelect" disabled><option value="">Select Course</option></select>
+        </div>
+      </div>
+      <div class="card">
+        <h4 class="section-title"><i class="fa-solid fa-building"></i> Department Attendance Overview</h4>
+        <div class="table-responsive"><table><thead><tr><th>Course</th><th>Enrolled</th><th>Sessions</th><th>Avg %</th><th>Status</th></tr></thead><tbody id="adminOverviewBody"></tbody></table></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h4 class="section-title"><i class="fa-solid fa-triangle-exclamation"></i> Low Attendance Alerts (&lt;60%)</h4>
+          <div id="lowAttendanceContainer"></div>
+        </div>
+        <div class="card">
+          <h4 class="section-title"><i class="fa-solid fa-file-export"></i> Attendance Reports</h4>
+          <div class="report-filters">
+            <div class="form-group"><label>From</label><input type="date" id="reportDateFrom"></div>
+            <div class="form-group"><label>To</label><input type="date" id="reportDateTo"></div>
+            <div class="form-group"><label>Course</label><select id="reportCourseSelect"><option value="">All Courses</option></select></div>
+            <button class="btn btn-primary btn-sm" id="generateReportBtn" type="button"><i class="fa-solid fa-file-lines"></i> Generate</button>
+            <button class="btn btn-outline btn-sm" id="exportCsvBtn" type="button"><i class="fa-solid fa-download"></i> Export CSV</button>
+          </div>
+          <div class="table-responsive" id="reportResults"><p style="color:var(--gray-300);text-align:center;padding:1rem">Set filters and click Generate</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+    (function() {
+      const esc = window.esc || function(v) { return String(v).replace(/[&<>"']/g, function(c) { return '&#' + c.charCodeAt(0) + ';'; }); };
+
+      let weeklyChartInstance = null;
+
+      const mockAttendance = {
+        summary: { totalSessions: 30, present: 22, absent: 4, late: 3, excused: 1, percentage: 83.3 },
+        byCourse: [
+          { course: "CS301 - Software Engineering", held: 15, attended: 13, missed: 2, percentage: 86.7 },
+          { course: "MATH301 - Advanced Mathematics", held: 15, attended: 10, missed: 5, percentage: 66.7 }
+        ],
+        recentSessions: [
+          { date: "2026-06-16", course: "CS301", time: "08:00-10:00", status: "Present", markedBy: "Dr. Smith" },
+          { date: "2026-06-16", course: "MATH301", time: "10:00-12:00", status: "Absent", markedBy: "Dr. Adams" },
+          { date: "2026-06-15", course: "CS301", time: "08:00-10:00", status: "Present", markedBy: "Dr. Smith" },
+          { date: "2026-06-15", course: "MATH301", time: "10:00-12:00", status: "Late", markedBy: "Dr. Adams" },
+          { date: "2026-06-14", course: "CS301", time: "08:00-10:00", status: "Present", markedBy: "Dr. Smith" },
+          { date: "2026-06-14", course: "MATH301", time: "10:00-12:00", status: "Excused", markedBy: "Dr. Adams" },
+          { date: "2026-06-13", course: "CS301", time: "08:00-10:00", status: "Present", markedBy: "Dr. Smith" },
+          { date: "2026-06-13", course: "MATH301", time: "10:00-12:00", status: "Absent", markedBy: "Dr. Adams" },
+          { date: "2026-06-12", course: "CS301", time: "08:00-10:00", status: "Late", markedBy: "Dr. Smith" },
+          { date: "2026-06-12", course: "MATH301", time: "10:00-12:00", status: "Present", markedBy: "Dr. Adams" },
+          { date: "2026-06-11", course: "CS301", time: "08:00-10:00", status: "Present", markedBy: "Dr. Smith" },
+          { date: "2026-06-11", course: "MATH301", time: "10:00-12:00", status: "Present", markedBy: "Dr. Adams" },
+          { date: "2026-06-10", course: "CS301", time: "08:00-10:00", status: "Absent", markedBy: "Dr. Smith" },
+          { date: "2026-06-10", course: "MATH301", time: "10:00-12:00", status: "Present", markedBy: "Dr. Adams" },
+          { date: "2026-06-09", course: "CS301", time: "08:00-10:00", status: "Present", markedBy: "Dr. Smith" }
+        ],
+        enrolledStudents: [
+          { id: 1, name: "Alice Johnson", regNo: "NJ-2022-001", status: "" },
+          { id: 2, name: "Bob Smith", regNo: "NJ-2022-002", status: "" },
+          { id: 3, name: "Carol Davis", regNo: "NJ-2022-003", status: "" },
+          { id: 4, name: "David Brown", regNo: "NJ-2022-004", status: "" },
+          { id: 5, name: "Eve Wilson", regNo: "NJ-2022-005", status: "" },
+          { id: 6, name: "Frank Miller", regNo: "NJ-2022-006", status: "" },
+          { id: 7, name: "Grace Lee", regNo: "NJ-2022-007", status: "" },
+          { id: 8, name: "Henry Taylor", regNo: "NJ-2022-008", status: "" },
+          { id: 9, name: "Ivy Wang", regNo: "NJ-2022-009", status: "" },
+          { id: 10, name: "Jack Anderson", regNo: "NJ-2022-010", status: "" },
+          { id: 11, name: "Karen Thomas", regNo: "NJ-2022-011", status: "" },
+          { id: 12, name: "Leo Martinez", regNo: "NJ-2022-012", status: "" }
+        ],
+        weeklyTrend: [75, 82, 78, 85, 90, 88, 83],
+        courses: [
+          { id: "CS301", name: "CS301 - Software Engineering" },
+          { id: "MATH301", name: "MATH301 - Advanced Mathematics" }
+        ],
+        todaySessions: [
+          { time: "08:00-10:00", course: "CS301", present: 18, absent: 2, late: 1, total: 21 },
+          { time: "10:00-12:00", course: "MATH301", present: 15, absent: 5, late: 0, total: 20 }
+        ],
+        departmentOverview: [
+          { course: "CS301 - Software Engineering", enrolled: 21, sessions: 15, avgPercent: 86.7, status: "Good" },
+          { course: "MATH301 - Advanced Mathematics", enrolled: 20, sessions: 15, avgPercent: 66.7, status: "Warning" },
+          { course: "IT201 - Web Development", enrolled: 18, sessions: 12, avgPercent: 72.2, status: "Warning" },
+          { course: "CS201 - Data Structures", enrolled: 22, sessions: 14, avgPercent: 90.9, status: "Good" }
+        ],
+        lowAttendance: [
+          { name: "Bob Smith", regNo: "NJ-2022-002", course: "MATH301", percent: 40, email: "bob@smartcampus.edu" },
+          { name: "Carol Davis", regNo: "NJ-2022-003", course: "MATH301", percent: 33.3, email: "carol@smartcampus.edu" },
+          { name: "Eve Wilson", regNo: "NJ-2022-005", course: "CS301", percent: 53.3, email: "eve@smartcampus.edu" }
+        ],
+        adminCourses: [
+          { id: "IT201", name: "IT201 - Web Development" },
+          { id: "CS201", name: "CS201 - Data Structures" },
+          { id: "CS301", name: "CS301 - Software Engineering" },
+          { id: "MATH301", name: "MATH301 - Advanced Mathematics" }
+        ]
+      };
+
+      function getCurrentRole() {
+        try {
+          var u = JSON.parse(localStorage.getItem("sc_user"));
+          return u ? u.role : "Student";
+        } catch(e) { return "Student"; }
+      }
+
+      function updateClock() {
+        var now = new Date();
+        var opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+        var el = document.getElementById("clockDisplay");
+        if (el) el.textContent = now.toLocaleDateString('en-US', opts);
+      }
+
+      function updateRoleSubtitle() {
+        var role = getCurrentRole();
+        var el = document.getElementById("roleSubtitle");
+        if (!el) return;
+        var subtitles = {
+          "Student": "View your attendance records",
+          "Lecturer": "Mark and manage attendance for your courses",
+          "Department Admin": "Monitor attendance across your department",
+          "School Super Admin": "Monitor attendance across your school",
+          "University Super Admin": "Monitor attendance university-wide"
+        };
+        el.textContent = subtitles[role] || "Attendance overview";
+      }
+
+      function showRoleSections() {
+        var role = getCurrentRole();
+        var sections = {
+          "Student": document.getElementById("studentView"),
+          "Lecturer": document.getElementById("lecturerView"),
+          "Department Admin": document.getElementById("adminView"),
+          "School Super Admin": document.getElementById("adminView"),
+          "University Super Admin": document.getElementById("adminView")
+        };
+        var allowedAdmin = ["Department Admin", "School Super Admin", "University Super Admin"];
+        for (var key in sections) {
+          if (sections[key]) {
+            if (key === "Department Admin" || key === "School Super Admin" || key === "University Super Admin") {
+              sections[key].style.display = allowedAdmin.indexOf(role) !== -1 ? "" : "none";
+            } else {
+              sections[key].style.display = key === role ? "" : "none";
+            }
+          }
+        }
+      }
+
+      function renderSummaryStats() {
+        var s = mockAttendance.summary;
+        var container = document.getElementById("summaryStats");
+        if (!container) return;
+        var stats = [
+          { icon: "fa-calendar", label: "Total Sessions", value: s.totalSessions, color: "var(--info)" },
+          { icon: "fa-check-circle", label: "Present", value: s.present, color: "var(--success)" },
+          { icon: "fa-xmark-circle", label: "Absent", value: s.absent, color: "var(--error)" },
+          { icon: "fa-clock", label: "Late", value: s.late, color: "var(--warning)" },
+          { icon: "fa-shield", label: "Excused", value: s.excused, color: "var(--info)" },
+          { icon: "fa-percent", label: "Attendance %", value: s.percentage.toFixed(1) + "%", color: s.percentage >= 80 ? "var(--success)" : s.percentage >= 60 ? "var(--warning)" : "var(--error)" }
+        ];
+        container.innerHTML = stats.map(function(st) {
+          return '<div class="stat-card"><div class="stat-icon" style="color:' + st.color + '"><i class="fa-solid ' + st.icon + '"></i></div><h3 style="color:' + st.color + '">' + st.value + '</h3><p>' + st.label + '</p></div>';
+        }).join("");
+      }
+
+      function renderGauge() {
+        var pct = mockAttendance.summary.percentage;
+        var circle = document.getElementById("gaugeCircle");
+        var text = document.getElementById("gaugePercent");
+        if (!circle || !text) return;
+        var dash = Math.min(pct, 100);
+        circle.setAttribute("stroke-dasharray", dash + ", 100");
+        circle.classList.remove("good", "warning", "poor");
+        circle.classList.add(pct >= 80 ? "good" : pct >= 60 ? "warning" : "poor");
+        text.textContent = dash.toFixed(1) + "%";
+      }
+
+      function renderCourseTable() {
+        var tbody = document.getElementById("courseTableBody");
+        if (!tbody) return;
+        tbody.innerHTML = mockAttendance.byCourse.map(function(c) {
+          var cls = c.percentage >= 80 ? "badge-success" : c.percentage >= 60 ? "badge-warning" : "badge-error";
+          var label = c.percentage >= 80 ? "Good" : c.percentage >= 60 ? "Warning" : "Poor";
+          return '<tr><td>' + esc(c.course) + '</td><td>' + c.held + '</td><td>' + c.attended + '</td><td>' + c.missed + '</td><td>' + c.percentage.toFixed(1) + '%</td><td><span class="badge ' + cls + '">' + label + '</span></td></tr>';
+        }).join("");
+      }
+
+      function renderRecentSessions() {
+        var tbody = document.getElementById("recentSessionsBody");
+        if (!tbody) return;
+        tbody.innerHTML = mockAttendance.recentSessions.map(function(s) {
+          var cls = s.status === "Present" ? "present" : s.status === "Absent" ? "absent" : s.status === "Late" ? "late" : "excused";
+          return '<tr><td>' + s.date + '</td><td>' + esc(s.course) + '</td><td>' + s.time + '</td><td><span class="session-badge ' + cls + '">' + s.status + '</span></td><td>' + esc(s.markedBy) + '</td></tr>';
+        }).join("");
+      }
+
+      function renderWeeklyChart() {
+        var canvas = document.getElementById("weeklyChart");
+        if (!canvas) return;
+        if (weeklyChartInstance) { weeklyChartInstance.destroy(); weeklyChartInstance = null; }
+        var labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        weeklyChartInstance = new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: '% Attendance',
+              data: mockAttendance.weeklyTrend,
+              borderColor: '#3B82F6',
+              backgroundColor: 'rgba(59,130,246,0.1)',
+              fill: true,
+              tension: 0.4,
+              pointBackgroundColor: '#3B82F6',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { min: 0, max: 100, ticks: { callback: function(v) { return v + '%'; } } } }
+          }
+        });
+      }
+
+      function renderLecturerCourseSelect() {
+        var sel = document.getElementById("lecturerCourseSelect");
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Select course</option>' + mockAttendance.courses.map(function(c) { return '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>'; }).join("");
+        var today = new Date().toISOString().slice(0, 10);
+        var dateInput = document.getElementById("sessionDate");
+        if (dateInput) dateInput.value = today;
+      }
+
+      function renderLecturerStats() {
+        var container = document.getElementById("lecturerStats");
+        if (!container) return;
+        var todayPct = 0;
+        var totalToday = 0;
+        var totalPresent = 0;
+        mockAttendance.todaySessions.forEach(function(s) {
+          totalToday += s.total;
+          totalPresent += s.present;
+        });
+        todayPct = totalToday > 0 ? Math.round(totalPresent / totalToday * 100) : 0;
+        var weekSessions = mockAttendance.todaySessions.length + 3;
+        container.innerHTML = '<div class="stat-card"><h3 style="color:var(--info)">' + todayPct + '%</h3><p>Today Attendance</p></div><div class="stat-card"><h3 style="color:var(--success)">' + weekSessions + '</h3><p>Sessions This Week</p></div>';
+      }
+
+      function renderEnrolledStudents() {
+        var tbody = document.getElementById("enrolledStudentsBody");
+        if (!tbody) return;
+        tbody.innerHTML = mockAttendance.enrolledStudents.map(function(st) {
+          var checkedPresent = st.status === "Present" ? "checked" : "";
+          var checkedAbsent = st.status === "Absent" ? "checked" : "";
+          var checkedLate = st.status === "Late" ? "checked" : "";
+          var checkedExcused = st.status === "Excused" ? "checked" : "";
+          return '<tr><td>' + st.id + '</td><td>' + esc(st.name) + '</td><td>' + esc(st.regNo) + '</td><td><div class="radio-group"><label><input type="radio" name="attendance_' + st.id + '" value="Present" ' + checkedPresent + '> P</label><label><input type="radio" name="attendance_' + st.id + '" value="Absent" ' + checkedAbsent + '> A</label><label><input type="radio" name="attendance_' + st.id + '" value="Late" ' + checkedLate + '> L</label><label><input type="radio" name="attendance_' + st.id + '" value="Excused" ' + checkedExcused + '> E</label></div></td></tr>';
+        }).join("");
+      }
+
+      function markAllPresent() {
+        mockAttendance.enrolledStudents.forEach(function(st) { st.status = "Present"; });
+        renderEnrolledStudents();
+        SmartCampusUI.showToast("All students marked as Present.", "success");
+      }
+
+      function submitAttendance() {
+        var radios = document.querySelectorAll("#enrolledStudentsBody input[type='radio']:checked");
+        if (radios.length === 0) {
+          SmartCampusUI.showToast("Please mark attendance for at least one student.", "warning");
+          return;
+        }
+        var count = {};
+        radios.forEach(function(r) { count[r.value] = (count[r.value] || 0) + 1; });
+        var msg = "Attendance submitted: " + (count["Present"] || 0) + " Present, " + (count["Absent"] || 0) + " Absent, " + (count["Late"] || 0) + " Late, " + (count["Excused"] || 0) + " Excused.";
+        SmartCampusUI.showToast(msg, "success");
+      }
+
+      function renderTodaySessions() {
+        var tbody = document.getElementById("todaySessionsBody");
+        if (!tbody) return;
+        tbody.innerHTML = mockAttendance.todaySessions.map(function(s) {
+          return '<tr><td>' + s.time + '</td><td>' + esc(s.course) + '</td><td>' + s.present + '</td><td>' + s.absent + '</td><td>' + s.late + '</td><td>' + s.total + '</td></tr>';
+        }).join("");
+      }
+
+      function createSession() {
+        var courseId = document.getElementById("lecturerCourseSelect").value;
+        var date = document.getElementById("sessionDate").value;
+        var start = document.getElementById("sessionStart").value;
+        var end = document.getElementById("sessionEnd").value;
+        if (!courseId || !date || !start || !end) {
+          SmartCampusUI.showToast("Please fill in all session fields.", "warning");
+          return;
+        }
+        var course = mockAttendance.courses.find(function(c) { return c.id === courseId; });
+        var sessionInfo = document.getElementById("qrSessionInfo");
+        if (sessionInfo) sessionInfo.textContent = "Session: " + (course ? course.name : courseId) + " | " + date + " " + start + "-" + end;
+        mockAttendance.todaySessions.unshift({ time: start + "-" + end, course: course ? course.name : courseId, present: 0, absent: 0, late: 0, total: 0 });
+        renderTodaySessions();
+        renderLecturerStats();
+        drawQrCode(courseId + "_" + date + "_" + start);
+        SmartCampusUI.showToast("Session created for " + (course ? course.name : courseId), "success");
+      }
+
+      function drawQrCode(data) {
+        var canvas = document.getElementById("qrCanvas");
+        if (!canvas) return;
+        var ctx = canvas.getContext("2d");
+        var size = 120;
+        ctx.clearRect(0, 0, size, size);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, size, size);
+        var modules = 9;
+        var cellSize = Math.floor(size / (modules + 2));
+        var offset = Math.floor((size - cellSize * modules) / 2);
+        var seed = 0;
+        for (var i = 0; i < modules; i++) {
+          for (var j = 0; j < modules; j++) {
+            seed = (seed * 9301 + 49297) % 233280;
+            var bit = (seed / 233280) > 0.5 ? 1 : 0;
+            if ((i === 0 && j === 0) || (i === 0 && j === modules - 1) || (i === modules - 1 && j === 0) || (i === modules - 1 && j === modules - 1)) {
+              bit = 1;
+            }
+            if (i === 0 || i === modules - 1 || j === 0 || j === modules - 1) { bit = 1; }
+            ctx.fillStyle = bit ? "#0A192F" : "#ffffff";
+            ctx.fillRect(offset + i * cellSize, offset + j * cellSize, cellSize, cellSize);
+          }
+        }
+        ctx.fillStyle = "#0A192F";
+        var innerSize = 3 * cellSize;
+        var innerOffset = offset + ((modules - 3) / 2) * cellSize;
+        ctx.fillRect(innerOffset, innerOffset, innerSize, innerSize);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(innerOffset + cellSize, innerOffset + cellSize, cellSize, cellSize);
+      }
+
+      function refreshQr() {
+        var sel = document.getElementById("lecturerCourseSelect");
+        var courseId = sel ? sel.value : "";
+        if (!courseId) { SmartCampusUI.showToast("Select a course first.", "warning"); return; }
+        drawQrCode(courseId + "_" + Date.now());
+        SmartCampusUI.showToast("QR code regenerated.", "info");
+      }
+
+      function populateAdminHierarchy() {
+        var role = getCurrentRole();
+        var schoolSel = document.getElementById("adminSchoolSelect");
+        var deptSel = document.getElementById("adminDeptSelect");
+        var progSel = document.getElementById("adminProgrammeSelect");
+        var courseSel = document.getElementById("adminCourseSelect");
+        if (!schoolSel) return;
+        var schools = typeof schoolsData !== "undefined" ? schoolsData : [];
+
+        if (role === "Department Admin") {
+          document.getElementById("adminSchoolGroup").style.display = "none";
+          try {
+            var user = JSON.parse(localStorage.getItem("sc_user"));
+            var userDept = user ? (user.department || user.departmentId || "") : "";
+            if (userDept && schools.length) {
+              deptSel.innerHTML = '<option value="">Select Department</option>';
+              deptSel.disabled = false;
+              var found = false;
+              schools.forEach(function(s) {
+                (s.departments || []).forEach(function(d) {
+                  var match = d.name === userDept || String(d.id) === String(userDept);
+                  if (match) {
+                    deptSel.innerHTML += '<option value="' + d.id + '" selected>' + esc(d.name) + '</option>';
+                    found = true;
+                  }
+                });
+              });
+              if (!found && schools[0] && schools[0].departments) {
+                deptSel.innerHTML += '<option value="" selected>' + esc(userDept) + ' (auto)</option>';
+              }
+              progSel.disabled = false;
+              onAdminDeptChange();
+            }
+          } catch(e) {}
+          renderAdminOverview();
+          renderLowAlerts();
+          return;
+        }
+
+        document.getElementById("adminSchoolGroup").style.display = "";
+        schoolSel.innerHTML = '<option value="">All Schools</option>';
+        schools.forEach(function(s) {
+          schoolSel.innerHTML += '<option value="' + s.id + '">' + esc(s.name) + '</option>';
+        });
+        deptSel.disabled = true;
+        progSel.disabled = true;
+        courseSel.disabled = true;
+        deptSel.innerHTML = '<option value="">Select Department</option>';
+        progSel.innerHTML = '<option value="">Select Programme</option>';
+        courseSel.innerHTML = '<option value="">Select Course</option>';
+        populateReportCourseSelect();
+        renderAdminOverview();
+        renderLowAlerts();
+      }
+
+      function onAdminSchoolChange() {
+        var schoolId = document.getElementById("adminSchoolSelect").value;
+        var deptSel = document.getElementById("adminDeptSelect");
+        var progSel = document.getElementById("adminProgrammeSelect");
+        var courseSel = document.getElementById("adminCourseSelect");
+        deptSel.innerHTML = '<option value="">Select Department</option>';
+        progSel.innerHTML = '<option value="">Select Programme</option>';
+        courseSel.innerHTML = '<option value="">Select Course</option>';
+        deptSel.disabled = !schoolId;
+        progSel.disabled = true;
+        courseSel.disabled = true;
+        if (!schoolId) return;
+        var schools = typeof schoolsData !== "undefined" ? schoolsData : [];
+        var school = schools.find(function(s) { return String(s.id) === String(schoolId); });
+        if (!school) return;
+        (school.departments || []).forEach(function(d) {
+          deptSel.innerHTML += '<option value="' + d.id + '">' + esc(d.name) + '</option>';
+        });
+      }
+
+      function onAdminDeptChange() {
+        var schoolId = document.getElementById("adminSchoolSelect").value;
+        var deptId = document.getElementById("adminDeptSelect").value;
+        var progSel = document.getElementById("adminProgrammeSelect");
+        var courseSel = document.getElementById("adminCourseSelect");
+        progSel.innerHTML = '<option value="">Select Programme</option>';
+        courseSel.innerHTML = '<option value="">Select Course</option>';
+        progSel.disabled = !deptId;
+        courseSel.disabled = true;
+        if (!deptId || !schoolId) return;
+        var schools = typeof schoolsData !== "undefined" ? schoolsData : [];
+        var school = schools.find(function(s) { return String(s.id) === String(schoolId); });
+        if (!school) return;
+        var dept = school.departments.find(function(d) { return String(d.id) === String(deptId); });
+        if (!dept) return;
+        (dept.programmes || []).forEach(function(p) {
+          progSel.innerHTML += '<option value="' + esc(p) + '">' + esc(p) + '</option>';
+        });
+      }
+
+      function onAdminProgChange() {
+        var prog = document.getElementById("adminProgrammeSelect").value;
+        var courseSel = document.getElementById("adminCourseSelect");
+        courseSel.innerHTML = '<option value="">Select Course</option>';
+        courseSel.disabled = !prog;
+        if (!prog) return;
+        mockAttendance.adminCourses.forEach(function(c) {
+          courseSel.innerHTML += '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>';
+        });
+      }
+
+      function renderAdminOverview() {
+        var tbody = document.getElementById("adminOverviewBody");
+        if (!tbody) return;
+        tbody.innerHTML = mockAttendance.departmentOverview.map(function(c) {
+          var cls = c.status === "Good" ? "badge-success" : c.status === "Warning" ? "badge-warning" : "badge-error";
+          return '<tr><td>' + esc(c.course) + '</td><td>' + c.enrolled + '</td><td>' + c.sessions + '</td><td>' + c.avgPercent.toFixed(1) + '%</td><td><span class="badge ' + cls + '">' + c.status + '</span></td></tr>';
+        }).join("");
+      }
+
+      function renderLowAlerts() {
+        var container = document.getElementById("lowAttendanceContainer");
+        if (!container) return;
+        if (mockAttendance.lowAttendance.length === 0) {
+          container.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:1rem">No low attendance alerts at this time.</p>';
+          return;
+        }
+        container.innerHTML = mockAttendance.lowAttendance.map(function(a) {
+          return '<div class="alert-item"><div class="alert-student-info"><strong>' + esc(a.name) + '</strong><span>' + esc(a.regNo) + ' &middot; ' + esc(a.course) + ' &middot; <span class="status-poor">' + a.percent.toFixed(1) + '%</span></span></div><div class="alert-actions"><button class="btn btn-outline btn-sm email-alert-btn" data-email="' + esc(a.email) + '" data-name="' + esc(a.name) + '" type="button"><i class="fa-solid fa-envelope"></i> Email</button><button class="btn btn-outline btn-sm notify-alert-btn" data-email="' + esc(a.email) + '" data-name="' + esc(a.name) + '" type="button"><i class="fa-solid fa-bell"></i> Notify</button></div></div>';
+        }).join("");
+      }
+
+      function populateReportCourseSelect() {
+        var sel = document.getElementById("reportCourseSelect");
+        if (!sel) return;
+        sel.innerHTML = '<option value="">All Courses</option>';
+        mockAttendance.adminCourses.forEach(function(c) {
+          sel.innerHTML += '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>';
+        });
+        var from = document.getElementById("reportDateFrom");
+        var to = document.getElementById("reportDateTo");
+        if (from) from.value = "2026-06-01";
+        if (to) to.value = "2026-06-16";
+      }
+
+      function generateReport() {
+        var course = document.getElementById("reportCourseSelect").value;
+        var from = document.getElementById("reportDateFrom").value;
+        var to = document.getElementById("reportDateTo").value;
+        var container = document.getElementById("reportResults");
+        if (!container) return;
+        var filtered = mockAttendance.recentSessions;
+        if (course) {
+          var courseObj = mockAttendance.adminCourses.find(function(c) { return c.id === course; });
+          filtered = filtered.filter(function(s) { return s.course === (courseObj ? courseObj.name : course); });
+        }
+        if (from) filtered = filtered.filter(function(s) { return s.date >= from; });
+        if (to) filtered = filtered.filter(function(s) { return s.date <= to; });
+        if (filtered.length === 0) {
+          container.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:1rem">No sessions match the selected filters.</p>';
+          return;
+        }
+        var total = filtered.length;
+        var present = filtered.filter(function(s) { return s.status === "Present"; }).length;
+        var absent = filtered.filter(function(s) { return s.status === "Absent"; }).length;
+        var late = filtered.filter(function(s) { return s.status === "Late"; }).length;
+        var excused = filtered.filter(function(s) { return s.status === "Excused"; }).length;
+        var pct = total > 0 ? (present / total * 100).toFixed(1) : "0.0";
+        container.innerHTML = '<p><strong>' + filtered.length + ' session(s)</strong> &middot; Present: ' + present + ' &middot; Absent: ' + absent + ' &middot; Late: ' + late + ' &middot; Excused: ' + excused + ' &middot; Rate: <span class="' + (parseFloat(pct) >= 80 ? 'status-good' : parseFloat(pct) >= 60 ? 'status-warning' : 'status-poor') + '">' + pct + '%</span></p><div class="table-responsive" style="margin-top:0.5rem"><table><thead><tr><th>Date</th><th>Course</th><th>Time</th><th>Status</th><th>Marked By</th></tr></thead><tbody>' + filtered.map(function(s) { return '<tr><td>' + s.date + '</td><td>' + esc(s.course) + '</td><td>' + s.time + '</td><td><span class="session-badge ' + s.status.toLowerCase() + '">' + s.status + '</span></td><td>' + esc(s.markedBy) + '</td></tr>'; }).join("") + '</tbody></table></div>';
+      }
+
+      function exportCsv() {
+        var container = document.getElementById("reportResults");
+        if (!container) return;
+        var table = container.querySelector("table");
+        if (!table) {
+          SmartCampusUI.showToast("Generate a report first.", "warning");
+          return;
+        }
+        var rows = table.querySelectorAll("tr");
+        var csv = "Date,Course,Time,Status,Marked By\n";
+        rows.forEach(function(row, idx) {
+          if (idx === 0) return;
+          var cols = row.querySelectorAll("td");
+          if (cols.length >= 5) {
+            csv += cols[0].textContent.trim() + "," + cols[1].textContent.trim() + "," + cols[2].textContent.trim() + "," + cols[3].textContent.trim() + "," + cols[4].textContent.trim() + "\n";
+          }
+        });
+        var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        var link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "attendance_report_" + new Date().toISOString().slice(0, 10) + ".csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        SmartCampusUI.showToast("CSV exported successfully.", "success");
+      }
+
+      function loadFromApi() {
+        var user = null;
+        try { user = JSON.parse(localStorage.getItem('sc_user')); } catch(e) {}
+        if (!user || user.role !== 'Student') return Promise.resolve();
+        return Promise.all([
+          SmartCampusAPI.withFallback(
+            function() { return SmartCampusAPI.fetchStudentAttendance(user.id); },
+            function() { return null; }
+          ),
+          SmartCampusAPI.withFallback(
+            function() { return SmartCampusAPI.fetchStudentAttendanceStats(user.id); },
+            function() { return null; }
+          )
+        ]).then(function(results) {
+          if (results[0]) {
+            var arr = Array.isArray(results[0]) ? results[0] : (results[0].data && Array.isArray(results[0].data) ? results[0].data : null);
+            if (Array.isArray(arr)) mockAttendance.recentSessions = arr;
+          }
+          if (results[1]) {
+            var statsObj = results[1].data || results[1];
+            if (typeof statsObj === 'object' && statsObj !== null) {
+              if (statsObj.percentage !== undefined) mockAttendance.summary = statsObj;
+            }
+          }
+        });
+      }
+
+      async function initPage() {
+        await loadFromApi();
+        updateClock();
+        setInterval(updateClock, 10000);
+        updateRoleSubtitle();
+        showRoleSections();
+
+        var role = getCurrentRole();
+
+        if (role === "Student") {
+          renderSummaryStats();
+          renderGauge();
+          renderCourseTable();
+          renderRecentSessions();
+          renderWeeklyChart();
+        }
+
+        if (role === "Lecturer") {
+          renderLecturerCourseSelect();
+          renderLecturerStats();
+          renderEnrolledStudents();
+          renderTodaySessions();
+          drawQrCode("session_placeholder_" + Date.now());
+          document.getElementById("sessionDate").value = new Date().toISOString().slice(0, 10);
+        }
+
+        if (role === "Department Admin" || role === "School Super Admin" || role === "University Super Admin") {
+          populateAdminHierarchy();
+        }
+
+        // Event bindings
+        document.getElementById("markAllPresentBtn")?.addEventListener("click", markAllPresent);
+        document.getElementById("submitAttendanceBtn")?.addEventListener("click", submitAttendance);
+        document.getElementById("createSessionBtn")?.addEventListener("click", createSession);
+        document.getElementById("refreshQrBtn")?.addEventListener("click", refreshQr);
+        if (getCurrentRole() !== "Department Admin") {
+          document.getElementById("adminSchoolSelect")?.addEventListener("change", onAdminSchoolChange);
+        }
+        document.getElementById("adminDeptSelect")?.addEventListener("change", onAdminDeptChange);
+        document.getElementById("adminProgrammeSelect")?.addEventListener("change", onAdminProgChange);
+        document.getElementById("generateReportBtn")?.addEventListener("click", generateReport);
+        document.getElementById("exportCsvBtn")?.addEventListener("click", exportCsv);
+
+        document.addEventListener("click", function(e) {
+          var emailBtn = e.target.closest(".email-alert-btn");
+          if (emailBtn) {
+            var name = emailBtn.dataset.name;
+            var email = emailBtn.dataset.email;
+            SmartCampusUI.openModal({
+              title: "Send Email",
+              bodyHtml: '<p>Send attendance warning to <strong>' + esc(name) + '</strong> (' + esc(email) + ')?</p>',
+              confirmText: "Send Email",
+              onConfirm: function() { SmartCampusUI.closeModal(); SmartCampusUI.showToast("Email sent to " + name + ".", "success"); }
+            });
+          }
+          var notifyBtn = e.target.closest(".notify-alert-btn");
+          if (notifyBtn) {
+            var name = notifyBtn.dataset.name;
+            SmartCampusUI.openModal({
+              title: "Send Notification",
+              bodyHtml: '<p>Send attendance notification to <strong>' + esc(name) + '</strong>?</p>',
+              confirmText: "Send Notification",
+              onConfirm: function() { SmartCampusUI.closeModal(); SmartCampusUI.showToast("Notification sent to " + name + ".", "success"); }
+            });
+          }
+        });
+
+        // Handle radio changes for enrolled students
+        document.addEventListener("change", function(e) {
+          if (e.target.name && e.target.name.indexOf("attendance_") === 0) {
+            var id = parseInt(e.target.name.replace("attendance_", ""));
+            var student = mockAttendance.enrolledStudents.find(function(s) { return s.id === id; });
+            if (student) student.status = e.target.value;
+          }
+        });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initPage);
+      } else {
+        initPage();
+      }
+
+      // Expose for re-render on role change
+      window.renderAttendance = function() {
+        updateRoleSubtitle();
+        showRoleSections();
+        var role = getCurrentRole();
+        if (role === "Student") {
+          renderSummaryStats();
+          renderGauge();
+          renderCourseTable();
+          renderRecentSessions();
+          renderWeeklyChart();
+        }
+        if (role === "Lecturer") {
+          renderLecturerCourseSelect();
+          renderLecturerStats();
+          renderEnrolledStudents();
+          renderTodaySessions();
+          drawQrCode("session_placeholder_" + Date.now());
+        }
+        if (role === "Department Admin" || role === "School Super Admin" || role === "University Super Admin") {
+          populateAdminHierarchy();
+        }
+      };
+
+      var origApplyVisibility = window.applyRoleBasedVisibility;
+      window.applyRoleBasedVisibility = function() {
+        if (origApplyVisibility) origApplyVisibility();
+        if (typeof window.renderAttendance === "function") window.renderAttendance();
+      };
+    })();
+  </script>
+</body>
+</html>

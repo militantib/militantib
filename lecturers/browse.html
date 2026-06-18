@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browse Lecturers - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root { --excel-header: #44546a; --excel-border: #d0d7de; }
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: .3rem .5rem; font-size: .85rem; padding: .6rem 0; margin-bottom: .5rem; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb span { color: var(--gray-500); }
+    .breadcrumb .current { color: var(--gray-800); font-weight: 600; }
+    .step-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
+    .step-title i { margin-right: .4rem; color: var(--primary); }
+    .hierarchy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .hierarchy-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 1.25rem; text-align: center; cursor: pointer; transition: all .2s; }
+    .hierarchy-card:hover { border-color: var(--primary); box-shadow: 0 2px 12px rgba(0,0,0,.08); transform: translateY(-2px); }
+    .hierarchy-card .h-icon { font-size: 1.8rem; color: var(--primary); margin-bottom: .5rem; }
+    .hierarchy-card .h-name { font-weight: 600; font-size: .95rem; }
+    .hierarchy-card .h-count { font-size: .75rem; color: var(--gray-500); margin-top: .25rem; }
+    .excel-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .excel-table th { background: var(--excel-header); color: #fff; padding: .55rem .4rem; text-align: left; font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap; }
+    .excel-table th:hover { filter: brightness(1.1); }
+    .excel-table th i { margin-left: .25rem; font-size: .65rem; }
+    .excel-table td { padding: .4rem; border: 1px solid var(--excel-border); }
+    .excel-table tr:nth-child(even) { background: #f8f9fa; }
+    .excel-table tr:hover { background: #eef2ff; }
+    .table-toolbar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .table-toolbar input, .table-toolbar select { padding: .45rem .6rem; border: 1px solid var(--gray-200); border-radius: 6px; }
+    .table-toolbar input { flex: 1; min-width: 180px; }
+    .pagination { display: flex; gap: .3rem; align-items: center; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+    .pagination button { padding: .4rem .7rem; border: 1px solid var(--gray-200); border-radius: 5px; background: #fff; cursor: pointer; font-size: .8rem; }
+    .pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .pagination button:disabled { opacity: .4; cursor: default; }
+    .badge-approved { background: var(--success); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-pending { background: var(--warning); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-rejected { background: var(--error); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-suspended { background: #6b7280; color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-active { background: var(--success); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-inactive { background: #9ca3af; color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .empty-state { text-align: center; padding: 4rem 1rem; color: var(--gray-400); }
+    .empty-state i { font-size: 3rem; margin-bottom: .75rem; }
+    .modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:#fff;border-radius:12px;padding:2rem;max-width:600px;width:90%;max-height:80vh;overflow-y:auto; }
+    .export-bar { display: flex; gap: .3rem; flex-wrap: wrap; }
+    .stats-mini { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: .5rem; margin-bottom: 1rem; }
+    .stats-mini .sm { text-align: center; padding: .4rem; background: var(--gray-50); border-radius: 6px; }
+    .stats-mini .sm h5 { font-size: 1rem; margin: 0; }
+    .stats-mini .sm p { font-size: .6rem; color: var(--gray-500); margin: 0; }
+    @media (max-width: 600px) { .hierarchy-grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0">Browse Lecturers</h1>
+      <a href="../manage-lecturers.html" class="btn btn-outline btn-sm">&larr; Back</a>
+    </div>
+    <div class="breadcrumb" id="breadcrumb"><a href="../manage-lecturers.html">Manage Lecturers</a> <span>/</span> <span class="current">Browse Lecturers</span></div>
+    <div id="stepContent"></div>
+    <div id="tableContainer"></div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal"><h3 id="modalTitle">Lecturer Profile</h3><div id="modalBody"></div><button class="btn btn-outline btn-sm" onclick="closeModal()" style="margin-top:1rem">Close</button></div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    const state = { schools: [], departments: [], programmes: [], lecturers: [],
+      selectedSchoolId: null, selectedSchoolName: '',
+      selectedDeptId: null, selectedDeptName: '',
+      selectedProgId: null, selectedProgName: '', currentStep: 0,
+      sortCol: null, sortDir: 'asc', page: 1, pageSize: 20, searchQuery: '' };
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin","School Super Admin","Department Admin"].includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>'; return;
+      }
+      await loadSchools();
+    });
+
+    function buildBreadcrumb() {
+      const bc = document.getElementById("breadcrumb");
+      let html = '<a href="../manage-lecturers.html">Manage Lecturers</a> <span>/</span> <a href="browse.html">Browse Lecturers</a>';
+      if (state.selectedSchoolName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(1)">${esc(state.selectedSchoolName)}</a>`;
+      if (state.selectedDeptName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(2)">${esc(state.selectedDeptName)}</a>`;
+      if (state.selectedProgName) html += ` <span>/</span> <span class="current">${esc(state.selectedProgName)}</span>`;
+      bc.innerHTML = html;
+    }
+
+    function resetTo(step) {
+      if (step <= 1) { state.selectedSchoolId = null; state.selectedSchoolName = ''; }
+      if (step <= 2) { state.selectedDeptId = null; state.selectedDeptName = ''; }
+      if (step <= 3) { state.selectedProgId = null; state.selectedProgName = ''; }
+      state.page = 1; state.currentStep = step; buildBreadcrumb();
+      document.getElementById("tableContainer").innerHTML = '';
+      if (step === 1) renderSchools(); else if (step === 2) renderDepts(); else if (step === 3) loadLecturers();
+    }
+
+    async function loadSchools() {
+      try { state.schools = await SmartCampusAPI.fetchSchools() || []; state.currentStep = 1; renderSchools(); }
+      catch (ex) { showError(ex.message); }
+    }
+    function renderSchools() {
+      let html = '<div class="step-title"><i class="fa-solid fa-school"></i>Select a School</div><div class="hierarchy-grid">';
+      state.schools.forEach(s => { html += `<div class="hierarchy-card" onclick="selectSchool('${s.id}','${esc(s.name)}')"><div class="h-icon"><i class="fa-solid fa-school"></i></div><div class="h-name">${esc(s.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    async function selectSchool(id, name) {
+      state.selectedSchoolId = id; state.selectedSchoolName = name;
+      try { state.departments = await SmartCampusAPI.fetchDepartments(id) || []; state.currentStep = 2; buildBreadcrumb(); renderDepts(); }
+      catch (ex) { showError(ex.message); }
+    }
+    function renderDepts() {
+      if (!state.departments.length) { document.getElementById("stepContent").innerHTML = '<div class="empty-state"><i class="fa-solid fa-building"></i><p>No departments.</p></div>'; return; }
+      let html = '<div class="step-title"><i class="fa-solid fa-sitemap"></i>Select a Department</div><div class="hierarchy-grid">';
+      state.departments.forEach(d => { html += `<div class="hierarchy-card" onclick="selectDept('${d.id}','${esc(d.name)}')"><div class="h-icon"><i class="fa-solid fa-building"></i></div><div class="h-name">${esc(d.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectDept(id, name) { state.selectedDeptId = id; state.selectedDeptName = name; loadProgs(id); }
+    async function loadProgs(deptId) {
+      try { state.programmes = await SmartCampusAPI.fetchProgrammes(deptId) || []; state.currentStep = 3; buildBreadcrumb(); renderProgs(); }
+      catch (ex) { showError(ex.message); }
+    }
+    function renderProgs() {
+      if (!state.programmes.length) { document.getElementById("stepContent").innerHTML = '<div class="empty-state"><i class="fa-solid fa-graduation-cap"></i><p>No programmes.</p></div>'; return; }
+      let html = '<div class="step-title"><i class="fa-solid fa-graduation-cap"></i>Select a Programme</div><div class="hierarchy-grid">';
+      state.programmes.forEach(p => { html += `<div class="hierarchy-card" onclick="selectProg('${p.id}','${esc(p.name)}')"><div class="h-icon"><i class="fa-solid fa-book-open"></i></div><div class="h-name">${esc(p.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectProg(id, name) { state.selectedProgId = id; state.selectedProgName = name; state.currentStep = 4; buildBreadcrumb(); loadLecturers(); }
+
+    async function loadLecturers() {
+      const el = document.getElementById("tableContainer");
+      el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading lecturers...</p>';
+      try {
+        state.lecturers = await apiFetch(`/lecturers?programmeId=${state.selectedProgId}`) || [];
+        renderStatsMini();
+        renderTable();
+      } catch (ex) { el.innerHTML = `<p style="color:var(--error)">${esc(ex.message)}</p>`; }
+    }
+
+    function renderStatsMini() {
+      const total = state.lecturers.length;
+      const active = state.lecturers.filter(l => l.status === 'Active').length;
+      const pending = state.lecturers.filter(l => (l.loginApprovalStatus||'Pending') === 'Pending').length;
+      const el = document.getElementById("tableContainer");
+      const div = document.createElement("div");
+      div.id = "statsMini";
+      div.className = "stats-mini";
+      div.innerHTML = `
+        <div class="sm"><h5>${total}</h5><p>Total</p></div>
+        <div class="sm"><h5 style="color:var(--success)">${active}</h5><p>Active</p></div>
+        <div class="sm"><h5 style="color:var(--gray-500)">${total-active}</h5><p>Inactive</p></div>
+        <div class="sm"><h5 style="color:var(--warning)">${pending}</h5><p>Pending</p></div>
+      `;
+      el.parentNode.insertBefore(div, el);
+    }
+
+    function applyFilters() {
+      state.searchQuery = document.getElementById("searchInput").value;
+      state.page = 1;
+      renderTable();
+    }
+
+    function renderTable() {
+      const el = document.getElementById("tableContainer");
+      let filtered = [...state.lecturers];
+      if (state.searchQuery) {
+        const q = state.searchQuery.toLowerCase();
+        filtered = filtered.filter(l => (l.name||'').toLowerCase().includes(q) || (l.email||'').toLowerCase().includes(q) || (l.lecturerId||'').toLowerCase().includes(q));
+      }
+      const sf = document.getElementById("statusFilter");
+      if (sf && sf.value) {
+        filtered = filtered.filter(l => l.status === sf.value);
+      }
+      if (state.sortCol) {
+        filtered.sort((a,b) => {
+          let va = a[state.sortCol] != null ? a[state.sortCol] : '';
+          let vb = b[state.sortCol] != null ? b[state.sortCol] : '';
+          if (typeof va === 'number') return state.sortDir === 'asc' ? va - vb : vb - va;
+          va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+          return state.sortDir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+        });
+      }
+      const total = filtered.length;
+      const totalPages = Math.ceil(total / state.pageSize) || 1;
+      if (state.page > totalPages) state.page = totalPages;
+      const start = (state.page-1)*state.pageSize;
+      const pageItems = filtered.slice(start, start+state.pageSize);
+
+      let html = `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem">
+        <div class="step-title" style="margin:0"><i class="fa-solid fa-chalkboard-user"></i>Lecturers — ${esc(state.selectedProgName)}</div>
+        <div><span style="font-size:.85rem;color:var(--gray-600)">${total} lecturer${total!==1?'s':''}</span></div>
+      </div>
+      <div class="table-toolbar">
+        <input id="searchInput" placeholder="Search by name, email, or ID..." value="${esc(state.searchQuery)}" onkeyup="debouncedSearch()">
+        <select id="statusFilter" onchange="applyFilters()" style="padding:.45rem .6rem;border:1px solid var(--gray-200);border-radius:6px">
+          <option value="">All Statuses</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+        <div class="export-bar">
+          <button class="btn btn-outline btn-sm" onclick="exportCsv()"><i class="fa-solid fa-file-excel"></i> Excel</button>
+          <button class="btn btn-outline btn-sm" onclick="exportPdf()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;border:1px solid var(--excel-border);border-radius:6px">
+      <table class="excel-table" id="lecTable"><thead><tr>
+        <th onclick="sortTable('lecturerId')">ID ${sortIcon('lecturerId')}</th>
+        <th onclick="sortTable('name')">Full Name ${sortIcon('name')}</th>
+        <th onclick="sortTable('email')">Email ${sortIcon('email')}</th>
+        <th onclick="sortTable('phone')">Phone ${sortIcon('phone')}</th>
+        <th>School</th><th>Department</th><th>Programme</th>
+        <th onclick="sortTable('status')">Status ${sortIcon('status')}</th>
+        <th>Login Status</th><th>Rank</th><th>Qualification</th><th>Actions</th>
+      </tr></thead><tbody>`;
+
+      if (!pageItems.length) html += '<tr><td colspan="12" style="text-align:center;padding:2rem;color:var(--gray-400)">No lecturers.</td></tr>';
+      else pageItems.forEach(l => {
+        const ls = l.loginApprovalStatus||'Pending';
+        const lsCls = ls === 'Approved' ? 'badge-approved' : ls === 'Rejected' ? 'badge-rejected' : ls === 'Suspended' ? 'badge-suspended' : 'badge-pending';
+        const sCls = l.status === 'Active' ? 'badge-active' : 'badge-inactive';
+        html += `<tr>
+          <td>${esc(l.lecturerId||'-')}</td>
+          <td><strong>${esc(l.name)}</strong></td>
+          <td>${esc(l.email)}</td>
+          <td>${esc(l.phone||'-')}</td>
+          <td>${esc(l.school||'-')}</td>
+          <td>${esc(l.department||'-')}</td>
+          <td>${esc(l.program||'-')}</td>
+          <td><span class="${sCls}">${l.status||'Active'}</span></td>
+          <td><span class="${lsCls}">${ls}</span></td>
+          <td>${esc(l.academicRank||'-')}</td>
+          <td>${esc(l.qualification||'-')}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="viewProfile(${l.id})" title="Profile"><i class="fa-solid fa-eye"></i></button>
+            <button class="btn btn-outline btn-sm" onclick="window.location.href='update.html?lecturerId=${l.id}'" title="Edit"><i class="fa-solid fa-pen"></i></button>
+            <button class="btn btn-outline btn-sm" onclick="viewCourses(${l.id})" title="Courses"><i class="fa-solid fa-book"></i></button>
+          </td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+      html += `<div class="pagination">
+        <button onclick="goPage(1)" ${state.page<=1?'disabled':''}><i class="fa-solid fa-angles-left"></i></button>
+        <button onclick="goPage(${state.page-1})" ${state.page<=1?'disabled':''}><i class="fa-solid fa-angle-left"></i></button>`;
+      for (let p = Math.max(1,state.page-2); p <= Math.min(totalPages,state.page+2); p++)
+        html += `<button onclick="goPage(${p})" class="${p===state.page?'active':''}">${p}</button>`;
+      html += `<button onclick="goPage(${state.page+1})" ${state.page>=totalPages?'disabled':''}><i class="fa-solid fa-angle-right"></i></button>
+        <button onclick="goPage(${totalPages})" ${state.page>=totalPages?'disabled':''}><i class="fa-solid fa-angles-right"></i></button>
+        <span style="font-size:.8rem;color:var(--gray-500)">Page ${state.page} of ${totalPages}</span></div>`;
+      el.innerHTML = html;
+    }
+
+    function sortIcon(col) {
+      if (state.sortCol !== col) return '<i class="fa-solid fa-sort" style="opacity:.3"></i>';
+      return state.sortDir === 'asc' ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>';
+    }
+    function sortTable(col) {
+      if (state.sortCol === col) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+      else { state.sortCol = col; state.sortDir = 'asc'; }
+      state.page = 1; renderTable();
+    }
+    function goPage(p) { state.page = p; renderTable(); }
+    let searchTimer;
+    function debouncedSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(() => { state.searchQuery = document.getElementById("searchInput").value; state.page = 1; renderTable(); }, 300); }
+
+    function exportCsv() {
+      const rows = [['ID','Name','Email','Phone','School','Department','Programme','Status','Login Status','Rank','Qualification']];
+      state.lecturers.forEach(l => rows.push([l.lecturerId||'',l.name||'',l.email||'',l.phone||'',l.school||'',l.department||'',l.program||'',l.status||'',l.loginApprovalStatus||'',l.academicRank||'',l.qualification||'']));
+      const csv = rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+      a.download = 'lecturers_export.csv'; a.click(); URL.revokeObjectURL(a.href);
+      SmartCampusUI.showToast("CSV exported", "success");
+    }
+
+    function exportPdf() {
+      const table = document.getElementById("lecTable");
+      if (!table) return;
+      const rows = [['ID','Name','Email','Phone','Status','Rank','Qualification']];
+      document.querySelectorAll("#lecTable tbody tr").forEach(tr => {
+        const cells = tr.querySelectorAll("td");
+        if (cells.length < 12) return;
+        rows.push([cells[0].textContent.trim(), cells[1].textContent.trim(), cells[2].textContent.trim(), cells[3].textContent.trim(), cells[7].textContent.trim(), cells[9].textContent.trim(), cells[10].textContent.trim()]);
+      });
+      const csv = rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+      a.download = 'lecturers_export.pdf.csv'; a.click(); URL.revokeObjectURL(a.href);
+      SmartCampusUI.showToast("PDF data exported", "success");
+    }
+
+    async function viewProfile(id) {
+      try {
+        const l = await apiFetch(`/lecturers/${id}`);
+        if (!l) return;
+        document.getElementById("modalTitle").textContent = `Profile — ${esc(l.name)}`;
+        const courses = (l.assignedCourses||[]).map(c => esc(c.courseCode + ' - ' + c.courseTitle)).join(', ') || 'None';
+        document.getElementById("modalBody").innerHTML = `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;font-size:.85rem">
+            <div><strong>ID:</strong> ${esc(l.lecturerId||'-')}</div>
+            <div><strong>Email:</strong> ${esc(l.email)}</div>
+            <div><strong>Phone:</strong> ${esc(l.phone||'-')}</div>
+            <div><strong>Gender:</strong> ${esc(l.gender||'-')}</div>
+            <div><strong>Rank:</strong> ${esc(l.academicRank||'-')}</div>
+            <div><strong>Qualification:</strong> ${esc(l.qualification||'-')}</div>
+            <div><strong>Employment:</strong> ${esc(l.employmentType||'-')}</div>
+            <div><strong>Date Employed:</strong> ${esc(l.dateOfEmployment||'-')}</div>
+            <div><strong>School:</strong> ${esc(l.school||'-')}</div>
+            <div><strong>Department:</strong> ${esc(l.department||'-')}</div>
+            <div><strong>Programme:</strong> ${esc(l.program||'-')}</div>
+            <div><strong>Status:</strong> ${l.status||'Active'}</div>
+            <div style="grid-column:1/-1"><strong>Assigned Courses:</strong> ${courses}</div>
+          </div>`;
+        document.getElementById("profileModal").classList.add("open");
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message, "error"); }
+    }
+
+    async function viewCourses(id) {
+      try {
+        const courses = await apiFetch(`/lecturers/${id}/courses`) || [];
+        if (!courses.length) { SmartCampusUI.showToast("No courses assigned", "info"); return; }
+        const names = courses.map(c => esc(c.courseCode + ' - ' + c.courseTitle)).join('\n');
+        SmartCampusUI.showToast("Courses:\n" + names, "info");
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message, "error"); }
+    }
+
+    function closeModal() { document.getElementById("profileModal").classList.remove("open"); }
+    function showError(msg) { document.getElementById("stepContent").innerHTML = `<p style="color:var(--error);text-align:center;padding:2rem">${esc(msg)}</p>`; }
+  </script>
+</body>
+</html>

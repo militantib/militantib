@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirecting… - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <div style="text-align:center;padding:4rem"><h2>Redirecting to Manage Lecturers…</h2><p style="color:var(--gray-500)">The Moderation section has been replaced by the Manage Lecturers module.</p><a href="manage-lecturers.html" class="btn btn-primary">Go to Manage Lecturers</a></div>
+  </div>
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>setTimeout(() => window.location.href = "manage-lecturers.html", 2000);</script>
+</body>
+</html>

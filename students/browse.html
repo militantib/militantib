@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browse Students - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root { --excel-header: #44546a; --excel-border: #d0d7de; }
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: .3rem .5rem; align-items: center; font-size: .85rem; padding: .6rem 0; margin-bottom: .5rem; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb span { color: var(--gray-500); }
+    .breadcrumb .current { color: var(--gray-800); font-weight: 600; }
+    .step-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
+    .step-title i { margin-right: .4rem; color: var(--primary); }
+    .hierarchy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .hierarchy-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 1.25rem; text-align: center; cursor: pointer; transition: all .2s; position: relative; }
+    .hierarchy-card:hover { border-color: var(--primary); box-shadow: 0 2px 12px rgba(0,0,0,.08); transform: translateY(-2px); }
+    .hierarchy-card .h-icon { font-size: 1.8rem; color: var(--primary); margin-bottom: .5rem; }
+    .hierarchy-card .h-name { font-weight: 600; font-size: .95rem; }
+    .hierarchy-card .h-count { font-size: .75rem; color: var(--gray-500); margin-top: .25rem; }
+    .year-grid { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .year-btn { padding: 1rem 2rem; border: 1px solid var(--gray-200); border-radius: 10px; background: #fff; cursor: pointer; font-weight: 600; font-size: .95rem; transition: all .2s; min-width: 140px; text-align: center; }
+    .year-btn:hover { border-color: var(--primary); background: #f0f4ff; }
+    .year-btn .y-icon { font-size: 1.4rem; display: block; margin-bottom: .3rem; color: var(--primary); }
+    .table-toolbar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .table-toolbar input, .table-toolbar select { padding: .45rem .6rem; border: 1px solid var(--gray-200); border-radius: 6px; }
+    .table-toolbar input { flex: 1; min-width: 180px; }
+    .excel-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .excel-table th { background: var(--excel-header); color: #fff; padding: .6rem .5rem; text-align: left; font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap; position: relative; }
+    .excel-table th:hover { filter: brightness(1.1); }
+    .excel-table th i { margin-left: .3rem; font-size: .7rem; }
+    .excel-table td { padding: .5rem; border: 1px solid var(--excel-border); }
+    .excel-table tr:nth-child(even) { background: #f8f9fa; }
+    .excel-table tr:hover { background: #eef2ff; }
+    .excel-table .actions { display: flex; gap: .25rem; }
+    .excel-table .actions button { font-size: .7rem; padding: .2rem .45rem; }
+    .pagination { display: flex; gap: .3rem; align-items: center; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+    .pagination button { padding: .4rem .7rem; border: 1px solid var(--gray-200); border-radius: 5px; background: #fff; cursor: pointer; font-size: .8rem; }
+    .pagination button:hover { background: var(--gray-100); }
+    .pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .pagination button:disabled { opacity: .4; cursor: default; }
+    .export-bar { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .stat-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: .5rem; margin-bottom: 1rem; }
+    .stat-summary .s { text-align: center; padding: .5rem; background: var(--gray-100); border-radius: 6px; }
+    .stat-summary .s h4 { font-size: 1rem; margin: 0; }
+    .stat-summary .s p { font-size: .65rem; color: var(--gray-600); margin: .1rem 0 0; }
+    .back-link { display: inline-block; margin-bottom: .5rem; font-size: .85rem; color: var(--primary); cursor: pointer; }
+    .back-link:hover { text-decoration: underline; }
+    .student-profile-modal .modal { max-width: 700px; }
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem 1rem; }
+    .profile-grid .f label { font-weight: 600; font-size: .75rem; color: var(--gray-600); display: block; text-transform: uppercase; letter-spacing: .3px; }
+    .profile-grid .f p { margin: .15rem 0 .5rem; font-size: .9rem; }
+    .badge-active { color: #fff; background: var(--success); padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .badge-inactive { color: #fff; background: var(--gray-500); padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .badge-graduated { color: #fff; background: var(--info); padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .empty-hierarchy { text-align: center; padding: 4rem 1rem; color: var(--gray-400); }
+    .empty-hierarchy i { font-size: 3rem; margin-bottom: .75rem; }
+    @media (max-width: 600px) { .hierarchy-grid { grid-template-columns: 1fr 1fr; } .profile-grid { grid-template-columns: 1fr; } .year-grid { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0">Browse Students</h1>
+      <a href="../manage-students.html" class="btn btn-outline btn-sm">&larr; Back to Dashboard</a>
+    </div>
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb" id="breadcrumb"><a href="../manage-students.html">Student Management</a> <span>/</span> <span class="current">Browse Students</span></div>
+
+    <!-- Stats -->
+    <div class="stat-summary" id="browseStats"></div>
+
+    <!-- Step Content -->
+    <div id="stepContent"></div>
+  </div>
+
+  <!-- Student Profile Modal -->
+  <div class="modal-overlay student-profile-modal" id="profileModal" style="display:none" onclick="if(event.target===this)closeModal('profileModal')">
+    <div class="modal" style="max-width:700px">
+      <h3 id="profileName" style="margin-bottom:1rem">Student Profile</h3>
+      <div id="profileBody" class="profile-grid"></div>
+      <div style="margin-top:1rem;display:flex;gap:.5rem">
+        <button class="btn btn-primary btn-sm" id="profileEditBtn">Edit Student</button>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('profileModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    // ----- State -----
+    let state = {
+      schools: [], departments: [], programmes: [], students: [],
+      selectedSchoolId: null, selectedSchoolName: '',
+      selectedDeptId: null, selectedDeptName: '',
+      selectedProgId: null, selectedProgName: '',
+      selectedYear: '',
+      currentStep: 0, // 0=start, 1=schools, 2=depts, 3=progs, 4=years, 5=table
+      sortCol: null, sortDir: 'asc', page: 1, pageSize: 20,
+      searchQuery: '', statusFilter: ''
+    };
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin", "School Super Admin"].includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2><p>Only University Super Admin and School Super Admin can manage students.</p><a href="../dashboard.html" class="btn btn-primary">Go to Dashboard</a></div>';
+        return;
+      }
+      await loadSchools();
+      loadStats();
+    });
+
+    // ----- Helpers -----
+    function breadcrumbLabel() { return state.selectedYear || 'Select Year'; }
+
+    function buildBreadcrumb() {
+      const bc = document.getElementById("breadcrumb");
+      let html = '<a href="../manage-students.html">Student Management</a> <span>/</span> <a href="../students/browse.html">Browse Students</a>';
+      if (state.selectedSchoolName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(1)">${esc(state.selectedSchoolName)}</a>`;
+      if (state.selectedDeptName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(2)">${esc(state.selectedDeptName)}</a>`;
+      if (state.selectedProgName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(3)">${esc(state.selectedProgName)}</a>`;
+      if (state.selectedYear) html += ` <span>/</span> <span class="current">${esc(state.selectedYear)}</span>`;
+      bc.innerHTML = html;
+    }
+
+    async function loadStats() {
+      try {
+        const all = await SmartCampusAPI.fetchStudents();
+        if (!all) return;
+        const total = all.length;
+        const schools = new Set(all.map(s => s.school).filter(Boolean)).size;
+        const depts = new Set(all.map(s => s.department).filter(Boolean)).size;
+        const progs = new Set(all.map(s => s.program).filter(Boolean)).size;
+        document.getElementById("browseStats").innerHTML = `
+          <div class="s"><h4>${total}</h4><p>Students</p></div>
+          <div class="s"><h4>${schools}</h4><p>Schools</p></div>
+          <div class="s"><h4>${depts}</h4><p>Departments</p></div>
+          <div class="s"><h4>${progs}</h4><p>Programmes</p></div>
+        `;
+      } catch {}
+    }
+
+    function resetTo(step) {
+      if (step <= 1) { state.selectedSchoolId = null; state.selectedSchoolName = ''; }
+      if (step <= 2) { state.selectedDeptId = null; state.selectedDeptName = ''; }
+      if (step <= 3) { state.selectedProgId = null; state.selectedProgName = ''; }
+      if (step <= 4) { state.selectedYear = ''; }
+      state.currentStep = step;
+      state.page = 1;
+      buildBreadcrumb();
+      if (step === 1) renderSchools();
+      else if (step === 2) renderDepartments();
+      else if (step === 3) renderProgrammes();
+      else if (step === 4) renderYears();
+    }
+
+    // ----- Step 1: Schools -----
+    async function loadSchools() {
+      try {
+        state.schools = await SmartCampusAPI.fetchSchools() || [];
+        state.currentStep = 1;
+        renderSchools();
+      } catch (ex) { showError("Failed to load schools: " + ex.message); }
+    }
+
+    function renderSchools() {
+      const el = document.getElementById("stepContent");
+      let html = '<div class="step-title"><i class="fa-solid fa-school"></i>Select a School</div><div class="hierarchy-grid">';
+      state.schools.forEach(s => {
+        html += `<div class="hierarchy-card" onclick="selectSchool('${s.id}','${esc(s.name)}')">
+          <div class="h-icon"><i class="fa-solid fa-school"></i></div>
+          <div class="h-name">${esc(s.name)}</div>
+          <div class="h-count">${s.departments ? s.departments.length + ' departments' : ''}</div>
+        </div>`;
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    async function selectSchool(id, name) {
+      state.selectedSchoolId = id;
+      state.selectedSchoolName = name;
+      try {
+        state.departments = await SmartCampusAPI.fetchDepartments(id) || [];
+        state.currentStep = 2;
+        buildBreadcrumb();
+        renderDepartments();
+      } catch (ex) { showError("Failed to load departments: " + ex.message); }
+    }
+
+    // ----- Step 2: Departments -----
+    function renderDepartments() {
+      const el = document.getElementById("stepContent");
+      if (!state.departments.length) {
+        el.innerHTML = '<div class="empty-hierarchy"><i class="fa-solid fa-building"></i><p>No departments found for this school.</p></div>';
+        return;
+      }
+      let html = '<div class="step-title"><i class="fa-solid fa-sitemap"></i>Select a Department</div><div class="hierarchy-grid">';
+      state.departments.forEach(d => {
+        html += `<div class="hierarchy-card" onclick="selectDept('${d.id}','${esc(d.name)}')">
+          <div class="h-icon"><i class="fa-solid fa-building"></i></div>
+          <div class="h-name">${esc(d.name)}</div>
+          <div class="h-count">${d.programmes ? d.programmes.length + ' programmes' : ''}</div>
+        </div>`;
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    function selectDept(id, name) {
+      state.selectedDeptId = id;
+      state.selectedDeptName = name;
+      loadProgrammes(id);
+    }
+
+    // ----- Step 3: Programmes -----
+    async function loadProgrammes(deptId) {
+      try {
+        state.programmes = await SmartCampusAPI.fetchProgrammes(deptId) || [];
+        state.currentStep = 3;
+        buildBreadcrumb();
+        renderProgrammes();
+      } catch (ex) { showError("Failed to load programmes: " + ex.message); }
+    }
+
+    function renderProgrammes() {
+      const el = document.getElementById("stepContent");
+      if (!state.programmes.length) {
+        el.innerHTML = '<div class="empty-hierarchy"><i class="fa-solid fa-graduation-cap"></i><p>No programmes found for this department.</p></div>';
+        return;
+      }
+      let html = '<div class="step-title"><i class="fa-solid fa-graduation-cap"></i>Select a Programme</div><div class="hierarchy-grid">';
+      state.programmes.forEach(p => {
+        html += `<div class="hierarchy-card" onclick="selectProg('${p.id}','${esc(p.name)}')">
+          <div class="h-icon"><i class="fa-solid fa-book-open"></i></div>
+          <div class="h-name">${esc(p.name)}</div>
+        </div>`;
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    function selectProg(id, name) {
+      state.selectedProgId = id;
+      state.selectedProgName = name;
+      state.currentStep = 4;
+      buildBreadcrumb();
+      renderYears();
+    }
+
+    // ----- Step 4: Years -----
+    function renderYears() {
+      const el = document.getElementById("stepContent");
+      const years = ["Year 1", "Year 2", "Year 3", "Year 4"];
+      let html = '<div class="step-title"><i class="fa-solid fa-layer-group"></i>Select Year / Level</div><div class="year-grid">';
+      years.forEach(y => {
+        html += `<div class="year-btn" onclick="selectYear('${y}')">
+          <span class="y-icon"><i class="fa-solid fa-layer-group"></i></span>${y}
+        </div>`;
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    function selectYear(year) {
+      state.selectedYear = year;
+      state.page = 1;
+      state.currentStep = 5;
+      buildBreadcrumb();
+      loadStudentsForTable();
+    }
+
+    // ----- Step 5: Student Table -----
+    async function loadStudentsForTable() {
+      const el = document.getElementById("stepContent");
+      el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading students...</p>';
+      try {
+        state.students = await SmartCampusAPI.fetchStudents(
+          state.selectedSchoolId, state.selectedDeptId, state.selectedProgId, state.selectedYear
+        ) || [];
+        renderTable();
+      } catch (ex) { showError("Failed to load students: " + ex.message); }
+    }
+
+    function renderTable() {
+      const el = document.getElementById("stepContent");
+      let filtered = [...state.students];
+
+      // Search
+      if (state.searchQuery) {
+        const q = state.searchQuery.toLowerCase();
+        filtered = filtered.filter(s =>
+          (s.name || '').toLowerCase().includes(q) ||
+          (s.email || '').toLowerCase().includes(q) ||
+          (s.registrationNumber || '').toLowerCase().includes(q) ||
+          (s.phone || '').toLowerCase().includes(q)
+        );
+      }
+
+      // Status filter
+      if (state.statusFilter) {
+        filtered = filtered.filter(s => (s.studentStatus || 'Active') === state.statusFilter);
+      }
+
+      // Sort
+      if (state.sortCol) {
+        filtered.sort((a, b) => {
+          let va = (a[state.sortCol] || '').toString().toLowerCase();
+          let vb = (b[state.sortCol] || '').toString().toLowerCase();
+          if (state.sortCol === 'id') { va = Number(a.id); vb = Number(b.id); }
+          return state.sortDir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+        });
+      }
+
+      // Pagination
+      const total = filtered.length;
+      const totalPages = Math.ceil(total / state.pageSize) || 1;
+      if (state.page > totalPages) state.page = totalPages;
+      const start = (state.page - 1) * state.pageSize;
+      const pageItems = filtered.slice(start, start + state.pageSize);
+
+      const selName = state.selectedProgName || state.selectedDeptName || state.selectedSchoolName || '';
+
+      let html = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem">
+          <div class="step-title" style="margin:0"><i class="fa-solid fa-users"></i>Students in ${esc(selName)} — ${esc(state.selectedYear)}</div>
+          <div><span style="font-size:.85rem;color:var(--gray-600)">${total} student${total!==1?'s':''} found</span></div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="table-toolbar">
+          <input id="searchInput" placeholder="Search by name, email, reg#, phone..." value="${esc(state.searchQuery)}" onkeyup="debouncedSearch()">
+          <select id="statusFilterSelect" onchange="changeStatusFilter(this.value)">
+            <option value="">All Status</option>
+            <option value="Active" ${state.statusFilter==='Active'?'selected':''}>Active</option>
+            <option value="Graduated" ${state.statusFilter==='Graduated'?'selected':''}>Graduated</option>
+            <option value="Suspended" ${state.statusFilter==='Suspended'?'selected':''}>Suspended</option>
+            <option value="Inactive" ${state.statusFilter==='Inactive'?'selected':''}>Inactive</option>
+          </select>
+          <div class="export-bar">
+            <button class="btn btn-outline btn-sm" onclick="exportCsv()" title="Export to CSV"><i class="fa-solid fa-file-excel"></i> Excel</button>
+            <button class="btn btn-outline btn-sm" onclick="exportPdf()" title="Export to PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+            <button class="btn btn-outline btn-sm" onclick="window.print()" title="Print"><i class="fa-solid fa-print"></i> Print</button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div style="overflow-x:auto;border:1px solid var(--excel-border);border-radius:6px">
+        <table class="excel-table">
+          <thead><tr>
+            <th onclick="sortTable('registrationNumber')">Reg # ${sortIcon('registrationNumber')}</th>
+            <th onclick="sortTable('name')">Name ${sortIcon('name')}</th>
+            <th onclick="sortTable('email')">Email ${sortIcon('email')}</th>
+            <th onclick="sortTable('phone')">Phone ${sortIcon('phone')}</th>
+            <th onclick="sortTable('school')">School ${sortIcon('school')}</th>
+            <th onclick="sortTable('department')">Dept ${sortIcon('department')}</th>
+            <th onclick="sortTable('program')">Programme ${sortIcon('program')}</th>
+            <th onclick="sortTable('yearLevel')">Level ${sortIcon('yearLevel')}</th>
+            <th onclick="sortTable('studentStatus')">Status ${sortIcon('studentStatus')}</th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody>`;
+
+      if (!pageItems.length) {
+        html += `<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--gray-400)">No students match your criteria.</td></tr>`;
+      } else {
+        pageItems.forEach(s => {
+          const statusCls = (s.studentStatus === 'Graduated' ? 'badge-graduated' : (s.studentStatus === 'Active' || !s.studentStatus) ? 'badge-active' : 'badge-inactive');
+          html += `<tr>
+            <td>${esc(s.registrationNumber || '-')}</td>
+            <td><strong>${esc(s.name)}</strong></td>
+            <td>${esc(s.email)}</td>
+            <td>${esc(s.phone || '-')}</td>
+            <td>${esc(s.school || '-')}</td>
+            <td>${esc(s.department || '-')}</td>
+            <td>${esc(s.program || '-')}</td>
+            <td>${esc(s.yearLevel || '-')}</td>
+            <td><span class="${statusCls}">${esc(s.studentStatus || 'Active')}</span></td>
+            <td class="actions">
+              <button class="btn btn-outline btn-sm" onclick="viewProfile(${s.id})" title="View Profile"><i class="fa-solid fa-eye"></i></button>
+              <button class="btn btn-outline btn-sm" onclick="editStudent(${s.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn btn-outline btn-sm" onclick="emailStudent(${s.id})" title="Email"><i class="fa-solid fa-envelope"></i></button>
+            </td>
+          </tr>`;
+        });
+      }
+
+      html += `</tbody></table></div>`;
+
+      // Pagination
+      html += `<div class="pagination">
+        <button onclick="goPage(1)" ${state.page<=1?'disabled':''}><i class="fa-solid fa-angles-left"></i></button>
+        <button onclick="goPage(${state.page-1})" ${state.page<=1?'disabled':''}><i class="fa-solid fa-angle-left"></i></button>`;
+      for (let p = Math.max(1, state.page-2); p <= Math.min(totalPages, state.page+2); p++) {
+        html += `<button onclick="goPage(${p})" class="${p===state.page?'active':''}">${p}</button>`;
+      }
+      html += `<button onclick="goPage(${state.page+1})" ${state.page>=totalPages?'disabled':''}><i class="fa-solid fa-angle-right"></i></button>
+        <button onclick="goPage(${totalPages})" ${state.page>=totalPages?'disabled':''}><i class="fa-solid fa-angles-right"></i></button>
+        <span style="font-size:.8rem;color:var(--gray-500);margin-left:.5rem">Page ${state.page} of ${totalPages}</span>
+      </div>`;
+
+      el.innerHTML = html;
+    }
+
+    function sortIcon(col) {
+      if (state.sortCol !== col) return '<i class="fa-solid fa-sort" style="opacity:.3"></i>';
+      return state.sortDir === 'asc' ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>';
+    }
+
+    function sortTable(col) {
+      if (state.sortCol === col) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+      else { state.sortCol = col; state.sortDir = 'asc'; }
+      state.page = 1;
+      renderTable();
+    }
+
+    function goPage(p) { state.page = p; renderTable(); }
+
+    let searchTimer;
+    function debouncedSearch() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.searchQuery = document.getElementById("searchInput").value;
+        state.page = 1;
+        renderTable();
+      }, 300);
+    }
+
+    function changeStatusFilter(val) { state.statusFilter = val; state.page = 1; renderTable(); }
+
+    // ----- Export CSV -----
+    function exportCsv() {
+      const rows = [['Registration No','Student Name','Email','Phone','School','Department','Programme','Level','Status']];
+      let data = [...state.students];
+      if (state.searchQuery) {
+        const q = state.searchQuery.toLowerCase();
+        data = data.filter(s =>
+          (s.name||'').toLowerCase().includes(q) || (s.email||'').toLowerCase().includes(q) ||
+          (s.registrationNumber||'').toLowerCase().includes(q) || (s.phone||'').toLowerCase().includes(q)
+        );
+      }
+      data.forEach(s => rows.push([
+        s.registrationNumber||'', s.name||'', s.email||'', s.phone||'',
+        s.school||'', s.department||'', s.program||'', s.yearLevel||'', s.studentStatus||'Active'
+      ]));
+      const csv = rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `students_${state.selectedProgName||'export'}_${state.selectedYear||'all'}.csv`;
+      a.click(); URL.revokeObjectURL(a.href);
+      SmartCampusUI.showToast("CSV exported", "success");
+    }
+
+    // ----- Export PDF -----
+    async function exportPdf() {
+      SmartCampusUI.showToast("Generating PDF...", "info");
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const pageW = doc.internal.pageSize.getWidth();
+        doc.setFontSize(14); doc.text(`Students - ${state.selectedProgName||''} ${state.selectedYear}`, pageW/2, 15, { align: 'center' });
+        doc.setFontSize(8);
+        let y = 25;
+        const cols = ['Reg No','Name','Email','Phone','School','Dept','Programme','Level','Status'];
+        const colW = [20, 30, 35, 25, 25, 25, 30, 15, 15];
+        const totalW = colW.reduce((a,b)=>a+b,0);
+        const xStart = (pageW - totalW) / 2;
+        // Header
+        doc.setFillColor(68,84,106); doc.setTextColor(255);
+        let x = xStart;
+        cols.forEach((c,i) => { doc.rect(x, y, colW[i], 7, 'F'); doc.text(c, x+1, y+4.5); x += colW[i]; });
+        y += 7;
+        // Rows
+        let data = [...state.students];
+        if (state.searchQuery) {
+          const q = state.searchQuery.toLowerCase();
+          data = data.filter(s => (s.name||'').toLowerCase().includes(q) || (s.email||'').toLowerCase().includes(q) || (s.registrationNumber||'').toLowerCase().includes(q));
+        }
+        if (state.statusFilter) data = data.filter(s => (s.studentStatus||'Active') === state.statusFilter);
+        doc.setTextColor(0);
+        data.forEach((s, idx) => {
+          if (y > 185) { doc.addPage(); y = 15; }
+          if (idx % 2 === 0) doc.setFillColor(248,249,250); else doc.setFillColor(255,255,255);
+          x = xStart;
+          const vals = [s.registrationNumber||'', s.name||'', s.email||'', s.phone||'', s.school||'', s.department||'', s.program||'', s.yearLevel||'', s.studentStatus||'Active'];
+          colW.forEach((w,i) => { doc.rect(x, y, w, 6, 'F'); doc.text(String(vals[i]).slice(0, Math.floor(w/1.5)), x+1, y+4); x += w; });
+          y += 6;
+        });
+        doc.save(`students_${state.selectedProgName||'export'}_${state.selectedYear||'all'}.pdf`);
+        SmartCampusUI.showToast("PDF exported", "success");
+      } catch (ex) {
+        SmartCampusUI.showToast("PDF export failed: " + ex.message, "error");
+      }
+    }
+
+    // ----- Actions -----
+    async function viewProfile(id) {
+      try {
+        const s = await SmartCampusAPI.fetchUser(id);
+        if (!s) { SmartCampusUI.showToast("Student not found", "error"); return; }
+        document.getElementById("profileName").textContent = s.name || "Student Profile";
+        document.getElementById("profileBody").innerHTML = `
+          <div class="f"><label>Email</label><p>${esc(s.email||'-')}</p></div>
+          <div class="f"><label>Phone</label><p>${esc(s.phone||'-')}</p></div>
+          <div class="f"><label>Registration #</label><p>${esc(s.registrationNumber||'-')}</p></div>
+          <div class="f"><label>School</label><p>${esc(s.school||'-')}</p></div>
+          <div class="f"><label>Department</label><p>${esc(s.department||'-')}</p></div>
+          <div class="f"><label>Programme</label><p>${esc(s.program||'-')}</p></div>
+          <div class="f"><label>Year / Level</label><p>${esc(s.yearLevel||'-')}</p></div>
+          <div class="f"><label>Gender</label><p>${esc(s.gender||'-')}</p></div>
+          <div class="f"><label>Date of Birth</label><p>${esc(s.dateOfBirth||'-')}</p></div>
+          <div class="f"><label>Nationality</label><p>${esc(s.nationality||'-')}</p></div>
+          <div class="f"><label>Address</label><p>${esc(s.address||'-')}</p></div>
+          <div class="f"><label>Parent/Guardian</label><p>${esc(s.parentGuardian||'-')}</p></div>
+          <div class="f"><label>Parent Phone</label><p>${esc(s.parentPhone||'-')}</p></div>
+          <div class="f"><label>Admission Date</label><p>${esc(s.admissionDate||'-')}</p></div>
+          <div class="f"><label>Status</label><p>${esc(s.studentStatus||'Active')}</p></div>
+        `;
+        document.getElementById("profileEditBtn").onclick = () => { window.location.href = `add.html?edit=${id}`; };
+        openModal("profileModal");
+      } catch (ex) { SmartCampusUI.showToast("Failed to load profile: " + ex.message, "error"); }
+    }
+
+    function editStudent(id) { window.location.href = `add.html?edit=${id}`; }
+
+    async function emailStudent(id) {
+      const s = state.students.find(x => String(x.id) === String(id));
+      const name = s ? s.name : 'Student';
+      const subject = prompt(`Send email to ${name}\nSubject:`);
+      if (!subject) return;
+      const message = prompt(`Message for ${name}:`);
+      if (!message) return;
+      try {
+        await SmartCampusAPI.emailStudent(id, subject, message);
+        SmartCampusUI.showToast(`Email sent to ${name}`, "success");
+      } catch (ex) { SmartCampusUI.showToast("Failed: " + ex.message, "error"); }
+    }
+
+    function showError(msg) {
+      document.getElementById("stepContent").innerHTML = `<p style="color:var(--error);text-align:center;padding:2rem">${esc(msg)}</p>`;
+    }
+
+    // Modal helpers (reuse from render.js)
+    function openModal(id) { const el = document.getElementById(id); if (el) el.style.display = "flex"; }
+    function closeModal(id) { const el = document.getElementById(id); if (el) el.style.display = "none"; }
+  </script>
+</body>
+</html>

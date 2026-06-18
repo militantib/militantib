@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browse Financial Records - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root { --excel-header: #44546a; --excel-border: #d0d7de; }
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: .3rem .5rem; align-items: center; font-size: .85rem; padding: .6rem 0; margin-bottom: .5rem; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb span { color: var(--gray-500); }
+    .breadcrumb .current { color: var(--gray-800); font-weight: 600; }
+    .step-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
+    .step-title i { margin-right: .4rem; color: var(--primary); }
+    .hierarchy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .hierarchy-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 1.25rem; text-align: center; cursor: pointer; transition: all .2s; position: relative; }
+    .hierarchy-card:hover { border-color: var(--primary); box-shadow: 0 2px 12px rgba(0,0,0,.08); transform: translateY(-2px); }
+    .hierarchy-card .h-icon { font-size: 1.8rem; color: var(--primary); margin-bottom: .5rem; }
+    .hierarchy-card .h-name { font-weight: 600; font-size: .95rem; }
+    .hierarchy-card .h-count { font-size: .75rem; color: var(--gray-500); margin-top: .25rem; }
+    .year-grid { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .year-btn { padding: 1rem 2rem; border: 1px solid var(--gray-200); border-radius: 10px; background: #fff; cursor: pointer; font-weight: 600; font-size: .95rem; transition: all .2s; min-width: 140px; text-align: center; }
+    .year-btn:hover { border-color: var(--primary); background: #f0f4ff; }
+    .year-btn .y-icon { font-size: 1.4rem; display: block; margin-bottom: .3rem; color: var(--primary); }
+    .table-toolbar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .table-toolbar input, .table-toolbar select { padding: .45rem .6rem; border: 1px solid var(--gray-200); border-radius: 6px; }
+    .table-toolbar input { flex: 1; min-width: 180px; }
+    .excel-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .excel-table th { background: var(--excel-header); color: #fff; padding: .6rem .5rem; text-align: left; font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap; position: relative; }
+    .excel-table th:hover { filter: brightness(1.1); }
+    .excel-table th i { margin-left: .3rem; font-size: .7rem; }
+    .excel-table td { padding: .5rem; border: 1px solid var(--excel-border); }
+    .excel-table tr:nth-child(even) { background: #f8f9fa; }
+    .excel-table tr:hover { background: #eef2ff; }
+    .excel-table .actions { display: flex; gap: .25rem; }
+    .excel-table .actions button { font-size: .7rem; padding: .2rem .45rem; }
+    .pagination { display: flex; gap: .3rem; align-items: center; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+    .pagination button { padding: .4rem .7rem; border: 1px solid var(--gray-200); border-radius: 5px; background: #fff; cursor: pointer; font-size: .8rem; }
+    .pagination button:hover { background: var(--gray-100); }
+    .pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .pagination button:disabled { opacity: .4; cursor: default; }
+    .export-bar { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .stat-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: .5rem; margin-bottom: 1rem; }
+    .stat-summary .s { text-align: center; padding: .5rem; background: var(--gray-100); border-radius: 6px; }
+    .stat-summary .s h4 { font-size: 1rem; margin: 0; }
+    .stat-summary .s p { font-size: .65rem; color: var(--gray-600); margin: .1rem 0 0; }
+    .badge-success { background: var(--success); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .badge-warning { background: var(--warning); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .badge-error { background: var(--error); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .badge-info { background: var(--info); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .back-link { display: inline-block; margin-bottom: .5rem; font-size: .85rem; color: var(--primary); cursor: pointer; }
+    .back-link:hover { text-decoration: underline; }
+    .empty-hierarchy { text-align: center; padding: 4rem 1rem; color: var(--gray-400); }
+    .empty-hierarchy i { font-size: 3rem; margin-bottom: .75rem; }
+    .restricted-badge { display: inline-block; font-size: .7rem; background: var(--gray-200); color: var(--gray-600); border-radius: 4px; padding: .15rem .5rem; }
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem 1rem; }
+    .profile-grid .f label { font-weight: 600; font-size: .75rem; color: var(--gray-600); display: block; text-transform: uppercase; letter-spacing: .3px; }
+    .profile-grid .f p { margin: .15rem 0 .5rem; font-size: .9rem; }
+    @media (max-width: 600px) { .hierarchy-grid { grid-template-columns: 1fr 1fr; } .profile-grid { grid-template-columns: 1fr; } .year-grid { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0">Browse Financial Records</h1>
+      <a href="../finance.html" class="btn btn-outline btn-sm">&larr; Back to Dashboard</a>
+    </div>
+    <div style="margin-top:.3rem"><span class="restricted-badge"><i class="fa-solid fa-eye"></i> View-only &middot; Records synced from Finance Department</span></div>
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb" id="breadcrumb"><a href="../finance.html">Finance Management</a> <span>/</span> <span class="current">Browse Financial Records</span></div>
+
+    <!-- Stats -->
+    <div class="stat-summary" id="browseStats"></div>
+
+    <!-- Step Content -->
+    <div id="stepContent"></div>
+  </div>
+
+  <!-- Student Financial Profile Modal -->
+  <div class="modal-overlay" id="profileModal" style="display:none" onclick="if(event.target===this)closeModal('profileModal')">
+    <div class="modal" style="max-width:750px">
+      <h3 id="profileName" style="margin-bottom:1rem">Student Financial Profile</h3>
+      <div id="profileBody"></div>
+      <div style="margin-top:1rem;display:flex;gap:.5rem">
+        <button class="btn btn-outline btn-sm" onclick="closeModal('profileModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    // ----- State -----
+    let state = {
+      schools: [], departments: [], programmes: [], students: [],
+      selectedSchoolId: null, selectedSchoolName: '',
+      selectedDeptId: null, selectedDeptName: '',
+      selectedProgId: null, selectedProgName: '',
+      selectedYear: '',
+      currentStep: 0,
+      sortCol: null, sortDir: 'asc', page: 1, pageSize: 20,
+      searchQuery: '', statusFilter: ''
+    };
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (currentRole !== "University Super Admin") {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2><p>Only University Super Admin can access Finance Management.</p><a href="../dashboard.html" class="btn btn-primary">Go to Dashboard</a></div>';
+        return;
+      }
+      await loadSchools();
+      loadStats();
+    });
+
+    function buildBreadcrumb() {
+      const bc = document.getElementById("breadcrumb");
+      let html = '<a href="../finance.html">Finance Management</a> <span>/</span> <a href="../finance/browse.html">Browse Financial Records</a>';
+      if (state.selectedSchoolName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(1)">${esc(state.selectedSchoolName)}</a>`;
+      if (state.selectedDeptName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(2)">${esc(state.selectedDeptName)}</a>`;
+      if (state.selectedProgName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(3)">${esc(state.selectedProgName)}</a>`;
+      if (state.selectedYear) html += ` <span>/</span> <span class="current">${esc(state.selectedYear)}</span>`;
+      bc.innerHTML = html;
+    }
+
+    async function loadStats() {
+      try {
+        const res = await SmartCampusAPI.withFallback(
+          () => SmartCampusAPI.fetchFinanceAnalytics(),
+          () => ({ data: {} })
+        );
+        const d = res.data || res;
+        const total = d.totalStudents || 0;
+        const schools = Object.keys(d.revenueBySchool || {}).length;
+        document.getElementById("browseStats").innerHTML = `
+          <div class="s"><h4>${total}</h4><p>Students</p></div>
+          <div class="s"><h4>${schools || '...'}</h4><p>Schools</p></div>
+          <div class="s"><h4>NLE${(d.totalRevenue || 0).toLocaleString()}</h4><p>Revenue</p></div>
+          <div class="s"><h4>NLE${(d.outstandingRevenue || 0).toLocaleString()}</h4><p>Outstanding</p></div>
+        `;
+      } catch {}
+    }
+
+    function resetTo(step) {
+      if (step <= 1) { state.selectedSchoolId = null; state.selectedSchoolName = ''; state.departments = []; }
+      if (step <= 2) { state.selectedDeptId = null; state.selectedDeptName = ''; state.programmes = []; }
+      if (step <= 3) { state.selectedProgId = null; state.selectedProgName = ''; }
+      if (step <= 4) { state.selectedYear = ''; }
+      state.currentStep = step;
+      state.page = 1;
+      buildBreadcrumb();
+      if (step === 1) renderSchools();
+      else if (step === 2) renderDepartments();
+      else if (step === 3) renderProgrammes();
+      else if (step === 4) renderYears();
+    }
+
+    // ----- Step 1: Schools -----
+    async function loadSchools() {
+      try {
+        state.schools = await SmartCampusAPI.fetchSchools() || [];
+        state.currentStep = 1;
+        renderSchools();
+      } catch (ex) { showError("Failed to load schools: " + ex.message); }
+    }
+
+    function renderSchools() {
+      const el = document.getElementById("stepContent");
+      let html = '<div class="step-title"><i class="fa-solid fa-school"></i>Select a School</div><div class="hierarchy-grid">';
+      state.schools.forEach(s => {
+        html += `<div class="hierarchy-card" onclick="selectSchool('${s.id}','${esc(s.name)}')">
+          <div class="h-icon"><i class="fa-solid fa-school"></i></div>
+          <div class="h-name">${esc(s.name)}</div>
+          <div class="h-count">${s.departments ? s.departments.length + ' departments' : ''}</div>
+        </div>`;
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    async function selectSchool(id, name) {
+      state.selectedSchoolId = id;
+      state.selectedSchoolName = name;
+      try {
+        state.departments = await SmartCampusAPI.fetchDepartments(id) || [];
+        state.currentStep = 2;
+        buildBreadcrumb();
+        renderDepartments();
+      } catch (ex) { showError("Failed to load departments: " + ex.message); }
+    }
+
+    // ----- Step 2: Departments -----
+    function renderDepartments() {
+      const el = document.getElementById("stepContent");
+      if (!state.departments.length) {
+        el.innerHTML = '<div class="empty-hierarchy"><i class="fa-solid fa-building"></i><p>No departments found for this school.</p></div>';
+        return;
+      }
+      let html = '<div class="step-title"><i class="fa-solid fa-sitemap"></i>Select a Department</div><div class="hierarchy-grid">';
+      state.departments.forEach(d => {
+        html += `<div class="hierarchy-card" onclick="selectDept('${d.id}','${esc(d.name)}')">
+          <div class="h-icon"><i class="fa-solid fa-building"></i></div>
+          <div class="h-name">${esc(d.name)}</div>
+          <div class="h-count">${d.programmes ? d.programmes.length + ' programmes' : ''}</div>
+        </div>`;
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    function selectDept(id, name) {
+      state.selectedDeptId = id;
+      state.selectedDeptName = name;
+      loadProgrammes(id);
+    }
+
+    // ----- Step 3: Programmes -----
+    async function loadProgrammes(deptId) {
+      try {
+        state.programmes = await SmartCampusAPI.fetchProgrammes(deptId) || [];
+        state.currentStep = 3;
+        buildBreadcrumb();
+        renderProgrammes();
+      } catch (ex) { showError("Failed to load programmes: " + ex.message); }
+    }
+
+    function renderProgrammes() {
+      const el = document.getElementById("stepContent");
+      if (!state.programmes.length) {
+        el.innerHTML = '<div class="empty-hierarchy"><i class="fa-solid fa-graduation-cap"></i><p>No programmes found for this department.</p></div>';
+        return;
+      }
+      let html = '<div class="step-title"><i class="fa-solid fa-graduation-cap"></i>Select a Programme</div><div class="hierarchy-grid">';
+      state.programmes.forEach(p => {
+        html += `<div class="hierarchy-card" onclick="selectProg('${p.id}','${esc(p.name)}')">
+          <div class="h-icon"><i class="fa-solid fa-book-open"></i></div>
+          <div class="h-name">${esc(p.name)}</div>
+        </div>`;
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    function selectProg(id, name) {
+      state.selectedProgId = id;
+      state.selectedProgName = name;
+      state.currentStep = 4;
+      buildBreadcrumb();
+      renderYears();
+    }
+
+    // ----- Step 4: Years -----
+    function renderYears() {
+      const el = document.getElementById("stepContent");
+      const years = ["Year 1", "Year 2", "Year 3", "Year 4"];
+      let html = '<div class="step-title"><i class="fa-solid fa-layer-group"></i>Select Year / Level</div><div class="year-grid">';
+      years.forEach(y => {
+        html += `<div class="year-btn" onclick="selectYear('${y}')">
+          <span class="y-icon"><i class="fa-solid fa-layer-group"></i></span>${y}
+        </div>`;
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    function selectYear(year) {
+      state.selectedYear = year;
+      state.page = 1;
+      state.currentStep = 5;
+      buildBreadcrumb();
+      loadStudentRecords();
+    }
+
+    // ----- Step 5: Student Payment Records -----
+    async function loadStudentRecords() {
+      const el = document.getElementById("stepContent");
+      el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading financial records...</p>';
+      try {
+        const res = await SmartCampusAPI.fetchFinanceReport(
+          state.selectedSchoolId, state.selectedDeptId, state.selectedProgId, state.selectedYear
+        );
+        const report = res.data || res;
+        state.students = report.studentDetails || [];
+        renderTable(report);
+      } catch (ex) { showError("Failed to load records: " + ex.message); }
+    }
+
+    function renderTable(report) {
+      const el = document.getElementById("stepContent");
+      let filtered = [...state.students];
+
+      if (state.searchQuery) {
+        const q = state.searchQuery.toLowerCase();
+        filtered = filtered.filter(s =>
+          (s.name || '').toLowerCase().includes(q) ||
+          (s.registrationNumber || '').toLowerCase().includes(q) ||
+          (s.email || '').toLowerCase().includes(q)
+        );
+      }
+
+      if (state.statusFilter) {
+        filtered = filtered.filter(s => (s.paymentStatus || '') === state.statusFilter);
+      }
+
+      if (state.sortCol) {
+        filtered.sort((a, b) => {
+          let va = (a[state.sortCol] || '').toString().toLowerCase();
+          let vb = (b[state.sortCol] || '').toString().toLowerCase();
+          if (['totalFee','paidAmount','balance'].includes(state.sortCol)) {
+            va = Number(a[state.sortCol] || 0);
+            vb = Number(b[state.sortCol] || 0);
+          }
+          return state.sortDir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+        });
+      }
+
+      const total = filtered.length;
+      const totalPages = Math.ceil(total / state.pageSize) || 1;
+      if (state.page > totalPages) state.page = totalPages;
+      const start = (state.page - 1) * state.pageSize;
+      const pageItems = filtered.slice(start, start + state.pageSize);
+
+      const selName = state.selectedProgName || state.selectedDeptName || state.selectedSchoolName || '';
+
+      let html = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem">
+          <div class="step-title" style="margin:0"><i class="fa-solid fa-money-bill-wave"></i>Payment Records — ${esc(selName)} — ${esc(state.selectedYear)}</div>
+          <div><span style="font-size:.85rem;color:var(--gray-600)">${total} student${total!==1?'s':''} &middot; NLE${(report.totalFeeCollected || 0).toLocaleString()} collected &middot; NLE${(report.outstandingFees || 0).toLocaleString()} outstanding</span></div>
+        </div>
+
+        <div class="table-toolbar">
+          <input id="searchInput" placeholder="Search by name, reg#, email..." value="${esc(state.searchQuery)}" onkeyup="debouncedSearch()">
+          <select id="statusFilterSelect" onchange="changeStatusFilter(this.value)">
+            <option value="">All Status</option>
+            <option value="Fully Paid" ${state.statusFilter==='Fully Paid'?'selected':''}>Fully Paid</option>
+            <option value="Partially Paid" ${state.statusFilter==='Partially Paid'?'selected':''}>Partially Paid</option>
+            <option value="No Payment" ${state.statusFilter==='No Payment'?'selected':''}>No Payment</option>
+            <option value="Not Set" ${state.statusFilter==='Not Set'?'selected':''}>Not Set</option>
+          </select>
+          <div class="export-bar">
+            <button class="btn btn-outline btn-sm" onclick="exportCsv()" title="Export to CSV"><i class="fa-solid fa-file-excel"></i> Excel</button>
+            <button class="btn btn-outline btn-sm" onclick="exportPdf()" title="Export to PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+            <button class="btn btn-outline btn-sm" onclick="window.print()" title="Print"><i class="fa-solid fa-print"></i> Print</button>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto;border:1px solid var(--excel-border);border-radius:6px">
+        <table class="excel-table">
+          <thead><tr>
+            <th onclick="sortTable('registrationNumber')">Reg # ${sortIcon('registrationNumber')}</th>
+            <th onclick="sortTable('name')">Student Name ${sortIcon('name')}</th>
+            <th onclick="sortTable('school')">School ${sortIcon('school')}</th>
+            <th onclick="sortTable('department')">Department ${sortIcon('department')}</th>
+            <th onclick="sortTable('programme')">Programme ${sortIcon('programme')}</th>
+            <th onclick="sortTable('yearLevel')">Level ${sortIcon('yearLevel')}</th>
+            <th onclick="sortTable('totalFee')">Total Fees ${sortIcon('totalFee')}</th>
+            <th onclick="sortTable('paidAmount')">Amount Paid ${sortIcon('paidAmount')}</th>
+            <th onclick="sortTable('balance')">Outstanding ${sortIcon('balance')}</th>
+            <th onclick="sortTable('paymentStatus')">Status ${sortIcon('paymentStatus')}</th>
+            <th>Last Payment</th>
+            <th>Receipt No</th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody>`;
+
+      if (!pageItems.length) {
+        html += `<tr><td colspan="13" style="text-align:center;padding:2rem;color:var(--gray-400)">No records match your criteria.</td></tr>`;
+      } else {
+        pageItems.forEach(s => {
+          const badgeCls = s.paymentStatus === 'Fully Paid' ? 'badge-success' : s.paymentStatus === 'Partially Paid' ? 'badge-warning' : 'badge-error';
+          html += `<tr>
+            <td>${esc(s.registrationNumber || '-')}</td>
+            <td><strong>${esc(s.name)}</strong></td>
+            <td>${esc(s.school || '-')}</td>
+            <td>${esc(s.department || '-')}</td>
+            <td>${esc(s.programme || '-')}</td>
+            <td>${esc(s.yearLevel || '-')}</td>
+            <td>NLE${(s.totalFee || 0).toLocaleString()}</td>
+            <td>NLE${(s.paidAmount || 0).toLocaleString()}</td>
+            <td>NLE${(s.balance || 0).toLocaleString()}</td>
+            <td><span class="${badgeCls}">${esc(s.paymentStatus || 'Not Set')}</span></td>
+            <td>${esc(s.lastPaymentDate || '-')}</td>
+            <td>${esc(s.lastReceipt || '-')}</td>
+            <td class="actions">
+              <button class="btn btn-outline btn-sm" onclick="viewProfile(${s.studentId})" title="View Financial Profile"><i class="fa-solid fa-eye"></i></button>
+            </td>
+          </tr>`;
+        });
+      }
+
+      html += `</tbody></table></div>`;
+
+      html += `<div class="pagination">
+        <button onclick="goPage(1)" ${state.page<=1?'disabled':''}><i class="fa-solid fa-angles-left"></i></button>
+        <button onclick="goPage(${state.page-1})" ${state.page<=1?'disabled':''}><i class="fa-solid fa-angle-left"></i></button>`;
+      for (let p = Math.max(1, state.page-2); p <= Math.min(totalPages, state.page+2); p++) {
+        html += `<button onclick="goPage(${p})" class="${p===state.page?'active':''}">${p}</button>`;
+      }
+      html += `<button onclick="goPage(${state.page+1})" ${state.page>=totalPages?'disabled':''}><i class="fa-solid fa-angle-right"></i></button>
+        <button onclick="goPage(${totalPages})" ${state.page>=totalPages?'disabled':''}><i class="fa-solid fa-angles-right"></i></button>
+        <span style="font-size:.8rem;color:var(--gray-500);margin-left:.5rem">Page ${state.page} of ${totalPages}</span>
+      </div>`;
+
+      el.innerHTML = html;
+    }
+
+    function sortIcon(col) {
+      if (state.sortCol !== col) return '<i class="fa-solid fa-sort" style="opacity:.3"></i>';
+      return state.sortDir === 'asc' ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>';
+    }
+
+    function sortTable(col) {
+      if (state.sortCol === col) {
+        state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.sortCol = col;
+        state.sortDir = 'asc';
+      }
+      renderTableReport();
+    }
+
+    function goPage(p) { state.page = p; renderTableReport(); }
+    let searchTimer;
+    function debouncedSearch() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.searchQuery = document.getElementById("searchInput").value;
+        state.page = 1;
+        renderTableReport();
+      }, 300);
+    }
+    function changeStatusFilter(val) { state.statusFilter = val; state.page = 1; renderTableReport(); }
+
+    async function renderTableReport() {
+      const res = await SmartCampusAPI.fetchFinanceReport(
+        state.selectedSchoolId, state.selectedDeptId, state.selectedProgId, state.selectedYear
+      );
+      const report = res.data || res;
+      state.students = report.studentDetails || [];
+      renderTable(report);
+    }
+
+    // ----- Profile -----
+    async function viewProfile(studentId) {
+      document.getElementById("profileName").textContent = "Student Financial Profile";
+      document.getElementById("profileBody").innerHTML = '<p style="color:var(--gray-300)"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</p>';
+      openModal("profileModal");
+
+      try {
+        const res = await SmartCampusAPI.fetchStudentFinanceProfile(studentId);
+        const p = res.data || res;
+        const statusCls = p.status === 'Fully Paid' ? 'badge-success' : p.status === 'Partially Paid' ? 'badge-warning' : 'badge-error';
+        document.getElementById("profileName").textContent = `Financial Profile — ${esc(p.name)}`;
+        document.getElementById("profileBody").innerHTML = `
+          <div class="profile-grid" style="margin-bottom:1rem">
+            <div class="f"><label>Name</label><p>${esc(p.name)}</p></div>
+            <div class="f"><label>Student ID</label><p>${studentId}</p></div>
+            <div class="f"><label>Reg Number</label><p>${esc(p.registrationNumber || '-')}</p></div>
+            <div class="f"><label>Email</label><p>${esc(p.email)}</p></div>
+            <div class="f"><label>School</label><p>${esc(p.school || '-')}</p></div>
+            <div class="f"><label>Department</label><p>${esc(p.department || '-')}</p></div>
+            <div class="f"><label>Programme</label><p>${esc(p.programme || '-')}</p></div>
+            <div class="f"><label>Year/Level</label><p>${esc(p.yearLevel || '-')}</p></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem">
+            <div class="stat-card"><h4>NLE${(p.totalFee || 0).toLocaleString()}</h4><p>Total Fees</p></div>
+            <div class="stat-card"><h4 style="color:var(--success)">NLE${(p.totalPaid || 0).toLocaleString()}</h4><p>Total Paid</p></div>
+            <div class="stat-card"><h4 style="color:${(p.balance || 0) > 0 ? 'var(--error)' : 'var(--success)'}">NLE${(p.balance || 0).toLocaleString()}</h4><p>Balance</p></div>
+            <div class="stat-card"><h4><span class="${statusCls}">${esc(p.status)}</span></h4><p>Status</p></div>
+          </div>
+          <h4 style="margin:.75rem 0 .5rem">Fee Records</h4>
+          <div class="table-responsive">${(p.feeRecords || []).length
+            ? `<table class="excel-table"><thead><tr><th>Year</th><th>Semester</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead><tbody>`
+                + p.feeRecords.map(r => `<tr><td>${esc(r.academicYear)}</td><td>${esc(r.semester)}</td><td>NLE${(r.totalFee||0).toLocaleString()}</td><td>NLE${(r.paidAmount||0).toLocaleString()}</td><td>NLE${((r.totalFee||0)-(r.paidAmount||0)).toLocaleString()}</td><td><span class="${r.status === 'Paid' ? 'badge-success' : r.status === 'Partial' ? 'badge-warning' : 'badge-error'}">${esc(r.status)}</span></td></tr>`).join("")
+                + '</tbody></table>'
+            : '<p style="color:var(--gray-300)">No fee records</p>'}</div>
+          <h4 style="margin:.75rem 0 .5rem">Payment History</h4>
+          <div class="table-responsive">${(p.payments || []).length
+            ? `<table class="excel-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th><th>Processed By</th><th>Date/Time</th></tr></thead><tbody>`
+                + p.payments.map(py => `<tr><td>${esc(py.paymentDate)}</td><td>NLE${(py.amount||0).toLocaleString()}</td><td>${esc(py.method||'')}</td><td>${esc(py.reference||'')}</td><td>${esc(py.processedBy||'Finance Officer')}</td><td>${esc(py.processedAt||'')}</td></tr>`).join("")
+                + '</tbody></table>'
+            : '<p style="color:var(--gray-300)">No payments</p>'}</div>
+          <h4 style="margin:.75rem 0 .5rem">Audit Trail</h4>
+          <div class="table-responsive">${(p.auditLogs || []).length
+            ? `<table class="excel-table"><thead><tr><th>Date</th><th>Action</th><th>By</th><th>Details</th></tr></thead><tbody>`
+                + p.auditLogs.map(l => `<tr><td>${l.createdAt ? new Date(l.createdAt).toLocaleString() : ''}</td><td>${esc(l.action)}</td><td>${esc(l.performedBy||'')}</td><td>${esc(l.details||'')}</td></tr>`).join("")
+                + '</tbody></table>'
+            : '<p style="color:var(--gray-300)">No audit records</p>'}</div>
+        `;
+      } catch {
+        document.getElementById("profileBody").innerHTML = '<p style="color:var(--error)">Failed to load profile.</p>';
+      }
+    }
+
+    // ----- CSV Export -----
+    function exportCsv() {
+      let csv = '\uFEFFRegistration Number,Student Name,School,Department,Programme,Level,Total Fees,Amount Paid,Outstanding Balance,Payment Status,Last Payment Date,Receipt Number\n';
+      state.students.forEach(s => {
+        csv += `"${s.registrationNumber||''}","${s.name||''}","${s.school||''}","${s.department||''}","${s.programme||''}","${s.yearLevel||''}",${s.totalFee||0},${s.paidAmount||0},${s.balance||0},"${s.paymentStatus||''}","${s.lastPaymentDate||''}","${s.lastReceipt||''}"\n`;
+      });
+      downloadBlob(csv, 'financial_records.csv', 'text/csv;charset=utf-8');
+    }
+
+    function exportPdf() {
+      let html = '<html><head><meta charset="utf-8"><title>Financial Records</title><style>table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ccc;padding:4px;text-align:left}th{background:#44546a;color:#fff}</style></head><body>';
+      html += `<h2>Financial Records — ${esc(state.selectedProgName || '')} ${esc(state.selectedYear)}</h2>`;
+      html += '<table><thead><tr><th>Reg #</th><th>Name</th><th>School</th><th>Dept</th><th>Programme</th><th>Level</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead><tbody>';
+      state.students.forEach(s => {
+        html += `<tr><td>${esc(s.registrationNumber||'')}</td><td>${esc(s.name||'')}</td><td>${esc(s.school||'')}</td><td>${esc(s.department||'')}</td><td>${esc(s.programme||'')}</td><td>${esc(s.yearLevel||'')}</td><td>${(s.totalFee||0).toLocaleString()}</td><td>${(s.paidAmount||0).toLocaleString()}</td><td>${(s.balance||0).toLocaleString()}</td><td>${esc(s.paymentStatus||'')}</td></tr>`;
+      });
+      html += '</tbody></table></body></html>';
+      const win = window.open('', '_blank');
+      if (win) { win.document.write(html); win.document.close(); win.print(); }
+    }
+
+    function downloadBlob(content, filename, mime) {
+      const blob = new Blob([content], { type: mime });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+
+    window.showError = function(msg) {
+      const el = document.getElementById("stepContent");
+      if (el) el.innerHTML = `<div class="empty-hierarchy"><i class="fa-solid fa-triangle-exclamation" style="color:var(--error)"></i><p style="color:var(--error)">${esc(msg)}</p></div>`;
+    };
+
+    window.openModal = function(id) { const el = document.getElementById(id); if (el) el.style.display = "flex"; };
+    window.closeModal = function(id) { const el = document.getElementById(id); if (el) el.style.display = "none"; };
+  </script>
+</body>
+</html>

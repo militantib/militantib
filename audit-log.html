@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit Log - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .audit-header { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem; }
+    .audit-header h1 { margin:0; font-size:1.6rem; }
+    .audit-header p { color:var(--gray-600); margin:.25rem 0 0; font-size:.9rem; }
+    .audit-count { font-size:.85rem; color:var(--gray-500); background:var(--gray-100); padding:.25rem .75rem; border-radius:20px; white-space:nowrap; }
+    .filter-bar { display:flex; flex-wrap:wrap; gap:.75rem; align-items:flex-end; background:white; border-radius:var(--border-radius); box-shadow:var(--box-shadow); padding:1rem 1.5rem; margin-bottom:1.5rem; }
+    .filter-group { display:flex; flex-direction:column; gap:.25rem; }
+    .filter-group label { font-size:.75rem; font-weight:600; color:var(--gray-700); }
+    .filter-group input, .filter-group select { padding:.45rem .65rem; border:1px solid var(--gray-200); border-radius:6px; font-size:.82rem; font-family:inherit; min-width:120px; }
+    .filter-group input:focus, .filter-group select:focus { outline:none; border-color:var(--info); box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+    .filter-actions { display:flex; gap:.5rem; align-items:flex-end; margin-left:auto; }
+    .stats-row { display:grid; grid-template-columns:repeat(6,1fr); gap:.75rem; margin-bottom:1.5rem; }
+    .stat-card-audit { background:white; border-radius:var(--border-radius); box-shadow:var(--box-shadow); padding:.85rem .75rem; text-align:center; }
+    .stat-card-audit h3 { margin:0; font-size:1.25rem; }
+    .stat-card-audit p { margin:.15rem 0 0; font-size:.7rem; color:var(--gray-600); text-transform:uppercase; letter-spacing:.04em; }
+    .stat-card-audit .stat-icon { font-size:1.1rem; margin-bottom:.25rem; }
+    .table-wrap { overflow-x:auto; }
+    .table-wrap table { width:100%; border-collapse:collapse; font-size:.8rem; }
+    .table-wrap th { background:#44546a; color:#fff; padding:.55rem .5rem; text-align:left; font-weight:600; white-space:nowrap; cursor:pointer; user-select:none; position:relative; }
+    .table-wrap th:hover { filter:brightness(1.1); }
+    .table-wrap th .sort-icon { margin-left:.35rem; font-size:.65rem; opacity:.5; }
+    .table-wrap th.sort-asc .sort-icon, .table-wrap th.sort-desc .sort-icon { opacity:1; }
+    .table-wrap td { padding:.45rem .5rem; border:1px solid #d0d7de; vertical-align:middle; }
+    .table-wrap tbody tr { transition:background .12s; cursor:pointer; }
+    .table-wrap tbody tr:hover { background:#f0f4ff; }
+    .table-wrap tbody tr:nth-child(even) { background:#f8f9fa; }
+    .table-wrap tbody tr:nth-child(even):hover { background:#f0f4ff; }
+    .action-badge { display:inline-block; padding:.15rem .5rem; border-radius:4px; font-size:.7rem; font-weight:600; color:#fff; }
+    .action-badge.create { background:var(--success); }
+    .action-badge.update { background:var(--info); }
+    .action-badge.delete { background:var(--error); }
+    .action-badge.approve { background:#8b5cf6; }
+    .action-badge.reject { background:#f97316; }
+    .action-badge.login { background:#14b8a6; }
+    .action-badge.logout { background:var(--neutral); }
+    .action-badge.password_change { background:#e11d48; }
+    .action-badge.settings_change { background:var(--warning); }
+    .action-badge.default { background:var(--neutral); }
+    .pagination { display:flex; align-items:center; justify-content:center; gap:.5rem; margin-top:1rem; flex-wrap:wrap; }
+    .pagination button { padding:.35rem .75rem; border:1px solid var(--gray-200); border-radius:6px; background:#fff; cursor:pointer; font-size:.8rem; transition:var(--transition); }
+    .pagination button:hover:not(:disabled) { background:var(--gray-100); border-color:var(--info); }
+    .pagination button:disabled { opacity:.4; cursor:default; }
+    .pagination button.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+    .pagination .page-info { font-size:.8rem; color:var(--gray-600); }
+    .view-btn { padding:.2rem .55rem; font-size:.72rem; border:1px solid var(--gray-200); border-radius:4px; background:transparent; cursor:pointer; color:var(--info); transition:var(--transition); }
+    .view-btn:hover { background:var(--info); color:#fff; border-color:var(--info); }
+    .modal-dialog.audit-modal { max-width:650px; }
+    .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+    .detail-field { }
+    .detail-field label { font-size:.75rem; font-weight:600; color:var(--gray-600); display:block; margin-bottom:.1rem; text-transform:uppercase; letter-spacing:.03em; }
+    .detail-field .value { font-size:.9rem; color:var(--gray-900); word-break:break-word; }
+    .detail-field .value-full { grid-column:1/-1; }
+    .detail-field.full-width { grid-column:1/-1; }
+    .expanded-row { display:none; }
+    .expanded-row.open { display:table-row; }
+    .expanded-row td { background:#f8faff; padding:.75rem 1rem; }
+    .expanded-inner { font-size:.78rem; color:var(--gray-700); max-width:600px; }
+    .expanded-inner strong { color:var(--gray-900); }
+    .user-search-wrap { position:relative; }
+    .user-search-results { position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid var(--gray-200); border-radius:6px; box-shadow:0 6px 20px rgba(0,0,0,.1); max-height:180px; overflow-y:auto; z-index:50; display:none; }
+    .user-search-results.open { display:block; }
+    .user-search-results .usr-item { padding:.4rem .65rem; font-size:.8rem; cursor:pointer; border-bottom:1px solid var(--gray-100); transition:background .12s; }
+    .user-search-results .usr-item:hover { background:var(--gray-100); }
+    .empty-state { text-align:center; padding:3rem 1rem; color:var(--gray-400); }
+    .empty-state i { font-size:2.5rem; margin-bottom:.75rem; }
+    .empty-state p { font-size:.9rem; }
+    @media (max-width:900px) {
+      .stats-row { grid-template-columns:repeat(3,1fr); }
+      .detail-grid { grid-template-columns:1fr; }
+    }
+    @media (max-width:600px) {
+      .stats-row { grid-template-columns:repeat(2,1fr); }
+      .filter-bar { flex-direction:column; align-items:stretch; }
+      .filter-actions { margin-left:0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">&#9776;</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div id="auditPageContent">
+      <div class="audit-header">
+        <div>
+          <h1>System Audit Log</h1>
+          <p>Track all system activities, changes, and user actions</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+          <span class="audit-count" id="totalCountBadge"><i class="fa-solid fa-list"></i> <span id="totalCountDisplay">0</span> entries</span>
+        </div>
+      </div>
+
+      <div class="filter-bar" id="filterBar">
+        <div class="filter-group">
+          <label for="filterDateFrom">From</label>
+          <input type="date" id="filterDateFrom">
+        </div>
+        <div class="filter-group">
+          <label for="filterDateTo">To</label>
+          <input type="date" id="filterDateTo">
+        </div>
+        <div class="filter-group">
+          <label for="filterAction">Action Type</label>
+          <select id="filterAction">
+            <option value="">All</option>
+            <option value="CREATE">CREATE</option>
+            <option value="UPDATE">UPDATE</option>
+            <option value="DELETE">DELETE</option>
+            <option value="APPROVE">APPROVE</option>
+            <option value="REJECT">REJECT</option>
+            <option value="LOGIN">LOGIN</option>
+            <option value="LOGOUT">LOGOUT</option>
+            <option value="PASSWORD_CHANGE">PASSWORD_CHANGE</option>
+            <option value="SETTINGS_CHANGE">SETTINGS_CHANGE</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filterEntity">Entity Type</label>
+          <select id="filterEntity">
+            <option value="">All</option>
+            <option value="User">User</option>
+            <option value="Grade">Grade</option>
+            <option value="Course">Course</option>
+            <option value="Lecturer">Lecturer</option>
+            <option value="Fee">Fee</option>
+            <option value="Enrollment">Enrollment</option>
+            <option value="Profile">Profile</option>
+            <option value="Settings">Settings</option>
+            <option value="Approval">Approval</option>
+          </select>
+        </div>
+        <div class="filter-group user-search-wrap">
+          <label for="filterUser">User</label>
+          <input type="text" id="filterUser" placeholder="Search user..." autocomplete="off">
+          <div class="user-search-results" id="userSearchResults"></div>
+        </div>
+        <div class="filter-actions">
+          <button class="btn btn-primary" id="applyFiltersBtn" type="button"><i class="fa-solid fa-filter"></i> Apply Filters</button>
+          <button class="btn btn-outline" id="clearFiltersBtn" type="button"><i class="fa-solid fa-eraser"></i> Clear</button>
+          <button class="btn btn-outline" id="exportCsvBtn" type="button"><i class="fa-solid fa-download"></i> Export CSV</button>
+        </div>
+      </div>
+
+      <div class="stats-row" id="statsRow">
+        <div class="stat-card-audit"><div class="stat-icon" style="color:var(--info)"><i class="fa-solid fa-list"></i></div><h3 id="statTotal">0</h3><p>Total Entries</p></div>
+        <div class="stat-card-audit"><div class="stat-icon" style="color:var(--success)"><i class="fa-solid fa-calendar-day"></i></div><h3 id="statToday">0</h3><p>Today's Activity</p></div>
+        <div class="stat-card-audit"><div class="stat-icon" style="color:var(--warning)"><i class="fa-solid fa-calendar-week"></i></div><h3 id="statWeek">0</h3><p>This Week</p></div>
+        <div class="stat-card-audit"><div class="stat-icon" style="color:#8b5cf6"><i class="fa-solid fa-calendar-alt"></i></div><h3 id="statMonth">0</h3><p>This Month</p></div>
+        <div class="stat-card-audit"><div class="stat-icon" style="color:var(--success)"><i class="fa-solid fa-plus-circle"></i></div><h3 id="statCreate">0</h3><p>Create Actions</p></div>
+        <div class="stat-card-audit"><div class="stat-icon" style="color:var(--error)"><i class="fa-solid fa-trash-alt"></i></div><h3 id="statDelete">0</h3><p>Delete Actions</p></div>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="table-wrap" id="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-sort="timestamp">Timestamp <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></th>
+                <th data-sort="userName">User <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></th>
+                <th data-sort="userRole">Role <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></th>
+                <th data-sort="action">Action <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></th>
+                <th data-sort="entityType">Entity Type <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></th>
+                <th data-sort="entityId">Entity ID <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></th>
+                <th data-sort="details">Details</th>
+                <th data-sort="ipAddress">IP Address <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></th>
+                <th style="width:60px">Action</th>
+              </tr>
+            </thead>
+            <tbody id="auditTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+    <div id="accessDenied" style="display:none;text-align:center;padding:4rem 1rem">
+      <i class="fa-solid fa-shield-halved" style="font-size:3rem;color:var(--error);margin-bottom:1rem"></i>
+      <h2 style="color:var(--error);margin-bottom:.5rem">Access Denied</h2>
+      <p style="color:var(--gray-600);margin-bottom:1.5rem">Only University Super Admin and School Super Admin can access the Audit Log.</p>
+      <a href="dashboard.html" class="btn btn-primary"><i class="fa-solid fa-house"></i> Go to Dashboard</a>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+    var auditLogsData = [];
+    var filteredLogs = [];
+    var currentPage = 1;
+    var pageSize = 20;
+    var sortField = 'timestamp';
+    var sortDir = 'desc';
+    var selectedUserId = null;
+
+    var mockAuditLogs = (function() {
+      var userIds = [1, 2, 3, 4, 5];
+      var users = [
+        { id: 1, email: 'admin@smartcampus.edu', name: 'Admin User', role: 'University Super Admin' },
+        { id: 2, email: 'school.admin@tech.smartcampus.edu', name: 'Sarah Johnson', role: 'School Super Admin' },
+        { id: 3, email: 'lecturer@smartcampus.edu', name: 'Dr. Michael Brown', role: 'Lecturer' },
+        { id: 4, email: 'dept.admin@smartcampus.edu', name: 'Peter Williams', role: 'Department Admin' },
+        { id: 5, email: 'finance@smartcampus.edu', name: 'Grace Miller', role: 'Finance Officer' }
+      ];
+      var actions = ['CREATE', 'UPDATE', 'DELETE', 'APPROVE', 'REJECT', 'LOGIN', 'LOGOUT', 'PASSWORD_CHANGE', 'SETTINGS_CHANGE'];
+      var entityTypes = ['User', 'Grade', 'Course', 'Lecturer', 'Fee', 'Enrollment', 'Profile', 'Settings', 'Approval'];
+      var ips = ['192.168.1.100', '192.168.1.101', '10.0.0.45', '172.16.0.88', '192.168.1.200'];
+      var now = new Date('2026-06-18T23:59:59');
+      var logs = [];
+
+      function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+      function randomItem(arr) { return arr[randomInt(0, arr.length - 1)]; }
+
+      function daysAgo(d) { var dt = new Date(now); dt.setDate(dt.getDate() - d); dt.setHours(randomInt(6, 22), randomInt(0, 59), randomInt(0, 59)); return dt.toISOString().replace('Z', ''); }
+
+      logs.push({ id: 1, userId: 1, userEmail: 'admin@smartcampus.edu', userName: 'Admin User', userRole: 'University Super Admin', action: 'LOGIN', entityType: 'User', entityId: 1, details: 'User logged in successfully', ipAddress: '192.168.1.100', createdAt: '2026-06-18T08:30:00' });
+      logs.push({ id: 2, userId: 1, userEmail: 'admin@smartcampus.edu', userName: 'Admin User', userRole: 'University Super Admin', action: 'CREATE', entityType: 'Lecturer', entityId: 10, details: 'Created new lecturer: Dr. Jane Doe (LEC-0010)', ipAddress: '192.168.1.100', createdAt: '2026-06-18T09:15:00' });
+      logs.push({ id: 3, userId: 1, userEmail: 'admin@smartcampus.edu', userName: 'Admin User', userRole: 'University Super Admin', action: 'UPDATE', entityType: 'Course', entityId: 5, details: 'Updated course CS201: changed credits from 3 to 4', ipAddress: '192.168.1.100', createdAt: '2026-06-18T10:00:00' });
+      logs.push({ id: 4, userId: 2, userEmail: 'school.admin@tech.smartcampus.edu', userName: 'Sarah Johnson', userRole: 'School Super Admin', action: 'APPROVE', entityType: 'Approval', entityId: 23, details: 'Approved grade submission for CS101 - Semester 2', ipAddress: '192.168.1.101', createdAt: '2026-06-18T11:30:00' });
+      logs.push({ id: 5, userId: 3, userEmail: 'lecturer@smartcampus.edu', userName: 'Dr. Michael Brown', userRole: 'Lecturer', action: 'LOGIN', entityType: 'User', entityId: 3, details: 'User logged in successfully', ipAddress: '10.0.0.45', createdAt: '2026-06-18T07:45:00' });
+      logs.push({ id: 6, userId: 3, userEmail: 'lecturer@smartcampus.edu', userName: 'Dr. Michael Brown', userRole: 'Lecturer', action: 'CREATE', entityType: 'Grade', entityId: 156, details: 'Submitted grade for student Alice Johnson (CS101): 85/100', ipAddress: '10.0.0.45', createdAt: '2026-06-18T12:00:00' });
+      logs.push({ id: 7, userId: 3, userEmail: 'lecturer@smartcampus.edu', userName: 'Dr. Michael Brown', userRole: 'Lecturer', action: 'UPDATE', entityType: 'Grade', entityId: 157, details: 'Updated grade for student Bob Smith (CS101): 72 -> 78/100', ipAddress: '10.0.0.45', createdAt: '2026-06-17T15:20:00' });
+      logs.push({ id: 8, userId: 4, userEmail: 'dept.admin@smartcampus.edu', userName: 'Peter Williams', userRole: 'Department Admin', action: 'LOGIN', entityType: 'User', entityId: 4, details: 'User logged in successfully', ipAddress: '172.16.0.88', createdAt: '2026-06-17T09:00:00' });
+      logs.push({ id: 9, userId: 4, userEmail: 'dept.admin@smartcampus.edu', userName: 'Peter Williams', userRole: 'Department Admin', action: 'REJECT', entityType: 'Approval', entityId: 19, details: 'Rejected grade submission for MATH101 - insufficient documentation', ipAddress: '172.16.0.88', createdAt: '2026-06-17T14:30:00' });
+      logs.push({ id: 10, userId: 5, userEmail: 'finance@smartcampus.edu', userName: 'Grace Miller', userRole: 'Finance Officer', action: 'LOGIN', entityType: 'User', entityId: 5, details: 'User logged in successfully', ipAddress: '192.168.1.200', createdAt: '2026-06-17T08:15:00' });
+      logs.push({ id: 11, userId: 1, userEmail: 'admin@smartcampus.edu', userName: 'Admin User', userRole: 'University Super Admin', action: 'DELETE', entityType: 'User', entityId: 12, details: 'Deleted student account: former.student@smartcampus.edu', ipAddress: '192.168.1.100', createdAt: '2026-06-16T10:45:00' });
+      logs.push({ id: 12, userId: 2, userEmail: 'school.admin@tech.smartcampus.edu', userName: 'Sarah Johnson', userRole: 'School Super Admin', action: 'CREATE', entityType: 'Course', entityId: 8, details: 'Created new course: IT303 - Network Security (3 credits)', ipAddress: '192.168.1.101', createdAt: '2026-06-16T11:00:00' });
+      logs.push({ id: 13, userId: 2, userEmail: 'school.admin@tech.smartcampus.edu', userName: 'Sarah Johnson', userRole: 'School Super Admin', action: 'UPDATE', entityType: 'Settings', entityId: 1, details: 'Changed academic year from 2024/2025 to 2025/2026', ipAddress: '192.168.1.101', createdAt: '2026-06-16T13:20:00' });
+      logs.push({ id: 14, userId: 3, userEmail: 'lecturer@smartcampus.edu', userName: 'Dr. Michael Brown', userRole: 'Lecturer', action: 'LOGOUT', entityType: 'User', entityId: 3, details: 'User logged out', ipAddress: '10.0.0.45', createdAt: '2026-06-16T17:00:00' });
+      logs.push({ id: 15, userId: 4, userEmail: 'dept.admin@smartcampus.edu', userName: 'Peter Williams', userRole: 'Department Admin', action: 'UPDATE', entityType: 'Enrollment', entityId: 42, details: 'Updated enrollment status for student John Doe: Enrolled -> Completed', ipAddress: '172.16.0.88', createdAt: '2026-06-15T09:30:00' });
+      logs.push({ id: 16, userId: 5, userEmail: 'finance@smartcampus.edu', userName: 'Grace Miller', userRole: 'Finance Officer', action: 'CREATE', entityType: 'Fee', entityId: 88, details: 'Created fee record: Student #15 - Semester 1 - NLE 250,000', ipAddress: '192.168.1.200', createdAt: '2026-06-15T10:15:00' });
+      logs.push({ id: 17, userId: 5, userEmail: 'finance@smartcampus.edu', userName: 'Grace Miller', userRole: 'Finance Officer', action: 'UPDATE', entityType: 'Fee', entityId: 88, details: 'Updated fee record: adjusted amount from 250,000 to 275,000', ipAddress: '192.168.1.200', createdAt: '2026-06-15T11:45:00' });
+      logs.push({ id: 18, userId: 1, userEmail: 'admin@smartcampus.edu', userName: 'Admin User', userRole: 'University Super Admin', action: 'SETTINGS_CHANGE', entityType: 'Settings', entityId: 1, details: 'Updated system settings: grading scheme changed to Percentage (0-100)', ipAddress: '192.168.1.100', createdAt: '2026-06-14T08:00:00' });
+      logs.push({ id: 19, userId: 2, userEmail: 'school.admin@tech.smartcampus.edu', userName: 'Sarah Johnson', userRole: 'School Super Admin', action: 'APPROVE', entityType: 'Approval', entityId: 15, details: 'Approved moderation request for IT201 gradebook', ipAddress: '192.168.1.101', createdAt: '2026-06-14T09:30:00' });
+      logs.push({ id: 20, userId: 1, userEmail: 'admin@smartcampus.edu', userName: 'Admin User', userRole: 'University Super Admin', action: 'DELETE', entityType: 'Course', entityId: 9, details: 'Deleted course: OLD101 - Legacy Introduction (no longer offered)', ipAddress: '192.168.1.100', createdAt: '2026-06-13T14:00:00' });
+      logs.push({ id: 21, userId: 3, userEmail: 'lecturer@smartcampus.edu', userName: 'Dr. Michael Brown', userRole: 'Lecturer', action: 'PASSWORD_CHANGE', entityType: 'User', entityId: 3, details: 'Password changed successfully', ipAddress: '10.0.0.45', createdAt: '2026-06-13T16:00:00' });
+      logs.push({ id: 22, userId: 4, userEmail: 'dept.admin@smartcampus.edu', userName: 'Peter Williams', userRole: 'Department Admin', action: 'CREATE', entityType: 'Enrollment', entityId: 45, details: 'Enrolled student Jane Smith in CS201 - Web Development', ipAddress: '172.16.0.88', createdAt: '2026-06-12T10:30:00' });
+      logs.push({ id: 23, userId: 5, userEmail: 'finance@smartcampus.edu', userName: 'Grace Miller', userRole: 'Finance Officer', action: 'UPDATE', entityType: 'Profile', entityId: 5, details: 'Updated profile: changed phone number', ipAddress: '192.168.1.200', createdAt: '2026-06-12T11:00:00' });
+      logs.push({ id: 24, userId: 1, userEmail: 'admin@smartcampus.edu', userName: 'Admin User', userRole: 'University Super Admin', action: 'CREATE', entityType: 'User', entityId: 16, details: 'Created new user account: lecturer.james@smartcampus.edu (Lecturer)', ipAddress: '192.168.1.100', createdAt: '2026-06-11T09:00:00' });
+      logs.push({ id: 25, userId: 2, userEmail: 'school.admin@tech.smartcampus.edu', userName: 'Sarah Johnson', userRole: 'School Super Admin', action: 'DELETE', entityType: 'Enrollment', entityId: 38, details: 'Removed enrollment: Student #22 from MATH101 (withdrawn)', ipAddress: '192.168.1.101', createdAt: '2026-06-10T15:45:00' });
+      logs.push({ id: 26, userId: 3, userEmail: 'lecturer@smartcampus.edu', userName: 'Dr. Michael Brown', userRole: 'Lecturer', action: 'CREATE', entityType: 'Grade', entityId: 160, details: 'Submitted grades for IT201 class: 35 students', ipAddress: '10.0.0.45', createdAt: '2026-06-10T16:30:00' });
+      logs.push({ id: 27, userId: 4, userEmail: 'dept.admin@smartcampus.edu', userName: 'Peter Williams', userRole: 'Department Admin', action: 'APPROVE', entityType: 'Approval', entityId: 12, details: 'Approved department-level grade verification for CS101', ipAddress: '172.16.0.88', createdAt: '2026-06-09T11:00:00' });
+      logs.push({ id: 28, userId: 1, userEmail: 'admin@smartcampus.edu', userName: 'Admin User', userRole: 'University Super Admin', action: 'REJECT', entityType: 'Approval', entityId: 8, details: 'Rejected university-level approval: grade distribution anomaly detected', ipAddress: '192.168.1.100', createdAt: '2026-06-08T13:00:00' });
+      logs.push({ id: 29, userId: 2, userEmail: 'school.admin@tech.smartcampus.edu', userName: 'Sarah Johnson', userRole: 'School Super Admin', action: 'CREATE', entityType: 'Lecturer', entityId: 11, details: 'Created new lecturer: Prof. Emily Davis (LEC-0011)', ipAddress: '192.168.1.101', createdAt: '2026-06-07T10:00:00' });
+      logs.push({ id: 30, userId: 5, userEmail: 'finance@smartcampus.edu', userName: 'Grace Miller', userRole: 'Finance Officer', action: 'DELETE', entityType: 'Fee', entityId: 75, details: 'Deleted duplicate fee record for Student #30', ipAddress: '192.168.1.200', createdAt: '2026-06-06T14:20:00' });
+      logs.push({ id: 31, userId: 1, userEmail: 'admin@smartcampus.edu', userName: 'Admin User', userRole: 'University Super Admin', action: 'LOGOUT', entityType: 'User', entityId: 1, details: 'User logged out', ipAddress: '192.168.1.100', createdAt: '2026-06-05T18:00:00' });
+      logs.push({ id: 32, userId: 3, userEmail: 'lecturer@smartcampus.edu', userName: 'Dr. Michael Brown', userRole: 'Lecturer', action: 'LOGIN', entityType: 'User', entityId: 3, details: 'User logged in from new device', ipAddress: '10.0.0.45', createdAt: '2026-06-04T08:00:00' });
+      logs.push({ id: 33, userId: 4, userEmail: 'dept.admin@smartcampus.edu', userName: 'Peter Williams', userRole: 'Department Admin', action: 'SETTINGS_CHANGE', entityType: 'Settings', entityId: 2, details: 'Changed department grading policy: minimum passing grade set to 50%', ipAddress: '172.16.0.88', createdAt: '2026-06-03T09:15:00' });
+      logs.push({ id: 34, userId: 2, userEmail: 'school.admin@tech.smartcampus.edu', userName: 'Sarah Johnson', userRole: 'School Super Admin', action: 'UPDATE', entityType: 'Lecturer', entityId: 10, details: 'Updated lecturer Dr. Jane Doe: changed department to Computer Science', ipAddress: '192.168.1.101', createdAt: '2026-05-30T11:30:00' });
+      logs.push({ id: 35, userId: 1, userEmail: 'admin@smartcampus.edu', userName: 'Admin User', userRole: 'University Super Admin', action: 'PASSWORD_CHANGE', entityType: 'User', entityId: 1, details: 'Password changed successfully (forced reset)', ipAddress: '192.168.1.100', createdAt: '2026-05-28T10:00:00' });
+      logs.push({ id: 36, userId: 5, userEmail: 'finance@smartcampus.edu', userName: 'Grace Miller', userRole: 'Finance Officer', action: 'CREATE', entityType: 'Fee', entityId: 92, details: 'Created fee structure: BSc CS - Year 3 - NLE 300,000', ipAddress: '192.168.1.200', createdAt: '2026-05-25T14:00:00' });
+      logs.push({ id: 37, userId: 3, userEmail: 'lecturer@smartcampus.edu', userName: 'Dr. Michael Brown', userRole: 'Lecturer', action: 'UPDATE', entityType: 'Profile', entityId: 3, details: 'Updated profile photo', ipAddress: '10.0.0.45', createdAt: '2026-05-22T12:00:00' });
+      logs.push({ id: 38, userId: 4, userEmail: 'dept.admin@smartcampus.edu', userName: 'Peter Williams', userRole: 'Department Admin', action: 'CREATE', entityType: 'Course', entityId: 12, details: 'Created new course: MATH201 - Calculus II (4 credits)', ipAddress: '172.16.0.88', createdAt: '2026-05-20T09:00:00' });
+      logs.push({ id: 39, userId: 1, userEmail: 'admin@smartcampus.edu', userName: 'Admin User', userRole: 'University Super Admin', action: 'DELETE', entityType: 'User', entityId: 20, details: 'Deleted inactive student account: inactive.student@smartcampus.edu', ipAddress: '192.168.1.100', createdAt: '2026-05-18T16:00:00' });
+      logs.push({ id: 40, userId: 2, userEmail: 'school.admin@tech.smartcampus.edu', userName: 'Sarah Johnson', userRole: 'School Super Admin', action: 'REJECT', entityType: 'Approval', entityId: 5, details: 'Rejected school-level approval: grades not within acceptable distribution', ipAddress: '192.168.1.101', createdAt: '2026-05-15T10:30:00' });
+
+      logs.sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+      return logs;
+    })();
+
+    function esc(v) {
+      if (v == null) return '';
+      return String(v).replace(/[&<>"']/g, function(c) { return '&#' + c.charCodeAt(0) + ';'; });
+    }
+
+    function getActionBadgeClass(action) {
+      var a = (action || '').toUpperCase();
+      if (a === 'CREATE') return 'create';
+      if (a === 'UPDATE') return 'update';
+      if (a === 'DELETE') return 'delete';
+      if (a === 'APPROVE') return 'approve';
+      if (a === 'REJECT') return 'reject';
+      if (a === 'LOGIN') return 'login';
+      if (a === 'LOGOUT') return 'logout';
+      if (a === 'PASSWORD_CHANGE') return 'password_change';
+      if (a === 'SETTINGS_CHANGE') return 'settings_change';
+      return 'default';
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '-';
+      try {
+        return new Date(iso).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } catch { return iso; }
+    }
+
+    function formatDateShort(iso) {
+      if (!iso) return '-';
+      try {
+        var d = new Date(iso);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      } catch { return iso; }
+    }
+
+    function getStartOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+
+    function getStartOfWeek(d) { var dt = new Date(d); dt.setDate(dt.getDate() - dt.getDay()); return getStartOfDay(dt); }
+
+    function getStartOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+
+    function computeStats(logs) {
+      var now = new Date();
+      var todayStart = getStartOfDay(now);
+      var weekStart = getStartOfWeek(now);
+      var monthStart = getStartOfMonth(now);
+      var total = logs.length;
+      var today = 0, week = 0, month = 0, create = 0, del = 0;
+      logs.forEach(function(l) {
+        var d = new Date(l.createdAt);
+        if (d >= todayStart) today++;
+        if (d >= weekStart) week++;
+        if (d >= monthStart) month++;
+        if ((l.action || '').toUpperCase() === 'CREATE') create++;
+        if ((l.action || '').toUpperCase() === 'DELETE') del++;
+      });
+      return { total: total, today: today, week: week, month: month, create: create, delete: del };
+    }
+
+    function renderStats(logs) {
+      var stats = computeStats(logs);
+      document.getElementById('statTotal').textContent = stats.total;
+      document.getElementById('statToday').textContent = stats.today;
+      document.getElementById('statWeek').textContent = stats.week;
+      document.getElementById('statMonth').textContent = stats.month;
+      document.getElementById('statCreate').textContent = stats.create;
+      document.getElementById('statDelete').textContent = stats['delete'];
+      document.getElementById('totalCountDisplay').textContent = stats.total;
+    }
+
+    function applyFilters() {
+      var dateFrom = document.getElementById('filterDateFrom').value;
+      var dateTo = document.getElementById('filterDateTo').value;
+      var action = document.getElementById('filterAction').value;
+      var entity = document.getElementById('filterEntity').value;
+      var userQuery = document.getElementById('filterUser').value.trim().toLowerCase();
+
+      filteredLogs = auditLogsData.filter(function(l) {
+        if (dateFrom) { var df = new Date(dateFrom); var ld = new Date(l.createdAt); if (ld < df) return false; }
+        if (dateTo) { var dt = new Date(dateTo); dt.setHours(23,59,59,999); var ld2 = new Date(l.createdAt); if (ld2 > dt) return false; }
+        if (action && (l.action || '').toUpperCase() !== action.toUpperCase()) return false;
+        if (entity && (l.entityType || '').toLowerCase() !== entity.toLowerCase()) return false;
+        if (selectedUserId !== null && l.userId !== selectedUserId) return false;
+        if (userQuery && (l.userName || '').toLowerCase().indexOf(userQuery) === -1 && (l.userEmail || '').toLowerCase().indexOf(userQuery) === -1) return false;
+        return true;
+      });
+
+      sortData();
+      currentPage = 1;
+      renderTable();
+      renderPagination();
+      renderStats(filteredLogs);
+    }
+
+    function clearFilters() {
+      document.getElementById('filterDateFrom').value = '';
+      document.getElementById('filterDateTo').value = '';
+      document.getElementById('filterAction').value = '';
+      document.getElementById('filterEntity').value = '';
+      document.getElementById('filterUser').value = '';
+      selectedUserId = null;
+      document.getElementById('userSearchResults').classList.remove('open');
+      filteredLogs = auditLogsData.slice();
+      sortData();
+      currentPage = 1;
+      renderTable();
+      renderPagination();
+      renderStats(filteredLogs);
+    }
+
+    function sortData() {
+      var field = sortField;
+      var dir = sortDir;
+      filteredLogs.sort(function(a, b) {
+        var va, vb;
+        if (field === 'timestamp') { va = new Date(a.createdAt).getTime(); vb = new Date(b.createdAt).getTime(); }
+        else if (field === 'userName') { va = (a.userName || '').toLowerCase(); vb = (b.userName || '').toLowerCase(); }
+        else if (field === 'userRole') { va = (a.userRole || '').toLowerCase(); vb = (b.userRole || '').toLowerCase(); }
+        else if (field === 'action') { va = (a.action || '').toLowerCase(); vb = (b.action || '').toLowerCase(); }
+        else if (field === 'entityType') { va = (a.entityType || '').toLowerCase(); vb = (b.entityType || '').toLowerCase(); }
+        else if (field === 'entityId') { va = parseInt(a.entityId) || 0; vb = parseInt(b.entityId) || 0; }
+        else if (field === 'ipAddress') { va = (a.ipAddress || '').toLowerCase(); vb = (b.ipAddress || '').toLowerCase(); }
+        else return 0;
+        if (va < vb) return dir === 'asc' ? -1 : 1;
+        if (va > vb) return dir === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    function renderTable() {
+      var tbody = document.getElementById('auditTableBody');
+      var start = (currentPage - 1) * pageSize;
+      var end = Math.min(start + pageSize, filteredLogs.length);
+      var pageData = filteredLogs.slice(start, end);
+
+      if (!pageData.length) {
+        tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><i class="fa-solid fa-search"></i><p>No audit entries found matching your filters.</p></div></td></tr>';
+        return;
+      }
+
+      var html = '';
+      pageData.forEach(function(l) {
+        var badgeClass = getActionBadgeClass(l.action);
+        html += '<tr onclick="toggleRowDetail(this)" data-id="' + l.id + '">';
+        html += '<td style="white-space:nowrap">' + formatDateShort(l.createdAt) + '</td>';
+        html += '<td><strong>' + esc(l.userName) + '</strong><br><span style="font-size:.7rem;color:var(--gray-500)">' + esc(l.userEmail) + '</span></td>';
+        html += '<td style="white-space:nowrap">' + esc(l.userRole) + '</td>';
+        html += '<td><span class="action-badge ' + badgeClass + '">' + esc(l.action) + '</span></td>';
+        html += '<td>' + esc(l.entityType) + '</td>';
+        html += '<td>' + esc(l.entityId) + '</td>';
+        html += '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(l.details) + '</td>';
+        html += '<td style="white-space:nowrap;font-family:monospace;font-size:.75rem">' + esc(l.ipAddress) + '</td>';
+        html += '<td><button class="view-btn" onclick="event.stopPropagation();showDetailModal(' + l.id + ')" type="button">View</button></td>';
+        html += '</tr>';
+        html += '<tr class="expanded-row" data-detail-id="' + l.id + '"><td colspan="9"><div class="expanded-inner"><strong>Details:</strong> ' + esc(l.details) + '<br><strong>IP:</strong> ' + esc(l.ipAddress) + ' &middot; <strong>Full Timestamp:</strong> ' + formatDate(l.createdAt) + '</div></td></tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function toggleRowDetail(tr) {
+      var id = tr.getAttribute('data-id');
+      var detailRow = document.querySelector('tr[data-detail-id="' + id + '"]');
+      if (detailRow) {
+        detailRow.classList.toggle('open');
+      }
+    }
+
+    function renderPagination() {
+      var container = document.getElementById('pagination');
+      var totalPages = Math.ceil(filteredLogs.length / pageSize);
+      if (totalPages <= 1 && filteredLogs.length <= pageSize) {
+        container.innerHTML = '<span class="page-info">Showing ' + filteredLogs.length + ' entries</span>';
+        return;
+      }
+      var html = '<button id="pagePrev" ' + (currentPage <= 1 ? 'disabled' : '') + ' onclick="goPage(' + (currentPage - 1) + ')"><i class="fa-solid fa-chevron-left"></i></button>';
+      var maxVisible = 5;
+      var startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+      var endPage = Math.min(totalPages, startPage + maxVisible - 1);
+      if (endPage - startPage < maxVisible - 1) startPage = Math.max(1, endPage - maxVisible + 1);
+      for (var i = startPage; i <= endPage; i++) {
+        html += '<button class="' + (i === currentPage ? 'active' : '') + '" onclick="goPage(' + i + ')">' + i + '</button>';
+      }
+      html += '<button id="pageNext" ' + (currentPage >= totalPages ? 'disabled' : '') + ' onclick="goPage(' + (currentPage + 1) + ')"><i class="fa-solid fa-chevron-right"></i></button>';
+      html += '<span class="page-info">' + ((currentPage - 1) * pageSize + 1) + '&ndash;' + Math.min(currentPage * pageSize, filteredLogs.length) + ' of ' + filteredLogs.length + '</span>';
+      container.innerHTML = html;
+    }
+
+    function goPage(page) {
+      var totalPages = Math.ceil(filteredLogs.length / pageSize);
+      if (page < 1 || page > totalPages) return;
+      currentPage = page;
+      renderTable();
+      renderPagination();
+    }
+
+    function showDetailModal(id) {
+      var log = auditLogsData.find(function(l) { return l.id === id; });
+      if (!log) return;
+      var actionBadge = '<span class="action-badge ' + getActionBadgeClass(log.action) + '">' + esc(log.action) + '</span>';
+      var html = '<div class="detail-grid">';
+      html += '<div class="detail-field"><label>Timestamp</label><div class="value">' + formatDate(log.createdAt) + '</div></div>';
+      html += '<div class="detail-field"><label>Action</label><div class="value">' + actionBadge + '</div></div>';
+      html += '<div class="detail-field"><label>User</label><div class="value"><strong>' + esc(log.userName) + '</strong></div></div>';
+      html += '<div class="detail-field"><label>Email</label><div class="value">' + esc(log.userEmail) + '</div></div>';
+      html += '<div class="detail-field"><label>Role</label><div class="value">' + esc(log.userRole) + '</div></div>';
+      html += '<div class="detail-field"><label>User ID</label><div class="value">' + esc(log.userId) + '</div></div>';
+      html += '<div class="detail-field"><label>Entity Type</label><div class="value">' + esc(log.entityType) + '</div></div>';
+      html += '<div class="detail-field"><label>Entity ID</label><div class="value">' + esc(log.entityId) + '</div></div>';
+      html += '<div class="detail-field"><label>IP Address</label><div class="value" style="font-family:monospace">' + esc(log.ipAddress) + '</div></div>';
+      html += '<div class="detail-field"><label>Log ID</label><div class="value">' + esc(log.id) + '</div></div>';
+      html += '<div class="detail-field full-width"><label>Details</label><div class="value value-full">' + esc(log.details) + '</div></div>';
+      html += '</div>';
+
+      SmartCampusUI.openModal({
+        title: 'Audit Entry #' + log.id,
+        bodyHtml: html,
+        confirmText: 'Close',
+        showCancel: false
+      });
+    }
+
+    function exportCsv() {
+      if (!filteredLogs.length) {
+        SmartCampusUI.showToast('No data to export.', 'warning');
+        return;
+      }
+      var headers = ['Timestamp', 'User', 'Email', 'Role', 'Action', 'Entity Type', 'Entity ID', 'Details', 'IP Address'];
+      var rows = filteredLogs.map(function(l) {
+        return [
+          l.createdAt || '',
+          l.userName || '',
+          l.userEmail || '',
+          l.userRole || '',
+          l.action || '',
+          l.entityType || '',
+          String(l.entityId || ''),
+          (l.details || '').replace(/"/g, '""'),
+          l.ipAddress || ''
+        ];
+      });
+      var csvContent = '\uFEFF' + headers.join(',') + '\n' + rows.map(function(r) { return r.map(function(v) { return /[,"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','); }).join('\n');
+      var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'audit_log_export_' + new Date().toISOString().slice(0, 10) + '.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      SmartCampusUI.showToast('Exported ' + filteredLogs.length + ' entries.', 'success');
+    }
+
+    function setupSorting() {
+      var headers = document.querySelectorAll('.table-wrap th[data-sort]');
+      headers.forEach(function(th) {
+        th.addEventListener('click', function() {
+          var field = th.getAttribute('data-sort');
+          if (sortField === field) {
+            sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortField = field;
+            sortDir = 'asc';
+          }
+          headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+          th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+          th.querySelector('.sort-icon i').className = 'fa-solid fa-sort';
+          if (sortDir === 'asc') th.querySelector('.sort-icon i').className = 'fa-solid fa-sort-up';
+          else th.querySelector('.sort-icon i').className = 'fa-solid fa-sort-down';
+          sortData();
+          renderTable();
+          renderPagination();
+        });
+      });
+    }
+
+    function setupUserSearch() {
+      var input = document.getElementById('filterUser');
+      var results = document.getElementById('userSearchResults');
+      var timer;
+
+      function getUniqueUsers() {
+        var seen = {};
+        return auditLogsData.filter(function(l) {
+          var key = l.userId;
+          if (seen[key]) return false;
+          seen[key] = true;
+          return true;
+        }).map(function(l) { return { id: l.userId, name: l.userName, email: l.userEmail, role: l.userRole }; });
+      }
+
+      input.addEventListener('input', function() {
+        clearTimeout(timer);
+        var q = input.value.trim().toLowerCase();
+        if (q.length < 1) { results.classList.remove('open'); selectedUserId = null; return; }
+        timer = setTimeout(function() {
+          var users = getUniqueUsers().filter(function(u) {
+            return u.name.toLowerCase().indexOf(q) !== -1 || u.email.toLowerCase().indexOf(q) !== -1;
+          });
+          if (!users.length) {
+            results.innerHTML = '<div class="usr-item" style="color:var(--gray-400)">No matching users</div>';
+            results.classList.add('open');
+            return;
+          }
+          var html = '';
+          users.forEach(function(u) {
+            html += '<div class="usr-item" data-userid="' + u.id + '" data-name="' + esc(u.name) + '"><strong>' + esc(u.name) + '</strong> <span style="color:var(--gray-500);font-size:.75rem">' + esc(u.email) + '</span></div>';
+          });
+          results.innerHTML = html;
+          results.classList.add('open');
+          results.querySelectorAll('.usr-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+              selectedUserId = parseInt(el.getAttribute('data-userid'));
+              input.value = el.getAttribute('data-name');
+              results.classList.remove('open');
+              applyFilters();
+            });
+          });
+        }, 250);
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.user-search-wrap')) results.classList.remove('open');
+      });
+    }
+
+    function init() {
+      document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+      document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
+      document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+      setupSorting();
+      setupUserSearch();
+
+      var container = document.getElementById('auditPageContent');
+      var denied = document.getElementById('accessDenied');
+
+      var allowed = currentRole === 'University Super Admin' || currentRole === 'School Super Admin';
+      if (!allowed) {
+        container.style.display = 'none';
+        denied.style.display = 'block';
+        return;
+      }
+
+      container.style.display = 'block';
+      denied.style.display = 'none';
+
+      (async function loadAuditLogs() {
+        var logs;
+        try {
+          var data = await SmartCampusAPI.fetchSystemAuditLogs({ page: 0, size: 200 });
+          var dd = data && data.data;
+          logs = Array.isArray(dd) ? dd : (Array.isArray(data) ? data : null);
+          if (!logs || !logs.length) throw new Error('empty');
+          auditLogsData = logs;
+          SmartCampusUI.showToast('Loaded ' + logs.length + ' audit entries from server.', 'info');
+        } catch (e) {
+          auditLogsData = mockAuditLogs.slice();
+          SmartCampusUI.showToast('Using mock audit data (' + auditLogsData.length + ' entries).', 'info');
+        }
+        filteredLogs = auditLogsData.slice();
+        sortData();
+        renderTable();
+        renderPagination();
+        renderStats(filteredLogs);
+      })();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      var checkInterval = setInterval(function() {
+        if (typeof currentRole !== 'undefined' && typeof SmartCampusAPI !== 'undefined') {
+          clearInterval(checkInterval);
+          init();
+        }
+      }, 50);
+    });
+  </script>
+</body>
+</html>

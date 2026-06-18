@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Dashboard - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    .sd-welcome { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem; }
+    .sd-welcome h1 { margin:0; font-size:1.6rem; }
+    .sd-welcome p { margin:.2rem 0 0; font-size:.9rem; color:var(--gray-700); }
+    .sd-welcome-actions { display:flex; gap:.5rem; flex-wrap:wrap; }
+    .sd-welcome-actions .btn { font-size:.82rem; padding:.4rem .85rem; }
+
+    .sd-profile-card { display:flex; align-items:center; gap:1.25rem; flex-wrap:wrap; }
+    .sd-avatar { width:80px; height:80px; border-radius:50%; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:700; flex-shrink:0; }
+    .sd-avatar img { width:80px; height:80px; border-radius:50%; object-fit:cover; }
+    .sd-profile-info { flex:1; min-width:200px; }
+    .sd-profile-info h2 { margin:0 0 .15rem; font-size:1.15rem; }
+    .sd-profile-info .sd-meta { display:flex; flex-wrap:wrap; gap:.3rem 1rem; font-size:.8rem; color:var(--gray-700); margin-top:.2rem; }
+    .sd-profile-info .sd-meta span { display:inline-flex; align-items:center; gap:.3rem; }
+    .sd-status-badge { display:inline-block; padding:.2rem .65rem; border-radius:10px; font-size:.7rem; font-weight:600; }
+    .sd-status-badge.active { background:#d1fae5; color:#065f46; }
+    .sd-status-badge.inactive { background:#fef3c7; color:#92400e; }
+
+    .stat-row { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:.85rem; margin-bottom:1.5rem; }
+    .stat-card { background:#fff; border:1px solid var(--gray-200); border-radius:10px; padding:1rem .75rem; text-align:center; transition:var(--transition); }
+    .stat-card:hover { box-shadow:0 4px 12px rgba(0,0,0,.06); transform:translateY(-1px); }
+    .stat-card .num { font-size:1.5rem; font-weight:700; margin-bottom:.1rem; }
+    .stat-card .label { font-size:.72rem; color:var(--gray-600); }
+    .stat-card .s-icon { font-size:1.2rem; margin-bottom:.3rem; }
+
+    .action-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:.85rem; margin-bottom:1.5rem; }
+    .action-card { display:flex; flex-direction:column; align-items:center; gap:.5rem; padding:1.25rem .75rem; background:#fff; border:1px solid var(--gray-200); border-radius:10px; text-align:center; cursor:pointer; text-decoration:none; color:var(--gray-900); transition:var(--transition); }
+    .action-card:hover { border-color:var(--info); box-shadow:0 4px 16px rgba(59,130,246,.12); transform:translateY(-2px); color:var(--gray-900); }
+    .action-card i { font-size:1.6rem; }
+    .action-card span { font-size:.82rem; font-weight:500; }
+    .action-card small { font-size:.7rem; color:var(--gray-500); }
+
+    .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; }
+    .chart-box { position:relative; height:240px; width:100%; }
+
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem; }
+    .course-card { display:flex; justify-content:space-between; align-items:center; padding:.65rem .85rem; border:1px solid var(--gray-200); border-radius:8px; margin-bottom:.5rem; transition:var(--transition); }
+    .course-card:hover { background:var(--gray-50); }
+    .course-card .cc-info { flex:1; }
+    .course-card .cc-info h4 { margin:0; font-size:.9rem; }
+    .course-card .cc-info p { margin:.15rem 0 0; font-size:.75rem; color:var(--gray-600); }
+    .course-card .cc-schedule { font-size:.72rem; color:var(--gray-600); text-align:right; }
+    .deadline-item { display:flex; justify-content:space-between; align-items:center; padding:.6rem .75rem; border-bottom:1px solid var(--gray-100); }
+    .deadline-item:last-child { border-bottom:none; }
+    .deadline-item .di-info { flex:1; }
+    .deadline-item .di-info h4 { margin:0; font-size:.85rem; }
+    .deadline-item .di-info p { margin:.1rem 0 0; font-size:.72rem; color:var(--gray-600); }
+    .deadline-item .di-date { text-align:right; font-size:.75rem; }
+    .deadline-item .di-date .countdown { display:block; font-size:.7rem; color:var(--warning); font-weight:600; }
+
+    .mini-table { width:100%; font-size:.82rem; }
+    .mini-table td { padding:.4rem .5rem; }
+    .mini-table th { padding:.4rem .5rem; font-size:.75rem; }
+
+    .fee-progress { margin-bottom:1rem; }
+    .fee-progress .fp-bar { height:10px; background:var(--gray-200); border-radius:10px; overflow:hidden; margin:.4rem 0; }
+    .fee-progress .fp-bar .fp-fill { height:100%; background:var(--success); border-radius:10px; transition:width .6s ease; }
+    .fee-progress .fp-stats { display:flex; justify-content:space-between; font-size:.78rem; color:var(--gray-700); }
+
+    .notif-item { display:flex; align-items:flex-start; gap:.75rem; padding:.65rem 0; border-bottom:1px solid var(--gray-100); }
+    .notif-item:last-child { border-bottom:none; }
+    .notif-item .ni-icon { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:.85rem; }
+    .notif-item .ni-content { flex:1; }
+    .notif-item .ni-content h4 { margin:0; font-size:.85rem; }
+    .notif-item .ni-content p { margin:.1rem 0 0; font-size:.75rem; color:var(--gray-600); }
+    .notif-item .ni-time { font-size:.7rem; color:var(--gray-400); white-space:nowrap; }
+
+    .sd-footer { text-align:center; padding:1.5rem 0 .5rem; border-top:1px solid var(--gray-200); margin-top:1rem; font-size:.8rem; color:var(--gray-600); }
+
+    .access-denied { text-align:center; padding:4rem 2rem; }
+    .access-denied i { font-size:3rem; color:var(--error); margin-bottom:1rem; }
+    .access-denied h2 { color:var(--error); }
+    .access-denied p { color:var(--gray-600); margin-top:.5rem; }
+
+    @media (max-width:900px) { .two-col,.chart-row { grid-template-columns:1fr; } }
+    @media (max-width:600px) { .stat-row { grid-template-columns:1fr 1fr; } .action-grid { grid-template-columns:1fr 1fr; } .sd-profile-card { flex-direction:column; text-align:center; } .sd-profile-info .sd-meta { justify-content:center; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div id="sdLoading" style="text-align:center;padding:3rem"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--gray-400)"></i><p style="color:var(--gray-500);margin-top:.5rem">Loading dashboard...</p></div>
+
+    <div id="sdContent" style="display:none">
+
+      <div class="sd-welcome">
+        <div>
+          <h1 id="sdGreeting">Good morning</h1>
+          <p id="sdSemester">Semester 1 | Academic Year <span id="sdAcademicYear">2024/2025</span></p>
+        </div>
+        <div class="sd-welcome-actions">
+          <button class="btn btn-outline" onclick="downloadIDCard()"><i class="fa-solid fa-id-card"></i> Download ID Card</button>
+          <button class="btn btn-outline" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sd-profile-card">
+          <div class="sd-avatar" id="sdAvatarContainer">
+            <span id="sdAvatarInitials">JD</span>
+          </div>
+          <div class="sd-profile-info">
+            <h2 id="sdProfileName">John Doe</h2>
+            <div class="sd-meta">
+              <span><i class="fa-solid fa-id-badge"></i> Reg No: <strong id="sdRegNo">NCS-2022-001</strong></span>
+              <span><i class="fa-solid fa-graduation-cap"></i> <strong id="sdProgramme">BSc Computer Science</strong></span>
+              <span><i class="fa-solid fa-layer-group"></i> Year <strong id="sdYearLevel">2</strong></span>
+              <span><i class="fa-solid fa-building"></i> <span id="sdSchool">School of Technology</span></span>
+              <span><i class="fa-solid fa-sitemap"></i> <span id="sdDepartment">Department of Physics & Computer Science</span></span>
+              <span><span class="sd-status-badge active" id="sdStatusBadge">Active</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-row" id="sdStatsRow"></div>
+
+      <h2 style="font-size:1.1rem;margin-bottom:.75rem"><i class="fa-solid fa-gauge-high"></i> Quick Actions</h2>
+      <div class="action-grid" id="sdActionGrid"></div>
+
+      <div class="chart-row">
+        <div class="card">
+          <div class="card-header"><h3 style="margin:0;font-size:.95rem"><i class="fa-solid fa-chart-bar" style="color:var(--info)"></i> Weekly Activity</h3></div>
+          <div class="chart-box"><canvas id="weeklyActivityChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 style="margin:0;font-size:.95rem"><i class="fa-solid fa-chart-pie" style="color:var(--success)"></i> Grade Distribution</h3></div>
+          <div class="chart-box"><canvas id="gradeDistributionChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h3 style="margin:0;font-size:.95rem"><i class="fa-solid fa-book-open" style="color:var(--info)"></i> My Current Courses</h3></div>
+          <div id="sdCoursesList"><p style="color:var(--gray-400);font-size:.85rem">Loading courses...</p></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 style="margin:0;font-size:.95rem"><i class="fa-solid fa-calendar-check" style="color:var(--warning)"></i> Upcoming Deadlines</h3></div>
+          <div id="sdDeadlinesList"><p style="color:var(--gray-400);font-size:.85rem">Loading deadlines...</p></div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h3 style="margin:0;font-size:.95rem"><i class="fa-solid fa-medal" style="color:var(--success)"></i> Recent Grades</h3></div>
+          <div class="table-responsive" id="sdRecentGrades"><p style="color:var(--gray-400);font-size:.85rem">Loading grades...</p></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 style="margin:0;font-size:.95rem"><i class="fa-solid fa-coins" style="color:var(--primary)"></i> Fee Summary</h3></div>
+          <div id="sdFeeSummary"><p style="color:var(--gray-400);font-size:.85rem">Loading fee data...</p></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="margin-bottom:0">
+          <h3 style="margin:0;font-size:.95rem"><i class="fa-solid fa-bell" style="color:var(--warning)"></i> Notifications</h3>
+          <a href="messages.html" class="btn btn-link" style="font-size:.8rem">View All <i class="fa-solid fa-arrow-right"></i></a>
+        </div>
+        <div id="sdNotificationsList"><p style="color:var(--gray-400);font-size:.85rem;padding:.75rem 0;margin:0">No notifications</p></div>
+      </div>
+
+      <div class="sd-footer">
+        &copy; 2026 Njala University SmartCampus. All rights reserved. &mdash; SmartCampus v1.0
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+    var weeklyChartInstance = null;
+    var gradeChartInstance = null;
+
+    document.addEventListener("DOMContentLoaded", async function() {
+      if (typeof currentRole === "undefined" || currentRole !== "Student") {
+        document.querySelector(".main-content").innerHTML = '<div class="access-denied"><i class="fa-solid fa-lock"></i><h2>Student Access Only</h2><p>This dashboard is available only for students. Please log in with a student account.</p></div>';
+        return;
+      }
+      await loadStudentDashboard();
+    });
+
+    function esc(v) {
+      if (v == null) return "";
+      var d = document.createElement("div");
+      d.textContent = String(v);
+      return d.innerHTML;
+    }
+
+    function useDashboardData(data, user) {
+      setWelcomeGreeting(user);
+      setProfileCard(user);
+      var enrolled = Array.isArray(data.enrolledCourses) ? data.enrolledCourses.length : (data.enrolledCount || 0);
+      var gpa = data.currentGpa || 0;
+      var credits = data.totalCredits || 0;
+      var feeBal = data.feeBalance || 0;
+      var pubResults = data.publishedResults || 0;
+      document.getElementById("sdStatsRow").innerHTML = [
+        { icon: "fa-book", color: "var(--info)", num: enrolled, label: "Enrolled Courses" },
+        { icon: "fa-star", color: "var(--success)", num: gpa.toFixed(2), label: "Current GPA" },
+        { icon: "fa-layer-group", color: "var(--navy)", num: credits, label: "Total Credits" },
+        { icon: "fa-coins", color: feeBal > 0 ? "var(--warning)" : "var(--success)", num: "NLE " + Number(feeBal).toLocaleString(), label: "Fee Balance" },
+        { icon: "fa-file-lines", color: "var(--success)", num: pubResults, label: "Published Results" }
+      ].map(function(s) {
+        return '<div class="stat-card"><div class="s-icon" style="color:' + s.color + '"><i class="fa-solid ' + s.icon + '"></i></div><div class="num" style="color:' + s.color + '">' + s.num + '</div><div class="label">' + s.label + '</div></div>';
+      }).join("");
+      renderActionCards();
+      // Courses
+      document.getElementById("sdCoursesList").innerHTML = Array.isArray(data.enrolledCourses) ? data.enrolledCourses.slice(0, 6).map(function(c) {
+        return '<div class="course-card"><div class="cc-title"><i class="fa-solid fa-book-open" style="color:var(--info)"></i><div><strong>' + esc(c.code || c.courseCode) + ' - ' + esc(c.title || c.courseTitle) + '</strong><small>' + c.credits + ' Credits</small></div></div></div>';
+      }).join("") : '<p style="color:var(--gray-400);font-size:.85rem">No courses loaded.</p>';
+      // Deadlines
+      document.getElementById("sdDeadlinesList").innerHTML = '<p style="color:var(--gray-400);font-size:.85rem">No upcoming deadlines.</p>';
+      // Fee summary
+      var feeTotal = data.totalFee || 0;
+      var feePaid = data.totalPaid || 0;
+      var totalFeeAmt = data.totalFee || 0;
+      var feePct = totalFeeAmt > 0 ? Math.min(100, Math.round(feePaid / totalFeeAmt * 100)) : 0;
+      document.getElementById("sdFeeSummary").innerHTML = '<div class="fee-progress"><div style="display:flex;justify-content:space-between;font-size:.82rem"><span>Payment Progress</span><span>' + feePct + '%</span></div><div class="fp-bar"><div class="fp-fill" style="width:' + feePct + '%"></div></div><div class="fp-stats"><span>Total: NLE ' + Number(totalFeeAmt).toLocaleString() + '</span><span>Paid: NLE ' + Number(feePaid).toLocaleString() + '</span><span style="color:' + (feeBal > 0 ? "var(--error)" : "var(--success)") + '">Balance: NLE ' + Number(feeBal).toLocaleString() + '</span></div></div><div style="margin-top:.65rem;text-align:right"><a href="fees.html" class="btn btn-link" style="font-size:.8rem">Make payment <i class="fa-solid fa-arrow-right"></i></a></div>';
+      // Recent grades
+      document.getElementById("sdRecentGrades").innerHTML = Array.isArray(data.recentGrades) && data.recentGrades.length ? '<table class="mini-table"><thead><tr><th>Course</th><th>Title</th><th>Score</th><th>Grade</th></tr></thead><tbody>' + data.recentGrades.slice(0, 5).map(function(g) {
+        var badgeClass = g.letterGrade === "A" || g.letterGrade === "B" ? "badge-success" : g.letterGrade === "C" ? "badge-warning" : "badge-error";
+        return '<tr><td>' + esc(g.courseCode) + '</td><td>' + esc(g.courseTitle || "") + '</td><td>' + (g.total != null ? g.total : "-") + '</td><td><span class="badge ' + badgeClass + '">' + esc(g.letterGrade || "-") + '</span></td></tr>';
+      }).join("") + '</tbody></table><div style="margin-top:.5rem;text-align:right"><a href="student_results.html" class="btn btn-link" style="font-size:.8rem">View all results <i class="fa-solid fa-arrow-right"></i></a></div>' : '<p style="color:var(--gray-400);font-size:.85rem">No graded results yet.</p>';
+      // Notifications
+      document.getElementById("sdNotificationsList").innerHTML = Array.isArray(data.notifications) && data.notifications.length ? data.notifications.slice(0, 10).map(function(n) {
+        return '<div class="notif-item' + (n.read ? '' : ' unread') + '"><i class="fa-solid ' + (n.type === "deadline" ? "fa-clock" : n.type === "payment" ? "fa-credit-card" : "fa-bell") + '"></i><div><strong>' + esc(n.title) + '</strong><p>' + esc(n.message) + '</p><small>' + (n.time || "") + '</small></div></div>';
+      }).join("") : '<p style="color:var(--gray-400);font-size:.85rem;padding:.75rem 0;margin:0">No notifications</p>';
+      renderCharts();
+      document.getElementById("sdLoading").style.display = "none";
+      document.getElementById("sdContent").style.display = "block";
+    }
+
+    async function loadStudentDashboard() {
+      try {
+        var user = null;
+        try { user = JSON.parse(localStorage.getItem("sc_user")); } catch(e) {}
+        user = user || { name: "Student", regNo: "NCS-2022-001", programme: "BSc Computer Science", yearLevel: "2", school: "School of Technology", department: "Department of Physics & Computer Science", status: "Active" };
+
+        // Try consolidated dashboard API first
+        if (user && user.id) {
+          try {
+            var dashRes = await SmartCampusAPI.fetchStudentDashboard(user.id);
+            if (dashRes && dashRes.data) {
+              useDashboardData(dashRes.data, user);
+              return;
+            }
+          } catch(e) {}
+        }
+
+        setWelcomeGreeting(user);
+        setProfileCard(user);
+        await loadStats();
+        renderActionCards();
+        await loadCourses();
+        await loadDeadlines();
+        await loadRecentGrades();
+        await loadFeeSummary();
+        await loadNotifications();
+        renderCharts();
+
+        document.getElementById("sdLoading").style.display = "none";
+        document.getElementById("sdContent").style.display = "block";
+      } catch(e) {
+        document.getElementById("sdLoading").innerHTML = '<p style="color:var(--error)">Failed to load dashboard. <button class="btn btn-outline btn-sm" onclick="loadStudentDashboard()">Retry</button></p>';
+      }
+    }
+
+    function setWelcomeGreeting(user) {
+      var h = new Date().getHours();
+      var greeting = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+      var name = (user.name || "Student").split(" ")[0];
+      document.getElementById("sdGreeting").textContent = greeting + ", " + esc(name) + "!";
+      document.getElementById("sdAcademicYear").textContent = "2024/2025";
+    }
+
+    function setProfileCard(user) {
+      document.getElementById("sdProfileName").textContent = esc(user.name || "Student");
+      document.getElementById("sdRegNo").textContent = esc(user.regNo || user.employeeId || "NCS-2022-001");
+      document.getElementById("sdProgramme").textContent = esc(user.programme || "BSc Computer Science");
+      document.getElementById("sdYearLevel").textContent = esc(user.yearLevel || "2");
+      document.getElementById("sdSchool").textContent = esc(user.school || "School of Technology");
+      document.getElementById("sdDepartment").textContent = esc(user.department || "Department of Physics & Computer Science");
+
+      var badge = document.getElementById("sdStatusBadge");
+      var status = user.status || "Active";
+      badge.textContent = status;
+      badge.className = "sd-status-badge " + (status === "Active" ? "active" : "inactive");
+
+      var initials = (user.name || "Student").split(" ").map(function(s) { return s.charAt(0); }).join("").toUpperCase().slice(0,2);
+      document.getElementById("sdAvatarInitials").textContent = initials || "S";
+    }
+
+    async function loadWithFallback(apiFn, fallbackFn) {
+      try { return await apiFn(); } catch(e) { return fallbackFn(); }
+    }
+
+    async function loadStats() {
+      var container = document.getElementById("sdStatsRow");
+
+      var data = await loadWithFallback(
+        function() {
+          return SmartCampusAPI.fetchEnrollments();
+        },
+        function() {
+          return [
+            { status: "Enrolled", courseId: "CS101" },
+            { status: "Enrolled", courseId: "CS102" },
+            { status: "Enrolled", courseId: "MATH101" },
+            { status: "Enrolled", courseId: "IT101" }
+          ];
+        }
+      );
+
+      var coursesCount = Array.isArray(data) ? data.filter(function(e) { return e.status === "Enrolled"; }).length : 0;
+
+      var gpaData = await loadWithFallback(
+        function() { return SmartCampusAPI.fetchStudentGrades(); },
+        function() { return 3.45; }
+      );
+      var gpa = typeof gpaData === "number" ? gpaData : (gpaData && gpaData.gpa != null ? gpaData.gpa : 3.45);
+
+      var creditsData = await loadWithFallback(
+        function() { return SmartCampusAPI.fetchEnrollments(); },
+        function() { return 48; }
+      );
+      var credits = Array.isArray(creditsData) ? 48 : (creditsData && creditsData.totalCredits != null ? creditsData.totalCredits : 48);
+
+      var feeData = await loadWithFallback(
+        function() {
+          var uid = 1;
+          try { var u = JSON.parse(localStorage.getItem("sc_user")); if (u && u.id) uid = u.id; } catch(e) {}
+          return SmartCampusAPI.fetchFees(uid);
+        },
+        function() { return { balance: 375000, totalFee: 775000, paidAmount: 400000 }; }
+      );
+      var feeBalance = feeData && feeData.balance != null ? feeData.balance : 375000;
+      var totalFee = feeData && feeData.totalFee != null ? feeData.totalFee : 775000;
+
+      var gradesData = await loadWithFallback(
+        function() { return SmartCampusAPI.fetchStudentGrades(); },
+        function() { return [
+          { status: "Published", courseCode: "CS101" },
+          { status: "Published", courseCode: "CS102" },
+          { status: "Published", courseCode: "MATH101" }
+        ]; }
+      );
+      var publishedCount = Array.isArray(gradesData) ? gradesData.filter(function(g) { return g.status === "Published"; }).length : 0;
+
+      var stats = [
+        { icon: "fa-book", color: "var(--info)", num: coursesCount || 6, label: "Enrolled Courses" },
+        { icon: "fa-star", color: "var(--success)", num: typeof gpa === "number" ? gpa.toFixed(2) : "3.45", label: "Current GPA" },
+        { icon: "fa-layer-group", color: "var(--navy)", num: credits, label: "Total Credits" },
+        { icon: "fa-coins", color: feeBalance > 0 ? "var(--warning)" : "var(--success)", num: "NLE " + (feeBalance).toLocaleString(), label: "Fee Balance" },
+        { icon: "fa-file-lines", color: "var(--success)", num: publishedCount || 3, label: "Published Results" }
+      ];
+
+      container.innerHTML = stats.map(function(s) {
+        return '<div class="stat-card"><div class="s-icon" style="color:' + s.color + '"><i class="fa-solid ' + s.icon + '"></i></div><div class="num" style="color:' + s.color + '">' + s.num + '</div><div class="label">' + s.label + '</div></div>';
+      }).join("");
+    }
+
+    function renderActionCards() {
+      var actions = [
+        { icon: "fa-calendar-days", color: "var(--info)", label: "View Timetable", desc: "Class schedule", href: "timetable.html" },
+        { icon: "fa-pen-to-square", color: "var(--success)", label: "Register Courses", desc: "Course registration", href: "course-registration.html" },
+        { icon: "fa-chart-bar", color: "var(--warning)", label: "View Grades", desc: "Academic performance", href: "student_results.html" },
+        { icon: "fa-money-bill-wave", color: "var(--error)", label: "Pay Fees", desc: "Fee payments", href: "fees.html" },
+        { icon: "fa-folder-open", color: "var(--neutral)", label: "View Documents", desc: "Academic documents", href: "documents.html" }
+      ];
+
+      document.getElementById("sdActionGrid").innerHTML = actions.map(function(a) {
+        return '<a class="action-card" href="' + a.href + '"><i class="fa-solid ' + a.icon + '" style="color:' + a.color + '"></i><span>' + a.label + '</span><small>' + a.desc + '</small></a>';
+      }).join("");
+    }
+
+    async function loadCourses() {
+      var container = document.getElementById("sdCoursesList");
+
+      var courses = await loadWithFallback(
+        function() { return SmartCampusAPI.fetchCourses(); },
+        function() {
+          var all = [];
+          var keys = Object.keys(curriculumModules || {});
+          var count = 0;
+          for (var y = 0; y < keys.length && count < 6; y++) {
+            var sems = curriculumModules[keys[y]];
+            var semKeys = Object.keys(sems);
+            for (var s = 0; s < semKeys.length && count < 6; s++) {
+              var mods = sems[semKeys[s]];
+              for (var m = 0; m < mods.length && count < 6; m++) {
+                var mod = mods[m];
+                all.push({ code: mod.code, title: mod.title, credits: mod.credits, schedule: "Mon " + (8 + count) + ":00-10:00", lecturer: "Dr. " + (["Kamara","Sesay","Johnson","Williams","Bangura","Koroma"][count] || "Smith"), type: mod.type });
+                count++;
+              }
+            }
+          }
+          return all;
+        }
+      );
+
+      var list = Array.isArray(courses) ? courses : (courses && courses.data ? courses.data : []);
+      if (!list.length) {
+        container.innerHTML = '<p style="color:var(--gray-400);font-size:.85rem">No courses enrolled yet.</p>';
+        return;
+      }
+
+      container.innerHTML = list.slice(0, 5).map(function(c) {
+        var typeBadge = c.type === "Core" || c.type === "core" ? "badge-info" : "badge-warning";
+        return '<div class="course-card"><div class="cc-info"><h4>' + esc(c.code) + ' - ' + esc(c.title) + '</h4><p><span class="badge ' + typeBadge + '" style="font-size:.65rem;padding:.15rem .5rem">' + esc(c.type || "Core") + '</span> &middot; ' + esc(c.lecturer || "Staff") + ' &middot; ' + (c.credits || 3) + ' cr.</p></div><div class="cc-schedule">' + esc(c.schedule || "TBA") + '</div></div>';
+      }).join("") + (list.length > 5 ? '<div style="text-align:center;margin-top:.5rem"><a href="courses.html" class="btn btn-link" style="font-size:.8rem">View all ' + list.length + ' courses <i class="fa-solid fa-arrow-right"></i></a></div>' : "");
+    }
+
+    async function loadDeadlines() {
+      var container = document.getElementById("sdDeadlinesList");
+
+      var deadlines = await loadWithFallback(
+        function() { return []; },
+        function() {
+          return [
+            { course: "CS201", title: "Data Structures Coursework", dueDate: "2026-06-25", status: "Pending" },
+            { course: "IT201", title: "Web Development Project", dueDate: "2026-06-28", status: "In Progress" },
+            { course: "MATH202", title: "Statistics Report", dueDate: "2026-07-02", status: "Pending" },
+            { course: "CS202", title: "Algorithms Assignment", dueDate: "2026-07-10", status: "Pending" },
+            { course: "IT102", title: "Database Design Doc", dueDate: "2026-07-15", status: "Not Started" }
+          ];
+        }
+      );
+
+      var list = Array.isArray(deadlines) ? deadlines : [];
+      if (!list.length) {
+        container.innerHTML = '<p style="color:var(--gray-400);font-size:.85rem">No upcoming deadlines.</p>';
+        return;
+      }
+
+      function getCountdown(dateStr) {
+        var now = new Date();
+        var target = new Date(dateStr);
+        var diff = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+        if (diff < 0) return "Overdue";
+        if (diff === 0) return "Due today";
+        if (diff === 1) return "1 day left";
+        return diff + " days left";
+      }
+
+      container.innerHTML = list.slice(0, 5).map(function(d) {
+        var countdown = getCountdown(d.dueDate);
+        var urgent = countdown === "Overdue" || countdown.indexOf("1 day") !== -1 || countdown.indexOf("Due today") !== -1;
+        return '<div class="deadline-item"><div class="di-info"><h4>' + esc(d.title) + '</h4><p>' + esc(d.course) + ' &middot; ' + esc(d.status || "Pending") + '</p></div><div class="di-date">' + d.dueDate + '<span class="countdown" style="color:' + (urgent ? "var(--error)" : "var(--warning)") + '">' + countdown + '</span></div></div>';
+      }).join("");
+    }
+
+    async function loadRecentGrades() {
+      var container = document.getElementById("sdRecentGrades");
+
+      var grades = await loadWithFallback(
+        function() { return SmartCampusAPI.fetchStudentGrades(); },
+        function() {
+          return [
+            { courseCode: "CS101", courseTitle: "Intro to Computing", total: 82, letterGrade: "A", status: "Published" },
+            { courseCode: "MATH101", courseTitle: "Discrete Mathematics", total: 76, letterGrade: "B+", status: "Published" },
+            { courseCode: "IT101", courseTitle: "Information Systems", total: 68, letterGrade: "B", status: "Published" },
+            { courseCode: "CS102", courseTitle: "Programming Fundamentals", total: 71, letterGrade: "B", status: "Published" }
+          ];
+        }
+      );
+
+      var list = Array.isArray(grades) ? grades : [];
+      var published = list.filter(function(g) { return g.status === "Published" || g.status == null; });
+
+      if (!published.length) {
+        container.innerHTML = '<p style="color:var(--gray-400);font-size:.85rem">No graded results yet.</p>';
+        return;
+      }
+
+      var html = '<table class="mini-table"><thead><tr><th>Course</th><th>Title</th><th>Score</th><th>Grade</th></tr></thead><tbody>';
+      published.slice(0, 5).forEach(function(g) {
+        var passed = (g.total || 0) >= 50;
+        html += '<tr><td>' + esc(g.courseCode) + '</td><td>' + esc(g.courseTitle || "") + '</td><td>' + (g.total != null ? g.total : "-") + '</td><td><span class="badge ' + (passed ? "badge-success" : "badge-error") + '">' + esc(g.letterGrade || "-") + '</span></td></tr>';
+      });
+      html += '</tbody></table>';
+      html += '<div style="margin-top:.5rem;text-align:right"><a href="student_results.html" class="btn btn-link" style="font-size:.8rem">View all results <i class="fa-solid fa-arrow-right"></i></a></div>';
+
+      container.innerHTML = html;
+    }
+
+    async function loadFeeSummary() {
+      var container = document.getElementById("sdFeeSummary");
+
+      var feeData = await loadWithFallback(
+        function() {
+          var uid = 1;
+          try { var u = JSON.parse(localStorage.getItem("sc_user")); if (u && u.id) uid = u.id; } catch(e) {}
+          return SmartCampusAPI.fetchFees(uid);
+        },
+        function() { return { totalFee: 775000, paidAmount: 400000, balance: 375000, nextDue: "2026-07-15" }; }
+      );
+
+      var total = feeData && feeData.totalFee != null ? feeData.totalFee : 775000;
+      var paid = feeData && feeData.paidAmount != null ? feeData.paidAmount : 400000;
+      var balance = feeData && feeData.balance != null ? feeData.balance : (total - paid);
+      var nextDue = (feeData && feeData.nextDue) || "2026-07-15";
+
+      var pct = total > 0 ? Math.min(Math.round((paid / total) * 100), 100) : 0;
+
+      container.innerHTML = '<div class="fee-progress"><div style="display:flex;justify-content:space-between;font-size:.82rem"><span>Payment Progress</span><span>' + pct + '%</span></div><div class="fp-bar"><div class="fp-fill" style="width:' + pct + '%"></div></div><div class="fp-stats"><span>Total: NLE ' + total.toLocaleString() + '</span><span>Paid: NLE ' + paid.toLocaleString() + '</span><span style="color:' + (balance > 0 ? "var(--error)" : "var(--success)") + '">Balance: NLE ' + balance.toLocaleString() + '</span></div></div><div style="font-size:.78rem;color:var(--gray-600)"><i class="fa-solid fa-calendar"></i> Next due: ' + nextDue + '</div><div style="margin-top:.65rem;text-align:right"><a href="fees.html" class="btn btn-link" style="font-size:.8rem">Make payment <i class="fa-solid fa-arrow-right"></i></a></div>';
+    }
+
+    async function loadNotifications() {
+      var container = document.getElementById("sdNotificationsList");
+
+      var notifications = await loadWithFallback(
+        function() { return SmartCampusAPI.fetchNotifications(); },
+        function() {
+          return [
+            { id: 1, title: "Results Published", message: "Your CS101 grades are now available for viewing.", time: "2 hours ago", type: "info", read: false },
+            { id: 2, title: "Fee Reminder", message: "Fee balance of NLE 375,000 is due by July 15, 2026.", time: "1 day ago", type: "warning", read: false },
+            { id: 3, title: "Course Registration Open", message: "Semester 2 course registration is now open until June 30.", time: "3 days ago", type: "info", read: true },
+            { id: 4, title: "Assignment Deadline", message: "Data Structures coursework is due on June 25.", time: "5 days ago", type: "info", read: true }
+          ];
+        }
+      );
+
+      var list = Array.isArray(notifications) ? notifications : [];
+      if (!list.length) {
+        container.innerHTML = '<p style="color:var(--gray-400);font-size:.85rem;padding:.5rem 0;margin:0">No notifications</p>';
+        return;
+      }
+
+      var typeColors = { info: "var(--info)", warning: "var(--warning)", success: "var(--success)", error: "var(--error)" };
+      var typeIcons = { info: "fa-circle-info", warning: "fa-triangle-exclamation", success: "fa-circle-check", error: "fa-circle-xmark" };
+
+      container.innerHTML = list.slice(0, 5).map(function(n) {
+        var color = typeColors[n.type] || "var(--info)";
+        var icon = typeIcons[n.type] || "fa-circle-info";
+        return '<div class="notif-item" style="opacity:' + (n.read ? 0.65 : 1) + '"><div class="ni-icon" style="background:' + color + '22;color:' + color + '"><i class="fa-solid ' + icon + '"></i></div><div class="ni-content"><h4>' + esc(n.title) + '</h4><p>' + esc(n.message) + '</p></div><div class="ni-time">' + esc(n.time) + '</div></div>';
+      }).join("");
+    }
+
+    function renderCharts() {
+      renderWeeklyChart();
+      renderGradeChart();
+    }
+
+    function renderWeeklyChart() {
+      var canvas = document.getElementById("weeklyActivityChart");
+      if (!canvas) return;
+      if (weeklyChartInstance) { weeklyChartInstance.destroy(); weeklyChartInstance = null; }
+
+      var days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      var activities = [4, 6, 3, 7, 5, 2, 1];
+
+      weeklyChartInstance = new Chart(canvas, {
+        type: "bar",
+        data: {
+          labels: days,
+          datasets: [{
+            label: "Activities",
+            data: activities,
+            backgroundColor: ["#3B82F6","#3B82F6","#3B82F6","#3B82F6","#3B82F6","#F59E0B","#F59E0B"],
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
+
+    function renderGradeChart() {
+      var canvas = document.getElementById("gradeDistributionChart");
+      if (!canvas) return;
+      if (gradeChartInstance) { gradeChartInstance.destroy(); gradeChartInstance = null; }
+
+      gradeChartInstance = new Chart(canvas, {
+        type: "doughnut",
+        data: {
+          labels: ["A", "B", "C", "D", "F"],
+          datasets: [{
+            data: [3, 5, 2, 1, 0],
+            backgroundColor: ["#10B981","#3B82F6","#F59E0B","#EF4444","#6B7280"],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom", labels: { font: { size: 11 }, padding: 12 } }
+          },
+          cutout: "60%"
+        }
+      });
+    }
+
+    function downloadIDCard() {
+      var user = null;
+      try { user = JSON.parse(localStorage.getItem("sc_user")); } catch(e) {}
+      user = user || { name: "John Doe", regNo: "NCS-2022-001", programme: "BSc Computer Science", school: "School of Technology" };
+
+      var cardHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ID Card</title><style>body{font-family:Arial,sans-serif;padding:20px}.card{width:320px;padding:20px;border:2px solid #0A192F;border-radius:12px;background:#fff;text-align:center}.card h2{color:#0A192F;margin-top:0}.card .avatar{width:80px;height:80px;border-radius:50%;background:#0A192F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;margin:0 auto 10px}.card p{margin:4px 0;font-size:13px;color:#333}.card .footer{margin-top:12px;font-size:10px;color:#888}</style></head><body><div class="card"><h2>Njala University</h2><div class="avatar">' + esc(user.name).charAt(0) + '</div><p><strong>' + esc(user.name) + '</strong></p><p>Reg No: ' + esc(user.regNo || "NCS-2022-001") + '</p><p>' + esc(user.programme || "BSc Computer Science") + '</p><p>' + esc(user.school || "School of Technology") + '</p><div class="footer">SmartCampus Student ID Card</div></div></body></html>';
+
+      var blob = new Blob([cardHtml], { type: "text/html" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "ID_Card_" + (user.name || "student").replace(/\s+/g, "_") + ".html";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

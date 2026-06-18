@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Analytics - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .a-card { text-align: center; padding: 1.25rem; background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; }
+    .a-card .a-icon { font-size: 1.5rem; margin-bottom: .4rem; }
+    .a-card h3 { font-size: 1.5rem; margin: 0; }
+    .a-card p { font-size: .75rem; color: var(--gray-600); margin: .2rem 0 0; }
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+    .chart-row .card { padding: 1rem; }
+    .chart-row canvas { max-height: 280px; }
+    .chart-full { margin-bottom: 1.5rem; }
+    .chart-full .card { padding: 1rem; }
+    .chart-full canvas { max-height: 300px; }
+    .restricted-badge { display: inline-block; font-size: .7rem; background: var(--gray-200); color: var(--gray-600); border-radius: 4px; padding: .15rem .5rem; }
+    .revenue-list { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; }
+    .rev-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 1rem; }
+    .rev-card h4 { font-size: .9rem; margin: 0 0 .5rem; }
+    .rev-card .bar { display: flex; justify-content: space-between; padding: .3rem 0; font-size: .82rem; border-bottom: 1px solid var(--gray-100); }
+    .rev-card .bar:last-child { border-bottom: none; }
+    @media (max-width: 768px) { .chart-row, .revenue-list { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0">Payment Analytics</h1>
+      <a href="../finance.html" class="btn btn-outline btn-sm">&larr; Back to Dashboard</a>
+    </div>
+    <div style="margin-top:.3rem"><span class="restricted-badge"><i class="fa-solid fa-eye"></i> View-only analytics</span></div>
+
+    <div class="breadcrumb" style="display:flex;flex-wrap:wrap;gap:.3rem .5rem;align-items:center;font-size:.85rem;padding:.6rem 0">
+      <a href="../finance.html">Finance Management</a> <span>/</span> <span class="current" style="color:var(--gray-800);font-weight:600">Payment Analytics</span>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="analytics-grid" id="analyticsCards"></div>
+
+    <!-- Charts -->
+    <div class="chart-row">
+      <div class="card"><h3 style="margin-bottom:.75rem;font-size:.95rem">Revenue by School</h3><canvas id="revSchoolChart"></canvas></div>
+      <div class="card"><h3 style="margin-bottom:.75rem;font-size:.95rem">Revenue by Department</h3><canvas id="revDeptChart"></canvas></div>
+    </div>
+    <div class="chart-row">
+      <div class="card"><h3 style="margin-bottom:.75rem;font-size:.95rem">Revenue by Programme</h3><canvas id="revProgChart"></canvas></div>
+      <div class="card"><h3 style="margin-bottom:.75rem;font-size:.95rem">Revenue by Level</h3><canvas id="revLevelChart"></canvas></div>
+    </div>
+    <div class="chart-full">
+      <div class="card"><h3 style="margin-bottom:.75rem;font-size:.95rem">Monthly Revenue Trends</h3><canvas id="monthlyTrendsChart"></canvas></div>
+    </div>
+    <div class="chart-row">
+      <div class="card"><h3 style="margin-bottom:.75rem;font-size:.95rem">Payment Status Distribution</h3><canvas id="statusDistChart"></canvas></div>
+      <div class="card"><h3 style="margin-bottom:.75rem;font-size:.95rem">Outstanding Balances by School</h3><canvas id="outstandingChart"></canvas></div>
+    </div>
+
+    <!-- Revenue Lists -->
+    <div class="revenue-list" id="revenueLists"></div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    let chartInstances = {};
+
+    document.addEventListener("DOMContentLoaded", () => {
+      if (currentRole !== "University Super Admin") {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2><p>Only University Super Admin can access Finance Management.</p><a href="../dashboard.html" class="btn btn-primary">Go to Dashboard</a></div>';
+        return;
+      }
+      loadAnalytics();
+    });
+
+    async function loadAnalytics() {
+      document.getElementById("analyticsCards").innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:1rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading analytics...</p>';
+      try {
+        const res = await SmartCampusAPI.withFallback(
+          () => SmartCampusAPI.fetchFinanceAnalytics(),
+          () => ({ data: {} })
+        );
+        const d = res.data || res;
+        renderAnalytics(d);
+      } catch {
+        document.getElementById("analyticsCards").innerHTML = '<p style="color:var(--error);text-align:center;padding:1rem">Failed to load analytics.</p>';
+      }
+    }
+
+    function renderAnalytics(d) {
+      // Summary cards
+      document.getElementById("analyticsCards").innerHTML = `
+        <div class="a-card"><div class="a-icon" style="color:var(--primary)"><i class="fa-solid fa-coins"></i></div><h3>NLE${(d.totalRevenue || 0).toLocaleString()}</h3><p>Total Revenue Collected</p></div>
+        <div class="a-card"><div class="a-icon" style="color:var(--error)"><i class="fa-solid fa-exclamation-triangle"></i></div><h3>NLE${(d.outstandingRevenue || 0).toLocaleString()}</h3><p>Outstanding Revenue</p></div>
+        <div class="a-card"><div class="a-icon" style="color:var(--success)"><i class="fa-solid fa-check-circle"></i></div><h3>${d.fullyPaidStudents || 0}</h3><p>Fully Paid Students</p></div>
+        <div class="a-card"><div class="a-icon" style="color:var(--warning)"><i class="fa-solid fa-hourglass-half"></i></div><h3>${d.partiallyPaidStudents || 0}</h3><p>Partially Paid</p></div>
+        <div class="a-card"><div class="a-icon" style="color:var(--error)"><i class="fa-solid fa-users-slash"></i></div><h3>${d.outstandingStudents || 0}</h3><p>Outstanding</p></div>
+        <div class="a-card"><div class="a-icon" style="color:var(--info)"><i class="fa-solid fa-receipt"></i></div><h3>${d.totalTransactions || 0}</h3><p>Total Transactions</p></div>
+        <div class="a-card"><div class="a-icon" style="color:var(--success)"><i class="fa-solid fa-calendar-day"></i></div><h3>NLE${(d.todayCollections || 0).toLocaleString()}</h3><p>Today's Collections</p></div>
+        <div class="a-card"><div class="a-icon" style="color:var(--primary)"><i class="fa-solid fa-calendar-month"></i></div><h3>NLE${(d.monthCollections || 0).toLocaleString()}</h3><p>Monthly Collections</p></div>
+      `;
+
+      // Colors
+      const colors = ['#4f6ef7','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899'];
+
+      // Revenue by School
+      const revSchool = d.revenueBySchool || {};
+      makeChart('revSchoolChart', 'bar', Object.keys(revSchool), Object.values(revSchool), '#4f6ef7');
+
+      // Revenue by Department
+      const revDept = d.revenueByDepartment || {};
+      makeChart('revDeptChart', 'doughnut', Object.keys(revDept), Object.values(revDept), colors);
+
+      // Revenue by Programme
+      const revProg = d.revenueByProgramme || {};
+      makeChart('revProgChart', 'bar', Object.keys(revProg), Object.values(revProg), '#22c55e');
+
+      // Revenue by Level
+      const revLevel = d.revenueByLevel || {};
+      makeChart('revLevelChart', 'doughnut', Object.keys(revLevel), Object.values(revLevel), ['#4f6ef7','#22c55e','#f59e0b','#ef4444']);
+
+      // Monthly Trends
+      const monthly = d.monthlyTrends || {};
+      makeChart('monthlyTrendsChart', 'line', Object.keys(monthly), Object.values(monthly), '#4f6ef7', true);
+
+      // Status Distribution
+      const statusDist = d.statusDistribution || {};
+      makeChart('statusDistChart', 'doughnut', Object.keys(statusDist), Object.values(statusDist), ['#22c55e','#f59e0b','#ef4444']);
+
+      // Outstanding by School
+      const outstanding = d.outstandingBySchool || {};
+      makeChart('outstandingChart', 'bar', Object.keys(outstanding), Object.values(outstanding), '#ef4444');
+
+      // Revenue detail lists
+      document.getElementById("revenueLists").innerHTML = `
+        <div class="rev-card"><h4>Revenue by School</h4>${buildRevList(revSchool)}</div>
+        <div class="rev-card"><h4>Revenue by Department</h4>${buildRevList(revDept)}</div>
+        <div class="rev-card"><h4>Revenue by Programme</h4>${buildRevList(revProg)}</div>
+        <div class="rev-card"><h4>Revenue by Level</h4>${buildRevList(revLevel)}</div>
+      `;
+    }
+
+    function makeChart(canvasId, type, labels, data, color, fill) {
+      if (chartInstances[canvasId]) {
+        chartInstances[canvasId].destroy();
+      }
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return;
+      if (!labels.length) {
+        const parent = ctx.parentElement;
+        parent.innerHTML = '<p style="text-align:center;padding:2rem;color:var(--gray-300);font-size:.8rem">No data available</p>';
+        return;
+      }
+      const cfg = {
+        type: type,
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'NLE',
+            data: data,
+            backgroundColor: Array.isArray(color) ? color.slice(0, labels.length) : color,
+            borderColor: type === 'line' ? color : undefined,
+            fill: fill ? true : false,
+            tension: fill ? 0.3 : undefined,
+            borderRadius: type === 'bar' ? 6 : undefined
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: type !== 'bar' || !fill, position: 'bottom' }
+          },
+          scales: type === 'bar' || type === 'line' ? {
+            y: { beginAtZero: true }
+          } : undefined
+        }
+      };
+      if (type === 'bar' && fill) {
+        delete cfg.options.scales;
+      }
+      chartInstances[canvasId] = new Chart(ctx, cfg);
+    }
+
+    function buildRevList(data) {
+      const entries = Object.entries(data);
+      if (!entries.length) return '<p style="color:var(--gray-300);font-size:.8rem">No data</p>';
+      return entries.map(([k, v]) => `<div class="bar"><span>${esc(k)}</span><span class="bar-value" style="font-weight:600;color:var(--primary)">NLE${Number(v).toLocaleString()}</span></div>`).join('');
+    }
+
+    function esc(v) { return String(v).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';'); }
+  </script>
+</body>
+</html>

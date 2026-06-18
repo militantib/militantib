@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Management - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .dash-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 2rem; }
+    .dash-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: all .25s; text-decoration: none; color: inherit; display: block; }
+    .dash-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-3px); border-color: var(--primary); }
+    .dash-card .icon { font-size: 2.5rem; margin-bottom: 1rem; color: var(--primary); }
+    .dash-card h3 { margin: 0 0 .3rem; font-size: 1.15rem; }
+    .dash-card p { margin: 0; font-size: .85rem; color: var(--gray-600); }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .75rem; margin: 1.5rem 0; }
+    .stat-card { text-align: center; padding: .85rem; background: var(--gray-100); border-radius: 8px; }
+    .stat-card h4 { font-size: 1.3rem; margin: 0; }
+    .stat-card p { font-size: .7rem; color: var(--gray-600); margin: .15rem 0 0; }
+    .recent-section { margin-top: 2.5rem; }
+    .recent-section h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+    .stats-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; }
+    @media (max-width: 900px) { .dash-grid { grid-template-columns: 1fr; } .stats-grid-4 { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .stats-grid-4 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0">Student Management</h1>
+      <div style="display:flex;gap:.5rem">
+        <a href="students/browse.html" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Browse</a>
+        <a href="students/add.html" class="btn btn-success btn-sm"><i class="fa-solid fa-plus"></i> Add</a>
+        <a href="students/delete.html" class="btn btn-outline btn-sm" style="color:var(--error)"><i class="fa-solid fa-trash-can"></i> Delete</a>
+      </div>
+    </div>
+    <p style="color:var(--gray-600);margin:.5rem 0 0">Manage all student records across all schools, departments, and programmes.</p>
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb" style="display:flex;flex-wrap:wrap;gap:.3rem;font-size:.85rem;padding:.6rem 0">
+      <span style="font-weight:600">Dashboard</span> <span style="color:var(--gray-500)"> &gt; </span>
+      <span class="current" style="color:var(--gray-800);font-weight:600">Students</span>
+    </div>
+
+    <!-- Statistics -->
+    <div class="stats-row" id="dashStats"></div>
+    <div class="stats-grid-4" id="detailStats" style="margin-bottom:1rem"></div>
+
+    <!-- Action Cards -->
+    <div class="dash-grid">
+      <a href="students/browse.html" class="dash-card">
+        <div class="icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+        <h3>Browse Students</h3>
+        <p>Drill down by school → department → programme → year to view student details.</p>
+      </a>
+      <a href="students/add.html" class="dash-card">
+        <div class="icon" style="color:var(--success)"><i class="fa-solid fa-user-plus"></i></div>
+        <h3>Add Student</h3>
+        <p>Register a new student with full profile information and send welcome email.</p>
+      </a>
+      <a href="students/delete.html" class="dash-card">
+        <div class="icon" style="color:var(--error)"><i class="fa-solid fa-user-minus"></i></div>
+        <h3>Delete Student</h3>
+        <p>Browse hierarchy, select students to delete or bulk remove by level/programme/department/school.</p>
+      </a>
+    </div>
+
+    <!-- Recent Students -->
+    <div class="recent-section">
+      <h2><i class="fa-solid fa-clock-rotate-left" style="margin-right:.4rem"></i>Recently Added Students</h2>
+      <div class="card"><div class="table-responsive" id="recentStudentsContainer"></div></div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin", "School Super Admin"].includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2><p>Only University Super Admin and School Super Admin can manage students.</p><a href="dashboard.html" class="btn btn-primary">Go to Dashboard</a></div>';
+        return;
+      }
+      await loadDashboardStats();
+      loadRecentStudents();
+    });
+
+    async function loadDashboardStats() {
+      try {
+        const students = await SmartCampusAPI.fetchStudents();
+        if (!students) return;
+        const total = students.length;
+        const active = students.filter(s => !s.studentStatus || s.studentStatus === "Active" || s.studentStatus === "").length;
+        const graduated = students.filter(s => s.studentStatus === "Graduated").length;
+        const male = students.filter(s => s.gender?.toLowerCase() === "male").length;
+        const female = students.filter(s => s.gender?.toLowerCase() === "female").length;
+        const schools = new Set(students.map(s => s.school).filter(Boolean)).size;
+        const depts = new Set(students.map(s => s.department).filter(Boolean)).size;
+        const progs = new Set(students.map(s => s.program).filter(Boolean)).size;
+        const levels = new Set(students.map(s => s.yearLevel).filter(Boolean)).size;
+
+        document.getElementById("dashStats").innerHTML = `
+          <div class="stat-card"><h4>${total}</h4><p>Total Students</p></div>
+          <div class="stat-card"><h4>${schools}</h4><p>Schools</p></div>
+          <div class="stat-card"><h4>${depts}</h4><p>Departments</p></div>
+          <div class="stat-card"><h4>${progs}</h4><p>Programmes</p></div>
+          <div class="stat-card"><h4>${levels}</h4><p>Levels</p></div>
+          <div class="stat-card"><h4>${active}</h4><p>Active</p></div>
+          <div class="stat-card"><h4>${graduated}</h4><p>Graduated</p></div>
+        `;
+
+        document.getElementById("detailStats").innerHTML = `
+          <div class="card" style="padding:.75rem;text-align:center">
+            <h4 style="margin:0;color:var(--primary)">${male}</h4>
+            <p style="font-size:.7rem;color:var(--gray-600);margin:.1rem 0 0">Male Students</p>
+          </div>
+          <div class="card" style="padding:.75rem;text-align:center">
+            <h4 style="margin:0;color:var(--info)">${female}</h4>
+            <p style="font-size:.7rem;color:var(--gray-600);margin:.1rem 0 0">Female Students</p>
+          </div>
+          <div class="card" style="padding:.75rem;text-align:center">
+            <h4 style="margin:0;color:var(--success)">${active}</h4>
+            <p style="font-size:.7rem;color:var(--gray-600);margin:.1rem 0 0">Active Students</p>
+          </div>
+          <div class="card" style="padding:.75rem;text-align:center">
+            <h4 style="margin:0;color:var(--navy)">${graduated}</h4>
+            <p style="font-size:.7rem;color:var(--gray-600);margin:.1rem 0 0">Graduated</p>
+          </div>
+        `;
+      } catch {}
+    }
+
+    async function loadRecentStudents() {
+      const container = document.getElementById("recentStudentsContainer");
+      if (!container) return;
+      try {
+        const students = await SmartCampusAPI.fetchStudents();
+        if (!students || !students.length) {
+          container.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:1rem">No students yet.</p>';
+          return;
+        }
+        const recent = students.slice(-10).reverse();
+        let html = '<table><thead><tr><th>Name</th><th>Email</th><th>School</th><th>Programme</th><th>Level</th><th>Status</th></tr></thead><tbody>';
+        recent.forEach(s => {
+          const statusCls = s.studentStatus === 'Graduated' ? 'badge-info' : (!s.studentStatus || s.studentStatus === 'Active') ? 'badge-success' : 'badge-error';
+          html += `<tr>
+            <td><strong>${esc(s.name)}</strong></td>
+            <td>${esc(s.email)}</td>
+            <td>${esc(s.school||'-')}</td>
+            <td>${esc(s.program||'-')}</td>
+            <td>${esc(s.yearLevel||'-')}</td>
+            <td><span class="${statusCls}">${esc(s.studentStatus || 'Active')}</span></td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      } catch { container.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:1rem">Could not load students.</p>'; }
+    }
+  </script>
+</body>
+</html>

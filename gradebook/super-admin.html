@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grade Book - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .gb-layout { display: grid; grid-template-columns: 340px 1fr; gap: 1.5rem; align-items: start; }
+    .gb-filters { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 1.25rem; position: sticky; top: 1rem; }
+    .gb-filters h2 { font-size: 1rem; margin: 0 0 1rem; }
+    .gb-filters .form-group { margin-bottom: .75rem; }
+    .gb-filters label { font-weight: 600; font-size: .8rem; color: var(--gray-700); display: block; margin-bottom: .25rem; }
+    .gb-filters select, .gb-filters input { width: 100%; padding: .45rem .6rem; border: 1px solid var(--gray-200); border-radius: 6px; font-size: .85rem; }
+    .gb-student-list { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; overflow: hidden; }
+    .gb-student-list table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .gb-student-list th { background: var(--gray-100); text-align: left; padding: .6rem .75rem; font-weight: 600; color: var(--gray-700); border-bottom: 1px solid var(--gray-200); }
+    .gb-student-list td { padding: .55rem .75rem; border-bottom: 1px solid var(--gray-100); }
+    .gb-student-list tr { cursor: pointer; transition: background .15s; }
+    .gb-student-list tr:hover { background: #f0f4ff; }
+    .gb-student-list tr.active { background: #dbeafe; }
+    .student-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: .5rem; }
+    .student-initials { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--primary); color: #fff; font-weight: 700; font-size: .8rem; vertical-align: middle; margin-right: .5rem; }
+    .gb-grade-form { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 1.25rem; margin-top: 1.5rem; }
+    .gb-grade-form h3 { margin: 0 0 .5rem; font-size: 1rem; }
+    .gb-student-header { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; background: #f8faff; border-radius: 10px 10px 0 0; border-bottom: 1px solid var(--gray-200); }
+    .gb-student-header img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gray-200); }
+    .gb-student-header .info h4 { margin: 0; font-size: 1.05rem; }
+    .gb-student-header .info p { margin: .1rem 0 0; font-size: .8rem; color: var(--gray-600); }
+    .semester-section { padding: 1rem 1.25rem; }
+    .semester-section h4 { font-size: .9rem; margin: 0 0 .5rem; color: var(--primary); display: flex; align-items: center; gap: .5rem; }
+    .semester-section table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .semester-section th { background: var(--gray-100); text-align: left; padding: .45rem .6rem; font-weight: 600; color: var(--gray-700); font-size: .8rem; border-bottom: 1px solid var(--gray-200); }
+    .semester-section td { padding: .4rem .6rem; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+    .semester-section select { padding: .3rem .4rem; border: 1px solid var(--gray-300); border-radius: 4px; font-size: .82rem; min-width: 70px; }
+    .semester-section select.changed { border-color: var(--warning); background: #fffbeb; }
+    .gb-summary { display: flex; gap: 1rem; padding: .75rem 1.25rem; background: #f8faff; border-top: 1px solid var(--gray-200); border-radius: 0 0 10px 10px; font-size: .85rem; }
+    .gb-summary .stat { flex: 1; text-align: center; }
+    .gb-summary .stat .val { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
+    .gb-summary .stat .lbl { font-size: .75rem; color: var(--gray-600); }
+    .gb-actions { display: flex; gap: .5rem; padding: 1rem 1.25rem; border-top: 1px solid var(--gray-200); }
+    .no-data { text-align: center; padding: 3rem; color: var(--gray-500); }
+    .no-data i { font-size: 2.5rem; margin-bottom: .5rem; display: block; }
+    .badge { display: inline-block; padding: .15rem .5rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+    .badge-success { background: #d1fae5; color: #065f46; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+    .badge-danger { background: #fee2e2; color: #991b1b; }
+    .badge-neutral { background: #f3f4f6; color: #374151; }
+    @media (max-width: 900px) { .gb-layout { grid-template-columns: 1fr; } .gb-filters { position: static; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <h1 style="margin:0 0 .25rem">Grade Book</h1>
+    <p style="margin:0 0 1.25rem;color:var(--gray-600);font-size:.9rem">Super Admin grade management — view, enter, and approve final student grades.</p>
+
+    <div class="gb-layout">
+      <!-- Filters sidebar -->
+      <div class="gb-filters">
+        <h2><i class="fa-solid fa-filter" style="margin-right:.4rem"></i>Filters</h2>
+        <div class="form-group">
+          <label for="schoolSelect">School</label>
+          <select id="schoolSelect"><option value="">Select School</option></select>
+        </div>
+        <div class="form-group">
+          <label for="deptSelect">Department</label>
+          <select id="deptSelect"><option value="">Select Department</option></select>
+        </div>
+        <div class="form-group">
+          <label for="progSelect">Programme</label>
+          <select id="progSelect"><option value="">Select Programme</option></select>
+        </div>
+        <div class="form-group">
+          <label for="yearLevelSelect">Level of Study</label>
+          <select id="yearLevelSelect">
+            <option value="">All Levels</option>
+            <option value="Year 1">Year 1</option>
+            <option value="Year 2">Year 2</option>
+            <option value="Year 3">Year 3</option>
+            <option value="Year 4">Year 4</option>
+            <option value="Year 5">Year 5</option>
+            <option value="Year 6">Year 6</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="acYearSelect">Academic Year</label>
+          <select id="acYearSelect">
+            <option value="2025/2026">2025/2026</option>
+            <option value="2024/2025">2024/2025</option>
+            <option value="2023/2024">2023/2024</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="loadStudentsBtn" style="width:100%;margin-top:.25rem"><i class="fa-solid fa-search"></i> Load Students</button>
+      </div>
+
+      <!-- Main content -->
+      <div>
+        <div class="gb-student-list" id="studentListContainer">
+          <div class="no-data" id="noStudentsMsg">
+            <i class="fa-solid fa-users"></i>
+            Select a programme and click "Load Students"
+          </div>
+          <table id="studentTable" style="display:none">
+            <thead><tr>
+              <th>Student</th>
+              <th>Reg. No.</th>
+              <th>Year Level</th>
+              <th>Programme</th>
+            </tr></thead>
+            <tbody id="studentTableBody"></tbody>
+          </table>
+          <div id="studentCount" style="display:none;padding:.5rem .75rem;font-size:.8rem;color:var(--gray-600);border-top:1px solid var(--gray-200)"></div>
+        </div>
+
+        <!-- Grade form (hidden until student selected) -->
+        <div class="gb-grade-form" id="gradeFormContainer" style="display:none">
+          <div id="gradeFormInner"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    let selectedStudentId = null;
+    let currentYearLevel = '';
+    let currentAcYear = '2025/2026';
+    let currentProgId = null;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin", "School Super Admin"].includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2><a href="../dashboard.html" class="btn btn-primary">Dashboard</a></div>';
+        return;
+      }
+      await loadSchools();
+      bindEvents();
+    });
+
+    function esc(v) { return String(v).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';'); }
+
+    // ---- cascading filters ----
+    async function loadSchools() {
+      try {
+        const schools = await SmartCampusAPI.fetchSchools() || [];
+        const sel = document.getElementById("schoolSelect");
+        sel.innerHTML = '<option value="">Select School</option>';
+        schools.forEach(s => { sel.innerHTML += `<option value="${s.id}">${esc(s.name)}</option>`; });
+      } catch { SmartCampusUI.showToast("Failed to load schools", "error"); }
+    }
+
+    async function loadDepts() {
+      const schoolId = document.getElementById("schoolSelect").value;
+      const deptSel = document.getElementById("deptSelect");
+      const progSel = document.getElementById("progSelect");
+      deptSel.innerHTML = '<option value="">Select Department</option>';
+      progSel.innerHTML = '<option value="">Select Programme</option>';
+      if (!schoolId) return;
+      try {
+        const depts = await SmartCampusAPI.fetchDepartments(schoolId) || [];
+        depts.forEach(d => { deptSel.innerHTML += `<option value="${d.id}">${esc(d.name)}</option>`; });
+      } catch {}
+    }
+
+    async function loadProgs() {
+      const deptId = document.getElementById("deptSelect").value;
+      const progSel = document.getElementById("progSelect");
+      progSel.innerHTML = '<option value="">Select Programme</option>';
+      if (!deptId) return;
+      try {
+        const progs = await SmartCampusAPI.fetchProgrammes(deptId) || [];
+        progs.forEach(p => { progSel.innerHTML += `<option value="${p.id}">${esc(p.name)}</option>`; });
+      } catch {}
+    }
+
+    function bindEvents() {
+      document.getElementById("schoolSelect").addEventListener("change", loadDepts);
+      document.getElementById("deptSelect").addEventListener("change", loadProgs);
+      document.getElementById("loadStudentsBtn").addEventListener("click", loadStudents);
+      document.getElementById("yearLevelSelect").addEventListener("change", () => { currentYearLevel = document.getElementById("yearLevelSelect").value; });
+      document.getElementById("acYearSelect").addEventListener("change", () => { currentAcYear = document.getElementById("acYearSelect").value; });
+    }
+
+    // ---- load student list ----
+    async function loadStudents() {
+      const progId = document.getElementById("progSelect").value;
+      if (!progId) { SmartCampusUI.showToast("Please select a programme", "error"); return; }
+      currentProgId = parseInt(progId);
+      const yearLevel = document.getElementById("yearLevelSelect").value;
+      currentYearLevel = yearLevel;
+      currentAcYear = document.getElementById("acYearSelect").value;
+
+      document.getElementById("gradeFormContainer").style.display = "none";
+      selectedStudentId = null;
+
+      try {
+        const students = await SmartCampusAPI.fetchGradeBookStudents(currentProgId, yearLevel) || [];
+        renderStudentList(students);
+      } catch (ex) { SmartCampusUI.showToast("Failed: " + ex.message, "error"); }
+    }
+
+    function renderStudentList(students) {
+      const table = document.getElementById("studentTable");
+      const tbody = document.getElementById("studentTableBody");
+      const noMsg = document.getElementById("noStudentsMsg");
+      const count = document.getElementById("studentCount");
+
+      if (!students.length) {
+        table.style.display = "none";
+        count.style.display = "none";
+        noMsg.style.display = "block";
+        noMsg.innerHTML = '<i class="fa-solid fa-users-slash"></i>No students found for the selected filters.';
+        return;
+      }
+
+      noMsg.style.display = "none";
+      table.style.display = "";
+      count.style.display = "";
+      count.textContent = students.length + " student(s) found";
+
+      tbody.innerHTML = students.map(s => `
+        <tr data-id="${s.id}" class="${selectedStudentId === s.id ? 'active' : ''}" onclick="selectStudent(${s.id})">
+          <td>
+            ${s.photoUrl
+              ? `<img src="${esc(s.photoUrl)}" class="student-avatar" onerror="this.style.display='none'">`
+              : `<span class="student-initials">${(s.name||'?').charAt(0).toUpperCase()}</span>`}
+            ${esc(s.name)}
+          </td>
+          <td>${esc(s.registrationNumber || '-')}</td>
+          <td>${esc(s.yearLevel)}</td>
+          <td>${esc(s.programme)}</td>
+        </tr>
+      `).join("");
+    }
+
+    // ---- select student ----
+    async function selectStudent(studentId) {
+      selectedStudentId = studentId;
+      document.querySelectorAll("#studentTableBody tr").forEach(tr => tr.classList.toggle("active", parseInt(tr.dataset.id) === studentId));
+
+      try {
+        const data = await SmartCampusAPI.fetchGradeBookStudentCourses(studentId, currentYearLevel, currentAcYear);
+        renderGradeForm(data);
+      } catch (ex) { SmartCampusUI.showToast("Failed to load student courses: " + ex.message, "error"); }
+    }
+
+    // ---- render grade form ----
+    const GRADE_OPTIONS = ["", "A", "B", "C", "D", "E", "F", "I", "W", "AB"];
+
+    function renderGradeForm(data) {
+      const container = document.getElementById("gradeFormContainer");
+      container.style.display = "";
+
+      const s = data.student;
+      const sem1 = data.semester1 || [];
+      const sem2 = data.semester2 || [];
+
+      let html = `
+        <div class="gb-student-header">
+          ${s.photoUrl
+            ? `<img src="${esc(s.photoUrl)}" onerror="this.style.display='none'">`
+            : `<span class="student-initials" style="width:56px;height:56px;font-size:1.2rem">${(s.name||'?').charAt(0).toUpperCase()}</span>`}
+          <div class="info">
+            <h4>${esc(s.name)}</h4>
+            <p>${esc(s.registrationNumber || '')} &middot; ${esc(s.programme || '')} &middot; ${esc(s.yearLevel || '')}
+               &middot; ${esc(s.school || '')} ${s.department ? '&middot; ' + esc(s.department) : ''}</p>
+          </div>
+        </div>
+      `;
+
+      // Semester 1
+      html += renderSemesterTable("Semester One", "sem1", sem1, data.gpaSemester1);
+
+      // Semester 2
+      html += renderSemesterTable("Semester Two", "sem2", sem2, data.gpaSemester2);
+
+      // Summary
+      html += `
+        <div class="gb-summary">
+          <div class="stat"><div class="val">${data.gpaSemester1 != null ? data.gpaSemester1.toFixed(2) : '-'}</div><div class="lbl">Semester 1 GPA</div></div>
+          <div class="stat"><div class="val">${data.gpaSemester2 != null ? data.gpaSemester2.toFixed(2) : '-'}</div><div class="lbl">Semester 2 GPA</div></div>
+          <div class="stat"><div class="val" style="font-size:1.4rem;color:var(--success)">${data.cgpa != null ? data.cgpa.toFixed(2) : '-'}</div><div class="lbl">Overall CGPA</div></div>
+        </div>
+      `;
+
+      // Actions
+      html += `
+        <div class="gb-actions">
+          <button class="btn btn-primary" onclick="saveGrades()"><i class="fa-solid fa-floppy-disk"></i> Save Grades</button>
+          <button class="btn btn-outline" onclick="recalculateDisplay()"><i class="fa-solid fa-calculator"></i> Recalculate</button>
+          <button class="btn btn-outline" onclick="generateReport()"><i class="fa-solid fa-file-lines"></i> Progress Report</button>
+        </div>
+      `;
+
+      document.getElementById("gradeFormInner").innerHTML = html;
+    }
+
+    function renderSemesterTable(title, prefix, courses, gpa) {
+      if (!courses || !courses.length) {
+        return `
+          <div class="semester-section">
+            <h4><i class="fa-solid fa-book"></i> ${title}</h4>
+            <p style="color:var(--gray-500);font-size:.82rem">No courses found for this semester.</p>
+          </div>
+        `;
+      }
+
+      const rows = courses.map((c, idx) => {
+        const selected = c.letterGrade || '';
+        const opts = GRADE_OPTIONS.map(g => `<option value="${g}" ${g === selected ? 'selected' : ''}>${g || '—'}</option>`).join('');
+        return `
+          <tr>
+            <td>${esc(c.courseCode)}</td>
+            <td>${esc(c.courseTitle)}</td>
+            <td>${c.credits}</td>
+            <td>
+              <select data-prefix="${prefix}" data-idx="${idx}" data-credits="${c.credits}"
+                      onchange="onGradeChange('${prefix}', ${idx})">
+                ${opts}
+              </select>
+            </td>
+            <td class="gp-display" data-prefix="${prefix}" data-idx="${idx}">${c.gpa != null ? c.gpa.toFixed(1) : '-'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="semester-section">
+          <h4><i class="fa-solid fa-book"></i> ${title}</h4>
+          <table>
+            <thead><tr>
+              <th style="width:100px">Code</th>
+              <th>Course Title</th>
+              <th style="width:60px">Credits</th>
+              <th style="width:110px">Grade</th>
+              <th style="width:60px">G.P.</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // ---- grade change handler ----
+    function onGradeChange(prefix, idx) {
+      const sel = document.querySelector(`select[data-prefix="${prefix}"][data-idx="${idx}"]`);
+      const gpCell = document.querySelector(`.gp-display[data-prefix="${prefix}"][data-idx="${idx}"]`);
+      const letter = sel.value;
+      sel.classList.toggle("changed", letter !== "");
+
+      const gradePoints = { "A": 5.0, "B": 4.0, "C": 3.0, "D": 2.0, "E": 1.0, "F": 0.0 };
+      if (letter && gradePoints[letter] !== undefined) {
+        gpCell.textContent = gradePoints[letter].toFixed(1);
+      } else if (letter && (letter === "I" || letter === "W" || letter === "AB")) {
+        gpCell.textContent = "—";
+      } else {
+        gpCell.textContent = "-";
+      }
+    }
+
+    // ---- recalculate display only ----
+    function recalculateDisplay() {
+      const s1Courses = collectGrades("sem1");
+      const s2Courses = collectGrades("sem2");
+      const gpa1 = computeGpaDisplay(s1Courses);
+      const gpa2 = computeGpaDisplay(s2Courses);
+      const cgpa = computeCgpaDisplay(gpa1, gpa2, s1Courses, s2Courses);
+
+      const summary = document.querySelector(".gb-summary");
+      if (summary) {
+        summary.innerHTML = `
+          <div class="stat"><div class="val">${gpa1.toFixed(2)}</div><div class="lbl">Semester 1 GPA</div></div>
+          <div class="stat"><div class="val">${gpa2.toFixed(2)}</div><div class="lbl">Semester 2 GPA</div></div>
+          <div class="stat"><div class="val" style="font-size:1.4rem;color:var(--success)">${cgpa.toFixed(2)}</div><div class="lbl">Overall CGPA</div></div>
+        `;
+      }
+      SmartCampusUI.showToast("GPA / CGPA recalculated", "success");
+    }
+
+    function collectGrades(prefix) {
+      const selects = document.querySelectorAll(`select[data-prefix="${prefix}"]`);
+      return Array.from(selects).map(sel => ({
+        letterGrade: sel.value,
+        credits: parseInt(sel.dataset.credits) || 0
+      }));
+    }
+
+    function computeGpaDisplay(courses) {
+      const gradePoints = { "A": 5.0, "B": 4.0, "C": 3.0, "D": 2.0, "E": 1.0, "F": 0.0 };
+      let totalPoints = 0, totalCredits = 0;
+      for (const c of courses) {
+        if (!c.letterGrade) continue;
+        if (c.letterGrade === "I" || c.letterGrade === "W" || c.letterGrade === "AB") continue;
+        const gp = gradePoints[c.letterGrade];
+        if (gp === undefined) continue;
+        totalPoints += gp * c.credits;
+        totalCredits += c.credits;
+      }
+      return totalCredits > 0 ? Math.round(totalPoints / totalCredits * 100) / 100 : 0;
+    }
+
+    function computeCgpaDisplay(gpa1, gpa2, s1, s2) {
+      const gradePoints = { "A": 5.0, "B": 4.0, "C": 3.0, "D": 2.0, "E": 1.0, "F": 0.0 };
+      const filter = c => c.letterGrade && c.letterGrade !== "I" && c.letterGrade !== "W" && c.letterGrade !== "AB" && gradePoints[c.letterGrade] !== undefined;
+      const credits1 = s1.filter(filter).reduce((s, c) => s + c.credits, 0);
+      const credits2 = s2.filter(filter).reduce((s, c) => s + c.credits, 0);
+      const total = credits1 + credits2;
+      return total > 0 ? Math.round((gpa1 * credits1 + gpa2 * credits2) / total * 100) / 100 : 0;
+    }
+
+    // ---- save grades ----
+    function generateReport() {
+      if (!selectedStudentId) { SmartCampusUI.showToast("Select a student first", "warning"); return; }
+      window.open(`progress-report.html?id=${selectedStudentId}&academicYear=${encodeURIComponent(currentAcYear)}`, '_blank');
+    }
+
+    async function saveGrades() {
+      if (!selectedStudentId) return;
+      const grades = [];
+      for (const prefix of ["sem1", "sem2"]) {
+        const semester = prefix === "sem1" ? "Semester1" : "Semester2";
+        const selects = document.querySelectorAll(`select[data-prefix="${prefix}"]`);
+        selects.forEach(sel => {
+          const letter = sel.value;
+          if (!letter) return;
+          grades.push({
+            courseId: null, // will be set from server-side data
+            semester: semester,
+            letterGrade: letter
+          });
+        });
+      }
+
+      // We need courseIds — fetch them from the grade form data
+      let sem1Data = [], sem2Data = [];
+      try {
+        const data = await SmartCampusAPI.fetchGradeBookStudentCourses(selectedStudentId, currentYearLevel, currentAcYear);
+        sem1Data = data.semester1 || [];
+        sem2Data = data.semester2 || [];
+      } catch { SmartCampusUI.showToast("Failed to refresh course data", "error"); return; }
+
+      const allCourses = [...sem1Data, ...sem2Data];
+      const gradeSelects = document.querySelectorAll("select[data-prefix]");
+      const payloadGrades = [];
+      gradeSelects.forEach(sel => {
+        const letter = sel.value;
+        if (!letter) return;
+        const prefix = sel.dataset.prefix;
+        const idx = parseInt(sel.dataset.idx);
+        const semester = prefix === "sem1" ? "Semester1" : "Semester2";
+        const courses = prefix === "sem1" ? sem1Data : sem2Data;
+        const course = courses[idx];
+        if (!course) return;
+        payloadGrades.push({
+          courseId: course.courseId,
+          semester: semester,
+          letterGrade: letter
+        });
+      });
+
+      if (!payloadGrades.length) { SmartCampusUI.showToast("No grades to save", "warning"); return; }
+
+      try {
+        const result = await SmartCampusAPI.saveGradeBookGrades(selectedStudentId, {
+          academicYear: currentAcYear,
+          grades: payloadGrades
+        });
+        SmartCampusUI.showToast(result.message || "Grades saved!", "success");
+        // Refresh the grade form
+        await selectStudent(selectedStudentId);
+      } catch (ex) { SmartCampusUI.showToast("Failed to save: " + ex.message, "error"); }
+    }
+  </script>
+</body>
+</html>

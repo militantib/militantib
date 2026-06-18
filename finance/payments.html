@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>View Student Payments - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root { --excel-header: #44546a; --excel-border: #d0d7de; }
+    .search-section { max-width: 600px; margin-bottom: 1.5rem; }
+    .search-section label { font-weight: 600; font-size: .85rem; display: block; margin-bottom: .3rem; }
+    .search-row { display: flex; gap: .5rem; }
+    .search-row input { flex: 1; padding: .6rem; border: 1px solid var(--gray-200); border-radius: 6px; font-size: .95rem; }
+    .excel-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .excel-table th { background: var(--excel-header); color: #fff; padding: .6rem .5rem; text-align: left; font-weight: 600; white-space: nowrap; }
+    .excel-table td { padding: .5rem; border: 1px solid var(--excel-border); }
+    .excel-table tr:nth-child(even) { background: #f8f9fa; }
+    .excel-table tr:hover { background: #eef2ff; }
+    .badge-success { background: var(--success); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .badge-warning { background: var(--warning); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .badge-error { background: var(--error); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .badge-info { background: var(--info); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem 1rem; }
+    .profile-grid .f label { font-weight: 600; font-size: .75rem; color: var(--gray-600); display: block; text-transform: uppercase; letter-spacing: .3px; }
+    .profile-grid .f p { margin: .15rem 0 .5rem; font-size: .9rem; }
+    .stat-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .5rem; margin-bottom: 1rem; }
+    .stat-summary .s { text-align: center; padding: .5rem; background: var(--gray-100); border-radius: 6px; }
+    .stat-summary .s h4 { font-size: 1rem; margin: 0; }
+    .stat-summary .s p { font-size: .65rem; color: var(--gray-600); margin: .1rem 0 0; }
+    .restricted-badge { display: inline-block; font-size: .7rem; background: var(--gray-200); color: var(--gray-600); border-radius: 4px; padding: .15rem .5rem; }
+    .student-result-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 1rem; margin-bottom: .75rem; cursor: pointer; transition: all .2s; display: flex; justify-content: space-between; align-items: center; }
+    .student-result-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .student-result-card .left h4 { margin: 0 0 .2rem; font-size: .95rem; }
+    .student-result-card .left p { margin: 0; font-size: .8rem; color: var(--gray-600); }
+    .student-result-card .right { text-align: right; font-size: .85rem; }
+    @media (max-width: 600px) { .profile-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0">View Student Payments</h1>
+      <a href="../finance.html" class="btn btn-outline btn-sm">&larr; Back to Dashboard</a>
+    </div>
+    <div style="margin-top:.3rem"><span class="restricted-badge"><i class="fa-solid fa-eye"></i> View-only &middot; Payment details synced from Finance Department</span></div>
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb" id="breadcrumb" style="display:flex;flex-wrap:wrap;gap:.3rem .5rem;align-items:center;font-size:.85rem;padding:.6rem 0;margin-bottom:.5rem">
+      <a href="../finance.html">Finance Management</a> <span>/</span> <span class="current" style="color:var(--gray-800);font-weight:600">View Student Payments</span>
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-section">
+      <label for="studentSearchInput"><i class="fa-solid fa-search"></i> Search Student</label>
+      <div class="search-row">
+        <input id="studentSearchInput" type="text" placeholder="Search by name, registration number, or email..." onkeyup="debouncedSearchPaymentStudent()">
+      </div>
+      <p style="font-size:.78rem;color:var(--gray-500);margin-top:.3rem">Type at least 2 characters to search.</p>
+    </div>
+
+    <!-- Results -->
+    <div id="searchResultsContainer"></div>
+
+    <!-- Student Profile (shown after selection) -->
+    <div id="studentProfileContainer" style="display:none"></div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    let selectedStudentId = null;
+    let searchTimer;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      if (currentRole !== "University Super Admin") {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2><p>Only University Super Admin can access Finance Management.</p><a href="../dashboard.html" class="btn btn-primary">Go to Dashboard</a></div>';
+        return;
+      }
+    });
+
+    function debouncedSearchPaymentStudent() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        const q = document.getElementById("studentSearchInput").value.trim();
+        if (q.length < 2) {
+          document.getElementById("searchResultsContainer").innerHTML = '';
+          document.getElementById("studentProfileContainer").style.display = 'none';
+          return;
+        }
+        searchStudents(q);
+      }, 400);
+    }
+
+    async function searchStudents(q) {
+      const container = document.getElementById("searchResultsContainer");
+      container.innerHTML = '<p style="color:var(--gray-300)"><i class="fa-solid fa-spinner fa-spin"></i> Searching...</p>';
+      document.getElementById("studentProfileContainer").style.display = 'none';
+      try {
+        const res = await SmartCampusAPI.fetchFinanceReport();
+        const report = res.data || res;
+        const students = (report.studentDetails || []).filter(s =>
+          (s.name || '').toLowerCase().includes(q.toLowerCase()) ||
+          (s.registrationNumber || '').toLowerCase().includes(q.toLowerCase()) ||
+          (s.email || '').toLowerCase().includes(q.toLowerCase())
+        );
+        if (!students.length) {
+          container.innerHTML = '<p style="color:var(--gray-400);text-align:center;padding:1rem">No students found matching your search.</p>';
+          return;
+        }
+        let html = '<h3 style="font-size:.95rem;margin-bottom:.5rem">Select a student to view payment history</h3>';
+        students.slice(0, 20).forEach(s => {
+          const badge = s.paymentStatus === 'Fully Paid' ? 'badge-success' : s.paymentStatus === 'Partially Paid' ? 'badge-warning' : 'badge-error';
+          html += `<div class="student-result-card" onclick="showStudentPaymentProfile(${s.studentId})">
+            <div class="left">
+              <h4>${esc(s.name)}</h4>
+              <p>${esc(s.registrationNumber || 'No Reg#')} &middot; ${esc(s.school || '')} &middot; ${esc(s.programme || '')} &middot; ${esc(s.yearLevel || '')}</p>
+            </div>
+            <div class="right">
+              <span class="${badge}">${esc(s.paymentStatus || 'Not Set')}</span><br>
+              <small>Balance: NLE${(s.balance || 0).toLocaleString()}</small>
+            </div>
+          </div>`;
+        });
+        container.innerHTML = html;
+      } catch {
+        container.innerHTML = '<p style="color:var(--error)">Failed to search. Please try again.</p>';
+      }
+    }
+
+    async function showStudentPaymentProfile(studentId) {
+      selectedStudentId = studentId;
+      const container = document.getElementById("studentProfileContainer");
+      const searchContainer = document.getElementById("searchResultsContainer");
+      container.style.display = 'block';
+      container.innerHTML = '<p style="color:var(--gray-300)"><i class="fa-solid fa-spinner fa-spin"></i> Loading student financial profile...</p>';
+      window.scrollTo({ top: container.offsetTop - 20, behavior: 'smooth' });
+
+      try {
+        const res = await SmartCampusAPI.fetchStudentFinanceProfile(studentId);
+        const p = res.data || res;
+        const statusCls = p.status === 'Fully Paid' ? 'badge-success' : p.status === 'Partially Paid' ? 'badge-warning' : 'badge-error';
+
+        let html = `
+          <div class="card" style="margin-top:1rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">
+              <h3 style="margin:0">${esc(p.name)}</h3>
+              <span class="${statusCls}">${esc(p.status)}</span>
+            </div>
+
+            <div class="profile-grid" style="margin-bottom:1rem">
+              <div class="f"><label>Registration Number</label><p>${esc(p.registrationNumber || '-')}</p></div>
+              <div class="f"><label>Student ID</label><p>${studentId}</p></div>
+              <div class="f"><label>School</label><p>${esc(p.school || '-')}</p></div>
+              <div class="f"><label>Department</label><p>${esc(p.department || '-')}</p></div>
+              <div class="f"><label>Programme</label><p>${esc(p.programme || '-')}</p></div>
+              <div class="f"><label>Year/Level</label><p>${esc(p.yearLevel || '-')}</p></div>
+              <div class="f"><label>Email</label><p>${esc(p.email)}</p></div>
+              <div class="f"><label>Phone</label><p>${esc(p.phone || '-')}</p></div>
+            </div>
+
+            <div class="stat-summary">
+              <div class="s"><h4>NLE${(p.totalFee || 0).toLocaleString()}</h4><p>Total Fees</p></div>
+              <div class="s"><h4 style="color:var(--success)">NLE${(p.totalPaid || 0).toLocaleString()}</h4><p>Total Paid</p></div>
+              <div class="s"><h4 style="color:${(p.balance || 0) > 0 ? 'var(--error)' : 'var(--success)'}">NLE${(p.balance || 0).toLocaleString()}</h4><p>Outstanding</p></div>
+            </div>
+
+            <h4 style="margin:1rem 0 .5rem">Fee Structure</h4>
+            <div class="table-responsive">${(p.feeRecords || []).length
+              ? `<table class="excel-table"><thead><tr><th>Academic Year</th><th>Semester</th><th>Total Fee</th><th>Paid Amount</th><th>Balance</th><th>Status</th></tr></thead><tbody>`
+                  + p.feeRecords.map(r => {
+                    const bal = (r.totalFee||0) - (r.paidAmount||0);
+                    const cls = r.status === 'Paid' ? 'badge-success' : r.status === 'Partial' ? 'badge-warning' : 'badge-error';
+                    return `<tr><td>${esc(r.academicYear)}</td><td>${esc(r.semester)}</td><td>NLE${(r.totalFee||0).toLocaleString()}</td><td>NLE${(r.paidAmount||0).toLocaleString()}</td><td>NLE${bal.toLocaleString()}</td><td><span class="${cls}">${esc(r.status)}</span></td></tr>`;
+                  }).join("")
+                  + '</tbody></table>'
+              : '<p style="color:var(--gray-300)">No fee records</p>'}</div>
+
+            <h4 style="margin:1rem 0 .5rem">Payment History</h4>
+            <div class="table-responsive">${(p.payments || []).length
+              ? `<table class="excel-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Receipt Number</th><th>Processed By</th><th>Date/Time</th></tr></thead><tbody>`
+                  + p.payments.map(py => `<tr><td>${esc(py.paymentDate)}</td><td>NLE${(py.amount||0).toLocaleString()}</td><td>${esc(py.method||'')}</td><td>${esc(py.reference||'')}</td><td>${esc(py.processedBy||'Finance Officer')}</td><td>${esc(py.processedAt||'')}</td></tr>`).join("")
+                  + '</tbody></table>'
+              : '<p style="color:var(--gray-300)">No payments recorded</p>'}</div>
+
+            <h4 style="margin:1rem 0 .5rem">Audit Trail</h4>
+            <div class="table-responsive">${(p.auditLogs || []).length
+              ? `<table class="excel-table"><thead><tr><th>Date/Time</th><th>Action</th><th>Performed By</th><th>Details</th></tr></thead><tbody>`
+                  + p.auditLogs.map(l => `<tr><td>${l.createdAt ? new Date(l.createdAt).toLocaleString() : ''}</td><td>${esc(l.action)}</td><td>${esc(l.performedBy||'')}</td><td>${esc(l.details||'')}</td></tr>`).join("")
+                  + '</tbody></table>'
+              : '<p style="color:var(--gray-300)">No audit records</p>'}</div>
+          </div>
+        `;
+        container.innerHTML = html;
+      } catch {
+        container.innerHTML = '<p style="color:var(--error)">Failed to load student profile.</p>';
+      }
+    }
+
+    function esc(v) { return String(v).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';'); }
+  </script>
+</body>
+</html>

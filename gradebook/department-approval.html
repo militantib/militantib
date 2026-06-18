@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Department Approval - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    .approval-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem; }
+    .stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:.75rem; margin:1rem 0; }
+    .stat-card { text-align:center; padding:.85rem; background:var(--gray-100); border-radius:8px; }
+    .stat-card h4 { font-size:1.3rem; margin:0; }
+    .stat-card p { font-size:.7rem; color:var(--gray-600); margin:.15rem 0 0; }
+    .filter-row { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin:1rem 0; }
+    .filter-row select, .filter-row input { width:auto; padding:.35rem .6rem; font-size:.82rem; }
+    .workflow-badge { display:inline-block; font-size:.68rem; padding:.15rem .5rem; border-radius:12px; font-weight:600; }
+    .wf-draft { background:#FEF3C7; color:#92400E; }
+    .wf-submitted { background:#DBEAFE; color:#1E40AF; }
+    .wf-dept-approved { background:#D1FAE5; color:#065F46; }
+    .wf-school-approved { background:#A7F3D0; color:#064E3B; }
+    .wf-univ-approved { background:#6EE7B7; color:#022C22; }
+    .wf-returned { background:#FEE2E2; color:#991B1B; }
+    .wf-published { background:#DDD6FE; color:#5B21B6; }
+    .action-bar { display:flex; gap:.5rem; flex-wrap:wrap; }
+    .comment-box { width:100%; margin:.5rem 0; }
+    .approval-checkbox { width:18px; height:18px; cursor:pointer; }
+    .history-timeline { padding:0; list-style:none; }
+    .history-item { display:flex; gap:.75rem; padding:.5rem 0; border-left:2px solid var(--gray-200); padding-left:1rem; margin-left:.5rem; position:relative; }
+    .history-item:before { content:''; width:10px; height:10px; border-radius:50%; background:var(--gray-300); position:absolute; left:-6px; top:.8rem; }
+    .history-item.approved:before { background:var(--success); }
+    .history-item.rejected:before { background:var(--error); }
+    .history-item .h-action { font-weight:600; font-size:.85rem; }
+    .history-item .h-details { font-size:.78rem; color:var(--gray-600); }
+    @media (max-width:768px) { .filter-row select, .filter-row input { width:100%; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div class="approval-header">
+      <div>
+        <h1 style="margin:0"><i class="fa-solid fa-check-double"></i> Department Approval</h1>
+        <p style="color:var(--gray-600);margin:.3rem 0 0">Review and approve grades submitted by lecturers</p>
+      </div>
+      <a href="../gradebook.html" class="btn btn-outline btn-sm">&larr; Back to Gradebook</a>
+    </div>
+
+    <div class="stats-row" id="approvalStats"></div>
+
+    <div class="card">
+      <div class="card-header">
+        <span><i class="fa-solid fa-filter"></i> Filters</span>
+      </div>
+      <div class="filter-row">
+        <select id="filterAcademicYear"><option value="">All Years</option><option>2024/2025</option><option>2025/2026</option></select>
+        <select id="filterSemester"><option value="">All Semesters</option><option>Semester1</option><option>Semester2</option></select>
+        <select id="filterCourse"><option value="">All Courses</option></select>
+        <input type="text" id="searchInput" placeholder="Search student/course..." style="flex:1;min-width:150px">
+        <button class="btn btn-outline btn-sm" id="searchBtn"><i class="fa-solid fa-search"></i> Search</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span><i class="fa-solid fa-list"></i> Pending Submissions</span>
+        <span class="badge badge-warning" id="pendingCount">0</span>
+      </div>
+      <div id="loadingIndicator" style="text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
+      <div class="table-responsive">
+        <table id="gradesTable">
+          <thead><tr><th style="width:30px"><input type="checkbox" id="selectAll"></th><th>Student</th><th>Reg No.</th><th>Course</th><th>Scores</th><th>Total</th><th>Grade</th><th>Semester</th><th>Lecturer</th><th>Submitted</th><th>Action</th></tr></thead>
+          <tbody id="gradesBody"></tbody>
+        </table>
+      </div>
+      <div id="emptyState" style="text-align:center;padding:3rem;display:none"><i class="fa-solid fa-inbox fa-3x" style="color:var(--gray-300)"></i><p style="color:var(--gray-500);margin-top:.5rem">No pending submissions</p></div>
+    </div>
+
+    <div class="card" id="actionCard" style="display:none">
+      <div class="card-header"><span><i class="fa-solid fa-gavel"></i> Approval Actions</span><span id="selectedCount" class="badge badge-info">0 selected</span></div>
+      <div class="form-group"><label>Comments / Remarks:</label><textarea id="approvalComments" class="comment-box" rows="2" placeholder="Add approval or rejection remarks..."></textarea></div>
+      <div class="action-bar">
+        <button class="btn btn-primary" id="approveBtn"><i class="fa-solid fa-check"></i> Approve Selected</button>
+        <button class="btn btn-outline" id="rejectBtn" style="color:var(--error);border-color:var(--error)"><i class="fa-solid fa-xmark"></i> Return for Correction</button>
+        <button class="btn btn-outline" id="clearSelectionBtn">Clear Selection</button>
+      </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="modal-root" aria-hidden="true" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000">
+      <div class="modal-backdrop" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4)" onclick="closeHistoryModal()"></div>
+      <div class="modal-dialog" style="position:relative;max-width:600px;margin:2rem auto;max-height:80vh;overflow-y:auto">
+        <div class="modal-dialog-header"><h3 id="historyModalTitle">Approval History</h3><button type="button" class="btn-icon btn-icon-plain modal-close-btn" onclick="closeHistoryModal()"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="modal-dialog-body" id="historyModalBody"><p>Loading...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script>
+    let selectedGradeIds = new Set();
+    let currentGrades = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!['Department Admin','School Super Admin','University Super Admin'].includes(currentRole)) {
+        document.querySelector('.main-content').innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>';
+        return;
+      }
+      await loadCourses();
+      await loadPending();
+      await loadStats();
+      bindEvents();
+    });
+
+    async function loadCourses() {
+      try {
+        const courses = await SmartCampusAPI.fetchCourses();
+        const sel = document.getElementById('filterCourse');
+        sel.innerHTML = '<option value="">All Courses</option>' + courses.map(c => `<option value="${c.id}">${c.code} - ${c.title}</option>`).join('');
+      } catch {}
+    }
+
+    async function loadStats() {
+      try {
+        const stats = await SmartCampusAPI.fetchApprovalStats();
+        document.getElementById('approvalStats').innerHTML = `
+          <div class="stat-card"><h4 style="color:var(--warning)">${stats.pending || 0}</h4><p>Pending</p></div>
+          <div class="stat-card"><h4 style="color:var(--success)">${stats.approved || 0}</h4><p>Approved</p></div>
+          <div class="stat-card"><h4 style="color:var(--error)">${stats.returned || 0}</h4><p>Returned</p></div>
+          <div class="stat-card"><h4 style="color:var(--info)">${stats.published || 0}</h4><p>Published</p></div>
+        `;
+      } catch {}
+    }
+
+    async function loadPending() {
+      document.getElementById('loadingIndicator').style.display = 'block';
+      try {
+        const deptId = getDeptId();
+        const courseId = document.getElementById('filterCourse').value || null;
+        const sem = document.getElementById('filterSemester').value || null;
+        const year = document.getElementById('filterAcademicYear').value || null;
+        currentGrades = await SmartCampusAPI.fetchDepartmentPending(deptId, courseId, sem, year);
+        renderGrades(currentGrades);
+      } catch (e) {
+        document.getElementById('gradesBody').innerHTML = `<tr><td colspan="11" style="color:var(--error)">Error: ${e.message}</td></tr>`;
+      }
+      document.getElementById('loadingIndicator').style.display = 'none';
+    }
+
+    function getDeptId() {
+      try {
+        const u = JSON.parse(localStorage.getItem('sc_user'));
+        if (u && u.departmentId) return u.departmentId;
+      } catch {}
+      return null;
+    }
+
+    function renderGrades(grades) {
+      const tbody = document.getElementById('gradesBody');
+      const empty = document.getElementById('emptyState');
+      const pendingCount = document.getElementById('pendingCount');
+      if (!grades || !grades.length) {
+        tbody.innerHTML = '';
+        empty.style.display = 'block';
+        pendingCount.textContent = '0';
+        return;
+      }
+      empty.style.display = 'none';
+      pendingCount.textContent = grades.length;
+      tbody.innerHTML = grades.map(g => {
+        const statusClass = getStatusClass(g.status);
+        return `<tr>
+          <td><input type="checkbox" class="approval-checkbox grade-checkbox" data-id="${g.id}" ${selectedGradeIds.has(g.id) ? 'checked' : ''}></td>
+          <td><strong>${esc(g.studentName)}</strong></td>
+          <td><small>${esc(g.registrationNumber)}</small></td>
+          <td><small>${esc(g.courseCode)}</small></td>
+          <td><small>${g.ca1||0}/${g.ca2||0}/${g.assignment||0}/${g.midterm||0}/${g.finalExam||0}</small></td>
+          <td><strong>${g.total != null ? g.total : '-'}</strong></td>
+          <td><span class="badge ${g.total >= 50 ? 'badge-success' : 'badge-error'}">${g.letterGrade || '-'}</span></td>
+          <td><small>${g.semester}</small></td>
+          <td><small>${esc(g.submittedBy)}</small></td>
+          <td><small>${formatDate(g.submittedAt)}</small></td>
+          <td><button class="btn btn-outline btn-sm" onclick="showHistory(${g.id})"><i class="fa-solid fa-clock-rotate-left"></i></button></td>
+        </tr>`;
+      }).join('');
+      updateActionCard();
+    }
+
+    function getStatusClass(status) {
+      const m = { 'Draft':'wf-draft', 'Submitted to Department':'wf-submitted', 'Department Approved':'wf-dept-approved',
+        'School Approved':'wf-school-approved', 'University Approved':'wf-univ-approved', 'Returned for Correction':'wf-returned', 'Published':'wf-published' };
+      return m[status] || 'wf-draft';
+    }
+
+    function bindEvents() {
+      document.getElementById('selectAll').addEventListener('change', function() {
+        document.querySelectorAll('.grade-checkbox').forEach(cb => {
+          cb.checked = this.checked;
+          if (this.checked) selectedGradeIds.add(parseInt(cb.dataset.id));
+          else selectedGradeIds.delete(parseInt(cb.dataset.id));
+        });
+        updateActionCard();
+      });
+      document.getElementById('gradesBody').addEventListener('change', function(e) {
+        if (e.target.classList.contains('grade-checkbox')) {
+          const id = parseInt(e.target.dataset.id);
+          if (e.target.checked) selectedGradeIds.add(id);
+          else selectedGradeIds.delete(id);
+          updateActionCard();
+        }
+      });
+      document.getElementById('approveBtn').addEventListener('click', () => doAction('approve'));
+      document.getElementById('rejectBtn').addEventListener('click', () => doAction('reject'));
+      document.getElementById('clearSelectionBtn').addEventListener('click', () => {
+        selectedGradeIds.clear();
+        document.querySelectorAll('.grade-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('selectAll').checked = false;
+        updateActionCard();
+      });
+      document.getElementById('searchBtn').addEventListener('click', filterGrades);
+      document.querySelectorAll('#filterAcademicYear, #filterSemester, #filterCourse').forEach(el => {
+        el.addEventListener('change', loadPending);
+      });
+      document.getElementById('searchInput').addEventListener('keyup', function(e) { if (e.key === 'Enter') filterGrades(); });
+    }
+
+    function filterGrades() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      if (!q) { renderGrades(currentGrades); return; }
+      const filtered = currentGrades.filter(g =>
+        (g.studentName && g.studentName.toLowerCase().includes(q)) ||
+        (g.registrationNumber && g.registrationNumber.toLowerCase().includes(q)) ||
+        (g.courseCode && g.courseCode.toLowerCase().includes(q))
+      );
+      renderGrades(filtered);
+    }
+
+    function updateActionCard() {
+      const card = document.getElementById('actionCard');
+      const count = selectedGradeIds.size;
+      if (count > 0) {
+        card.style.display = 'block';
+        document.getElementById('selectedCount').textContent = count + ' selected';
+      } else {
+        card.style.display = 'none';
+      }
+    }
+
+    async function doAction(action) {
+      if (!selectedGradeIds.size) return;
+      const ids = Array.from(selectedGradeIds);
+      const comments = document.getElementById('approvalComments').value;
+      if (action === 'reject' && !comments.trim()) {
+        SmartCampusUI.showToast('Please provide comments when returning grades.', 'warning');
+        return;
+      }
+      SmartCampusUI.openModal({
+        title: action === 'approve' ? 'Confirm Approval' : 'Confirm Return',
+        bodyHtml: `<p>Are you sure you want to <strong>${action === 'approve' ? 'approve' : 'return'}</strong> ${ids.length} grade(s)?</p>${comments ? `<p><em>Comments: ${esc(comments)}</em></p>` : ''}`,
+        confirmText: action === 'approve' ? 'Approve' : 'Return',
+        onConfirm: async () => {
+          SmartCampusUI.closeModal();
+          try {
+            if (action === 'approve') await SmartCampusAPI.departmentApprove(ids, comments);
+            else await SmartCampusAPI.departmentReject(ids, comments);
+            SmartCampusUI.showToast(`${ids.length} grade(s) ${action === 'approve' ? 'approved' : 'returned'} successfully!`, 'success');
+            selectedGradeIds.clear();
+            document.getElementById('approvalComments').value = '';
+            await loadPending();
+            await loadStats();
+          } catch (e) {
+            SmartCampusUI.showToast(e.message || 'Action failed', 'error');
+          }
+        }
+      });
+    }
+
+    async function showHistory(gradeId) {
+      document.getElementById('historyModal').style.display = 'block';
+      document.getElementById('historyModalTitle').textContent = 'Approval History';
+      document.getElementById('historyModalBody').innerHTML = '<p><i class="fa-solid fa-spinner fa-spin"></i> Loading...</p>';
+      try {
+        const history = await SmartCampusAPI.fetchApprovalHistory(gradeId);
+        if (!history || !history.length) {
+          document.getElementById('historyModalBody').innerHTML = '<p style="color:var(--gray-500)">No history available.</p>';
+          return;
+        }
+        document.getElementById('historyModalBody').innerHTML = `<ul class="history-timeline">${history.map(h => {
+          const cls = h.action && h.action.toLowerCase().includes('reject') ? 'rejected' : h.action && h.action.toLowerCase().includes('approv') ? 'approved' : '';
+          return `<li class="history-item ${cls}">
+            <div><div class="h-action">${esc(h.action)}</div>
+            <div class="h-details">${esc(h.comments || '')}${h.actingUserName ? ' &mdash; by ' + esc(h.actingUserName) : ''}</div>
+            <div class="h-details">${formatDate(h.createdAt)} | ${esc(h.fromStage)} → ${esc(h.toStage)}</div></div>
+          </li>`;
+        }).join('')}</ul>`;
+      } catch (e) {
+        document.getElementById('historyModalBody').innerHTML = `<p style="color:var(--error)">Error: ${e.message}</p>`;
+      }
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('historyModal').style.display = 'none';
+    }
+
+    function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function formatDate(dt) { if (!dt) return '-'; try { const d=new Date(dt); if(isNaN(d.getTime())) return dt; return d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); } catch { return dt; } }
+  </script>
+</body>
+</html>

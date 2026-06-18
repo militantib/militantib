@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Lecturer - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .form-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 2rem; max-width: 850px; margin: 1rem 0 2rem; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.5rem; }
+    .form-grid .full-width { grid-column: 1 / -1; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-weight: 600; font-size: .82rem; margin-bottom: .3rem; color: var(--gray-700); }
+    .form-group .required::after { content: ' *'; color: var(--error); }
+    .form-group input, .form-group select, .form-group textarea { padding: .55rem .7rem; border: 1px solid var(--gray-200); border-radius: 6px; font-size: .9rem; font-family: inherit; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+    .form-actions { display: flex; gap: .75rem; margin-top: 1.5rem; flex-wrap: wrap; }
+    .photo-preview { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gray-200); margin-top: .5rem; }
+    .course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: .4rem; max-height: 200px; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: 6px; padding: .5rem; }
+    .course-grid label { font-weight: 400; font-size: .82rem; display: flex; align-items: center; gap: .3rem; cursor: pointer; }
+    @media (max-width: 700px) { .form-grid { grid-template-columns: 1fr; } .form-card { padding: 1.25rem; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 id="pageTitle" style="margin:0">Add New Lecturer</h1>
+      <a href="../manage-lecturers.html" class="btn btn-outline btn-sm">&larr; Back</a>
+    </div>
+    <div class="breadcrumb" style="display:flex;flex-wrap:wrap;gap:.3rem;font-size:.85rem;padding:.5rem 0;margin-bottom:.5rem">
+      <a href="../manage-lecturers.html">Manage Lecturers</a> <span style="color:var(--gray-500)">/</span>
+      <span id="bcCurrent" style="font-weight:600;color:var(--gray-800)">Add Lecturer</span>
+    </div>
+    <div class="form-card">
+      <form id="lecturerForm" novalidate>
+        <input type="hidden" id="editLecturerId">
+        <div class="form-grid">
+          <div class="form-group"><label class="required">Full Name</label><input type="text" id="fullName" required placeholder="e.g. Dr. John Smith"></div>
+          <div class="form-group"><label class="required">Email Address</label><input type="email" id="email" required placeholder="e.g. john@smartcampus.edu"></div>
+
+          <div class="form-group"><label>Lecturer ID (auto)</label><input type="text" id="lecturerId" readonly style="background:var(--gray-100)" placeholder="Auto-generated on save"></div>
+          <div class="form-group"><label>Default Password</label><input type="text" id="password" value="1234567890"></div>
+          <div class="form-group"><label>Phone Number</label><input type="text" id="phone" placeholder="e.g. +232 76 123 456"></div>
+
+          <div class="form-group"><label class="required">School</label><select id="schoolSelect" required onchange="loadDepts()"><option value="">Select School</option></select></div>
+          <div class="form-group"><label>Department</label><select id="deptSelect" onchange="loadProgs()"><option value="">Select Department</option></select></div>
+
+          <div class="form-group"><label>Programme</label><select id="progSelect" onchange="loadCoursesForLecturer()"><option value="">Select Programme</option></select></div>
+          <div class="form-group"><label>Employment Type</label><select id="employmentType"><option value="Full-Time">Full-Time</option><option value="Part-Time">Part-Time</option></select></div>
+
+          <div class="form-group"><label>Academic Rank</label><select id="academicRank"><option value="">Select Rank</option><option>Lecturer</option><option>Senior Lecturer</option><option>Associate Professor</option><option>Professor</option><option>Assistant Lecturer</option><option>Tutorial Assistant</option></select></div>
+          <div class="form-group"><label>Qualification</label><select id="qualification"><option value="">Select</option><option>PhD</option><option>MSc</option><option>MA</option><option>BSc</option><option>BA</option><option>Diploma</option></select></div>
+
+          <div class="form-group"><label>Gender</label><select id="gender"><option value="">Select</option><option>Male</option><option>Female</option></select></div>
+          <div class="form-group"><label>Date of Birth</label><input type="date" id="dob"></div>
+
+          <div class="form-group"><label>Nationality</label><input type="text" id="nationality" placeholder="e.g. Sierra Leonean"></div>
+          <div class="form-group"><label>Date of Employment</label><input type="date" id="dateOfEmployment"></div>
+
+          <div class="form-group"><label>Status</label><select id="status"><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div>
+          <div class="form-group"><label>Login Approval</label><select id="loginApprovalStatus"><option value="Pending">Pending</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option></select></div>
+
+          <div class="form-group full-width"><label>Address</label><textarea id="address" placeholder="e.g. 123 Main Street, Freetown"></textarea></div>
+
+          <div class="form-group full-width"><label>Assigned Courses</label><div id="coursesContainer" style="font-size:.85rem;color:var(--gray-400)">Select a programme to load courses.</div></div>
+
+          <div class="form-group full-width"><label>Photo</label><input type="file" id="photoInput" accept="image/*" onchange="previewPhoto()"><img id="photoPreview" class="photo-preview" style="display:none"></div>
+
+          <div class="form-group full-width" style="flex-direction:row;align-items:center;gap:.5rem">
+            <input type="checkbox" id="sendEmailToggle" checked style="width:18px;height:18px;cursor:pointer">
+            <label for="sendEmailToggle" style="font-weight:400;cursor:pointer;margin:0">Send welcome email with credentials</label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="submitBtn">Save Lecturer</button>
+          <button type="reset" class="btn btn-outline" onclick="if(!editId)resetForm()">Reset Form</button>
+          <a href="../manage-lecturers.html" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    let editId = null, schoolsCache = [], courseCache = [];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin","School Super Admin","Department Admin"].includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>'; return;
+      }
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("lecturerId")) {
+        editId = params.get("lecturerId");
+        document.getElementById("pageTitle").textContent = "Edit Lecturer";
+        document.getElementById("bcCurrent").textContent = "Edit Lecturer";
+        document.getElementById("submitBtn").textContent = "Update Lecturer";
+        document.getElementById("password").style.display = "none";
+        document.querySelector("label[for=password]").style.display = "none";
+        await loadLecturerForEdit(editId);
+      }
+      await loadSchools();
+      bindFormSubmit();
+    });
+
+    async function loadSchools() {
+      try {
+        schoolsCache = await SmartCampusAPI.fetchSchools() || [];
+        const sel = document.getElementById("schoolSelect");
+        sel.innerHTML = '<option value="">Select School</option>';
+        schoolsCache.forEach(s => { sel.innerHTML += `<option value="${s.id}">${esc(s.name)}</option>`; });
+      } catch { SmartCampusUI.showToast("Failed to load schools", "error"); }
+    }
+    async function loadDepts() {
+      const schoolId = document.getElementById("schoolSelect").value;
+      document.getElementById("deptSelect").innerHTML = '<option value="">Select Department</option>';
+      document.getElementById("progSelect").innerHTML = '<option value="">Select Programme</option>';
+      document.getElementById("coursesContainer").innerHTML = 'Select a programme to load courses.';
+      if (!schoolId) return;
+      const depts = await SmartCampusAPI.fetchDepartments(schoolId) || [];
+      depts.forEach(d => { document.getElementById("deptSelect").innerHTML += `<option value="${d.id}">${esc(d.name)}</option>`; });
+    }
+    async function loadProgs() {
+      const deptId = document.getElementById("deptSelect").value;
+      document.getElementById("progSelect").innerHTML = '<option value="">Select Programme</option>';
+      document.getElementById("coursesContainer").innerHTML = 'Select a programme to load courses.';
+      if (!deptId) return;
+      const progs = await SmartCampusAPI.fetchProgrammes(deptId) || [];
+      progs.forEach(p => { document.getElementById("progSelect").innerHTML += `<option value="${p.id}">${esc(p.name)}</option>`; });
+    }
+    async function loadCoursesForLecturer() {
+      const progId = document.getElementById("progSelect").value;
+      if (!progId) { document.getElementById("coursesContainer").innerHTML = 'Select a programme to load courses.'; return; }
+      try {
+        courseCache = await SmartCampusAPI.fetchCoursesByProgrammeAndYear(progId, null) || [];
+        let html = '<div class="course-grid">';
+        const selectedIds = window._selectedCourseIds || [];
+        courseCache.forEach(c => {
+          const checked = selectedIds.includes(String(c.id)) ? 'checked' : '';
+          html += `<label><input type="checkbox" value="${c.id}" ${checked}> ${esc(c.code)} - ${esc(c.title)}</label>`;
+        });
+        html += '</div>';
+        document.getElementById("coursesContainer").innerHTML = html;
+      } catch { document.getElementById("coursesContainer").innerHTML = 'Failed to load courses.'; }
+    }
+
+    async function loadLecturerForEdit(id) {
+      try {
+        const l = await apiFetch(`/lecturers/${id}`);
+        if (!l) { SmartCampusUI.showToast("Lecturer not found", "error"); return; }
+        document.getElementById("fullName").value = l.name || '';
+        document.getElementById("email").value = l.email || '';
+        document.getElementById("lecturerId").value = l.lecturerId || '';
+        document.getElementById("phone").value = l.phone || '';
+        document.getElementById("gender").value = l.gender || '';
+        document.getElementById("dob").value = l.dateOfBirth || '';
+        document.getElementById("nationality").value = l.nationality || '';
+        document.getElementById("address").value = l.address || '';
+        document.getElementById("employmentType").value = l.employmentType || 'Full-Time';
+        document.getElementById("academicRank").value = l.academicRank || '';
+        document.getElementById("qualification").value = l.qualification || '';
+        document.getElementById("dateOfEmployment").value = l.dateOfEmployment || '';
+        document.getElementById("status").value = l.status || 'Active';
+        document.getElementById("loginApprovalStatus").value = l.loginApprovalStatus || 'Pending';
+        if (l.photoUrl) { const pi = document.getElementById("photoPreview"); pi.src = getPhotoUrl(l.photoUrl); pi.style.display = "block"; }
+        window._selectedCourseIds = (l.assignedCourses||[]).map(c => String(c.courseId));
+        if (l.schoolId) {
+          document.getElementById("schoolSelect").value = l.schoolId;
+          await loadDepts();
+          if (l.departmentId) {
+            document.getElementById("deptSelect").value = l.departmentId;
+            await loadProgs();
+            if (l.programmeId) {
+              document.getElementById("progSelect").value = l.programmeId;
+              await loadCoursesForLecturer();
+            }
+          }
+        }
+      } catch (ex) { SmartCampusUI.showToast("Failed: "+ex.message, "error"); }
+    }
+
+    function previewPhoto() {
+      const file = document.getElementById("photoInput").files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => { const img = document.getElementById("photoPreview"); img.src = e.target.result; img.style.display = "block"; };
+      reader.readAsDataURL(file);
+    }
+
+    function bindFormSubmit() {
+      document.getElementById("lecturerForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const name = document.getElementById("fullName").value.trim();
+        const email = document.getElementById("email").value.trim();
+        if (!name) { SmartCampusUI.showToast("Full name is required", "error"); return; }
+        if (!email) { SmartCampusUI.showToast("Email is required", "error"); return; }
+        const schoolId = document.getElementById("schoolSelect").value;
+        if (!schoolId) { SmartCampusUI.showToast("School is required", "error"); return; }
+
+        const submitBtn = document.getElementById("submitBtn");
+        submitBtn.disabled = true; submitBtn.textContent = "Saving...";
+        const selectedCourses = [...document.querySelectorAll("#coursesContainer input[type=checkbox]:checked")].map(cb => parseInt(cb.value));
+
+        try {
+          const data = {
+            name, email, lecturerId: document.getElementById("lecturerId").value || undefined, password: document.getElementById("password").value || "1234567890", phone: document.getElementById("phone").value,
+            sendEmail: document.getElementById("sendEmailToggle").checked,
+            gender: document.getElementById("gender").value, dateOfBirth: document.getElementById("dob").value,
+            nationality: document.getElementById("nationality").value, address: document.getElementById("address").value,
+            employmentType: document.getElementById("employmentType").value, academicRank: document.getElementById("academicRank").value,
+            qualification: document.getElementById("qualification").value, dateOfEmployment: document.getElementById("dateOfEmployment").value,
+            status: document.getElementById("status").value, loginApprovalStatus: document.getElementById("loginApprovalStatus").value,
+            schoolId: parseInt(schoolId), programmeId: document.getElementById("progSelect").value ? parseInt(document.getElementById("progSelect").value) : null,
+            courseIds: selectedCourses
+          };
+          const photoInput = document.getElementById("photoInput");
+          if (photoInput.files && photoInput.files[0]) {
+            try {
+              data.photoUrl = await SmartCampusAPI.uploadPhoto(photoInput.files[0]);
+            } catch (uploadErr) {
+              SmartCampusUI.showToast("Photo upload failed: " + uploadErr.message + ". Lecturer will be saved without photo.", "warning");
+            }
+          }
+
+          if (editId) {
+            await apiFetch(`/lecturers/${editId}`, { method: 'PUT', body: JSON.stringify(data) });
+            SmartCampusUI.showToast("Lecturer updated!", "success");
+          } else {
+            await apiFetch('/lecturers/create', { method: 'POST', body: JSON.stringify(data) });
+            SmartCampusUI.showToast("Lecturer created! Credentials emailed.", "success");
+          }
+          setTimeout(() => window.location.href = "../manage-lecturers.html", 1200);
+        } catch (ex) { SmartCampusUI.showToast(ex.message || "Failed", "error"); submitBtn.disabled = false; submitBtn.textContent = editId ? "Update Lecturer" : "Save Lecturer"; }
+      });
+    }
+
+    function getPhotoUrl(path) {
+      if (!path) return "";
+      if (path.startsWith("http://") || path.startsWith("https://")) return path;
+      if (path.startsWith("data:")) return path;
+      return "http://localhost:8080/" + path;
+    }
+    function resetForm() { if (!editId) { document.getElementById("lecturerForm").reset(); document.getElementById("photoPreview").style.display = "none"; document.getElementById("coursesContainer").innerHTML = 'Select a programme to load courses.'; } }
+  </script>
+</body>
+</html>

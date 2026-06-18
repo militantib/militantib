@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gradebook Dashboard - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    .dash-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 2rem; }
+    .dash-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 12px; padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: all .25s; text-decoration: none; color: inherit; display: block; }
+    .dash-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-3px); border-color: var(--primary); }
+    .dash-card .icon { font-size: 3rem; margin-bottom: 1rem; }
+    .dash-card h3 { margin: 0 0 .3rem; font-size: 1.15rem; }
+    .dash-card p { margin: 0; font-size: .8rem; color: var(--gray-600); }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .75rem; margin: 1.5rem 0; }
+    .stat-card { text-align: center; padding: .85rem; background: var(--gray-100); border-radius: 8px; }
+    .stat-card h4 { font-size: 1.4rem; margin: 0; }
+    .stat-card p { font-size: .7rem; color: var(--gray-600); margin: .15rem 0 0; }
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; }
+    .chart-row .card { padding: 1rem; }
+    .chart-row canvas { max-height: 250px; max-width: 100%; }
+    .chart-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: .3rem .5rem; align-items: center; font-size: .85rem; padding: .6rem 0; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb span { color: var(--gray-500); }
+    .breadcrumb .current { color: var(--gray-800); font-weight: 600; }
+    .section-title { font-size: 1rem; font-weight: 700; margin: 1.5rem 0 .75rem; display: flex; align-items: center; gap: .4rem; }
+    .section-title i { color: var(--primary); }
+    .quick-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
+    @media (max-width: 900px) { .dash-grid { grid-template-columns: repeat(2, 1fr); } .chart-row, .chart-row-3 { grid-template-columns: 1fr; } }
+    @media (max-width: 500px) { .dash-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span>/</span><span class="current">Gradebook</span></div>
+
+    <h1>Gradebook &amp; Grading Portal</h1>
+    <p style="color:var(--gray-600)" id="gradebookDesc">Manage student grades and the grading approval workflow across all academic levels.</p>
+
+    <!-- Analytics Stats -->
+    <div class="stats-row" id="gbStats">
+      <div class="stat-card"><h4>—</h4><p>Total Graded</p></div>
+      <div class="stat-card"><h4>—</h4><p>Grades Pending</p></div>
+      <div class="stat-card"><h4>—</h4><p>Courses Completed</p></div>
+      <div class="stat-card"><h4>—</h4><p>Avg GPA</p></div>
+      <div class="stat-card"><h4>—</h4><p>Highest Score</p></div>
+      <div class="stat-card"><h4>—</h4><p>Lowest Score</p></div>
+      <div class="stat-card"><h4>—</h4><p>Pass Rate</p></div>
+      <div class="stat-card"><h4>—</h4><p>Fail Rate</p></div>
+      <div class="stat-card"><h4>—</h4><p>Incomplete</p></div>
+    </div>
+
+    <!-- Action Cards -->
+    <div class="dash-grid">
+      <a href="gradebook/browse.html" class="dash-card" style="border-top:4px solid var(--primary)">
+        <div class="icon" style="color:var(--primary)"><i class="fa-solid fa-magnifying-glass"></i></div>
+        <h3>Browse Grades</h3>
+        <p>Navigate hierarchy to view grade sheets with search, sort, and export.</p>
+      </a>
+      <a href="gradebook/add.html" class="dash-card" style="border-top:4px solid var(--success)">
+        <div class="icon" style="color:var(--success)"><i class="fa-solid fa-plus"></i></div>
+        <h3>Add Grades</h3>
+        <p>Enter grades with an editable spreadsheet and auto-calculation.</p>
+      </a>
+      <a href="gradebook/update.html" class="dash-card" style="border-top:4px solid var(--warning)">
+        <div class="icon" style="color:var(--warning)"><i class="fa-solid fa-pen"></i></div>
+        <h3>Update Grades</h3>
+        <p>Edit existing grades with full audit trail and change tracking.</p>
+      </a>
+      <a href="gradebook/delete.html" class="dash-card" style="border-top:4px solid var(--error)">
+        <div class="icon" style="color:var(--error)"><i class="fa-solid fa-trash-can"></i></div>
+        <h3>Delete Grades</h3>
+        <p>Remove grade records individually or in bulk.</p>
+      </a>
+    </div>
+
+    <!-- Approval Links (role-specific) -->
+    <div class="dash-grid" id="approvalLinks" style="margin-top:.5rem">
+      <a href="gradebook/department-approval.html" class="dash-card" data-role="Department Admin" style="border-top:4px solid var(--info)">
+        <div class="icon" style="color:var(--info)"><i class="fa-solid fa-check-double"></i></div>
+        <h3>Department Approval</h3>
+        <p>Review and approve lecturer-submitted grades.</p>
+      </a>
+      <a href="gradebook/school-approval.html" class="dash-card" data-role="School Super Admin" style="border-top:4px solid var(--warning)">
+        <div class="icon" style="color:var(--warning)"><i class="fa-solid fa-school"></i></div>
+        <h3>School Approval</h3>
+        <p>Review and approve department-approved grades.</p>
+      </a>
+      <a href="gradebook/university-approval.html" class="dash-card" data-role="University Super Admin" style="border-top:4px solid var(--navy)">
+        <div class="icon" style="color:var(--navy)"><i class="fa-solid fa-crown"></i></div>
+        <h3>University Final Approval</h3>
+        <p>Final review, approval, and publication of grades.</p>
+      </a>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="section-title"><i class="fa-solid fa-chart-pie"></i> Grade Analytics</div>
+    <div class="chart-row">
+      <div class="card"><h3 style="font-size:.9rem;margin-bottom:.75rem">Grade Distribution (A–F)</h3><canvas id="gradeDistChart"></canvas></div>
+      <div class="card"><h3 style="font-size:.9rem;margin-bottom:.75rem">GPA Distribution</h3><canvas id="gpaDistChart"></canvas></div>
+    </div>
+    <div class="chart-row">
+      <div class="card"><h3 style="font-size:.9rem;margin-bottom:.75rem">Pass vs Fail Rate</h3><canvas id="passFailChart"></canvas></div>
+      <div class="card"><h3 style="font-size:.9rem;margin-bottom:.75rem">Average Performance by Department</h3><canvas id="deptPerfChart"></canvas></div>
+    </div>
+    <div class="chart-row-3">
+      <div class="card"><h3 style="font-size:.9rem;margin-bottom:.75rem">Avg Performance by Programme</h3><canvas id="progPerfChart"></canvas></div>
+      <div class="card"><h3 style="font-size:.9rem;margin-bottom:.75rem">Avg Performance by Course</h3><canvas id="coursePerfChart"></canvas></div>
+      <div class="card"><h3 style="font-size:.9rem;margin-bottom:.75rem">Completion Status</h3><canvas id="completionChart"></canvas></div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const allowed = ["University Super Admin","School Super Admin","Department Admin","Lecturer"];
+      if (!allowed.includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2><p>You do not have permission to access the Gradebook.</p><a href="dashboard.html" class="btn btn-primary">Go to Dashboard</a></div>';
+        return;
+      }
+      applyRoleVisibility();
+      await loadGbStats();
+      await loadApprovalStats();
+    });
+
+    function applyRoleVisibility() {
+      document.querySelectorAll('[data-role]').forEach(el => {
+        const roles = el.getAttribute('data-role').split(',');
+        if (roles.includes(currentRole)) el.style.display = '';
+        else el.style.display = 'none';
+      });
+      if (!['Department Admin', 'School Super Admin', 'University Super Admin'].includes(currentRole)) {
+        const al = document.getElementById('approvalLinks');
+        if (al) al.style.display = 'none';
+      }
+      if (currentRole === 'Lecturer') {
+        document.getElementById('gradebookDesc').textContent = 'Submit your course grades for department approval. View and manage your assigned courses.';
+      }
+      if (['Department Admin', 'School Super Admin', 'University Super Admin'].includes(currentRole)) {
+        document.getElementById('gradebookDesc').textContent = 'Review and manage the grading approval workflow across the academic hierarchy.';
+      }
+    }
+
+    async function loadApprovalStats() {
+      try {
+        const stats = await SmartCampusAPI.fetchApprovalStats();
+        if (!stats || !stats.total) return;
+        let container = document.getElementById('approvalStats');
+        if (!container) {
+          container = document.createElement('div');
+          container.className = 'stats-row';
+          container.id = 'approvalStats';
+          document.querySelector('.main-content').insertBefore(container, document.getElementById('approvalLinks'));
+        }
+        if (currentRole === 'Lecturer') {
+          container.innerHTML = `
+            <div class="stat-card"><h4 style="color:var(--warning)">${stats.draft||0}</h4><p>Draft</p></div>
+            <div class="stat-card"><h4 style="color:var(--info)">${stats.submitted||0}</h4><p>Submitted</p></div>
+            <div class="stat-card"><h4 style="color:var(--error)">${stats.returned||0}</h4><p>Returned</p></div>
+            <div class="stat-card"><h4 style="color:var(--success)">${stats.approved||0}</h4><p>Published</p></div>`;
+        } else if (currentRole === 'Department Admin') {
+          container.innerHTML = `
+            <div class="stat-card"><h4 style="color:var(--warning)">${stats.pending||0}</h4><p>Pending Dept</p></div>
+            <div class="stat-card"><h4 style="color:var(--success)">${stats.approved||0}</h4><p>Approved</p></div>
+            <div class="stat-card"><h4 style="color:var(--error)">${stats.returned||0}</h4><p>Returned</p></div>
+            <div class="stat-card"><h4 style="color:var(--info)">${stats.published||0}</h4><p>Published</p></div>`;
+        } else if (currentRole === 'School Super Admin') {
+          container.innerHTML = `
+            <div class="stat-card"><h4 style="color:var(--warning)">${stats.pending||0}</h4><p>Pending School</p></div>
+            <div class="stat-card"><h4 style="color:var(--success)">${stats.approved||0}</h4><p>Approved</p></div>
+            <div class="stat-card"><h4 style="color:var(--error)">${stats.returned||0}</h4><p>Returned</p></div>
+            <div class="stat-card"><h4 style="color:var(--info)">${stats.published||0}</h4><p>Published</p></div>`;
+        } else if (currentRole === 'University Super Admin') {
+          container.innerHTML = `
+            <div class="stat-card"><h4 style="color:var(--warning)">${stats.pending||0}</h4><p>Pending Final</p></div>
+            <div class="stat-card"><h4 style="color:var(--success)">${stats.approved||0}</h4><p>Approved</p></div>
+            <div class="stat-card"><h4 style="color:var(--info)">${stats.published||0}</h4><p>Published</p></div>
+            <div class="stat-card"><h4 style="color:var(--navy)">${stats.total||0}</h4><p>Total Records</p></div>`;
+        }
+      } catch {}
+    }
+
+    async function loadGbStats() {
+      try {
+        const data = await SmartCampusAPI.fetchGradeAnalytics();
+        if (!data) return;
+        document.getElementById("gbStats").innerHTML = `
+          <div class="stat-card"><h4>${data.totalStudents||0}</h4><p>Total Graded</p></div>
+          <div class="stat-card"><h4 style="color:var(--warning)">${data.gradesPending||0}</h4><p>Grades Pending</p></div>
+          <div class="stat-card"><h4 style="color:var(--info)">${data.coursesCompleted||0}</h4><p>Courses Completed</p></div>
+          <div class="stat-card"><h4 style="color:var(--navy)">${data.averageGpa||'0.00'}</h4><p>Avg GPA</p></div>
+          <div class="stat-card"><h4 style="color:var(--success)">${data.highestScore||0}</h4><p>Highest Score</p></div>
+          <div class="stat-card"><h4 style="color:var(--error)">${data.lowestScore||0}</h4><p>Lowest Score</p></div>
+          <div class="stat-card"><h4 style="color:var(--success)">${data.passRate||0}%</h4><p>Pass Rate</p></div>
+          <div class="stat-card"><h4 style="color:var(--error)">${data.failRate||0}%</h4><p>Fail Rate</p></div>
+          <div class="stat-card"><h4 style="color:var(--warning)">${data.incompleteGrades||0}</h4><p>Incomplete</p></div>
+        `;
+        renderCharts(data);
+      } catch {}
+    }
+
+    let chartInstances = [];
+    function renderCharts(data) {
+      chartInstances.forEach(c => c.destroy());
+      chartInstances = [];
+
+      const dist = data.gradeDistribution || {};
+      const gradeLabels = ['A','B','C','D','F'];
+      const gradeVals = gradeLabels.map(l => dist[l] || 0);
+      chartInstances.push(new Chart(document.getElementById("gradeDistChart"), {
+        type: 'bar',
+        data: { labels: gradeLabels, datasets: [{ label: 'Students', data: gradeVals, backgroundColor: ['#22c55e','#3b82f6','#eab308','#f97316','#ef4444'] }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+      }));
+
+      const gpaDist = data.gpaDistribution || { '0.0':0, '1.0':0, '2.0':0, '3.0':0, '4.0':0 };
+      const gpaLabels = Object.keys(gpaDist);
+      const gpaVals = gpaLabels.map(l => gpaDist[l]);
+      chartInstances.push(new Chart(document.getElementById("gpaDistChart"), {
+        type: 'bar',
+        data: { labels: gpaLabels.map(l => 'GPA '+l), datasets: [{ label: 'Students', data: gpaVals, backgroundColor: ['#ef4444','#f97316','#eab308','#3b82f6','#22c55e'] }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+      }));
+
+      chartInstances.push(new Chart(document.getElementById("passFailChart"), {
+        type: 'doughnut',
+        data: { labels: ['Pass','Fail'], datasets: [{ data: [data.passed||0, data.failed||0], backgroundColor: ['#22c55e','#ef4444'] }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      }));
+
+      const deptPerf = data.departmentPerformance || {};
+      const deptLabels = Object.keys(deptPerf);
+      chartInstances.push(new Chart(document.getElementById("deptPerfChart"), {
+        type: 'bar',
+        data: { labels: deptLabels, datasets: [{ label: 'Avg Score', data: deptLabels.map(l => deptPerf[l]), backgroundColor: '#3b82f6' }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, max: 100 } } }
+      }));
+
+      const progPerf = data.programmePerformance || {};
+      const progLabels = Object.keys(progPerf);
+      chartInstances.push(new Chart(document.getElementById("progPerfChart"), {
+        type: 'bar',
+        data: { labels: progLabels, datasets: [{ label: 'Avg Score', data: progLabels.map(l => progPerf[l]), backgroundColor: '#10b981' }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, max: 100 } } }
+      }));
+
+      const coursePerf = data.coursePerformance || {};
+      const courseLabels = Object.keys(coursePerf);
+      chartInstances.push(new Chart(document.getElementById("coursePerfChart"), {
+        type: 'bar',
+        data: { labels: courseLabels, datasets: [{ label: 'Avg Score', data: courseLabels.map(l => coursePerf[l]), backgroundColor: '#f59e0b' }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, max: 100 } } }
+      }));
+
+      chartInstances.push(new Chart(document.getElementById("completionChart"), {
+        type: 'doughnut',
+        data: { labels: ['Completed','Pending','Incomplete'], datasets: [{ data: [data.completed||0, data.gradesPending||0, data.incompleteGrades||0], backgroundColor: ['#22c55e','#f59e0b','#ef4444'] }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      }));
+    }
+  </script>
+</body>
+</html>

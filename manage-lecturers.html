@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Lecturers - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+    .dash-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 12px; padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: all .25s; text-decoration: none; color: inherit; display: block; }
+    .dash-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-3px); border-color: var(--primary); }
+    .dash-card .icon { font-size: 3rem; margin-bottom: 1rem; }
+    .dash-card h3 { margin: 0 0 .3rem; font-size: 1.15rem; }
+    .dash-card p { margin: 0; font-size: .8rem; color: var(--gray-600); }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .75rem; margin: 1.5rem 0; }
+    .stat-card { text-align: center; padding: .85rem; background: var(--gray-100); border-radius: 8px; }
+    .stat-card h4 { font-size: 1.4rem; margin: 0; }
+    .stat-card p { font-size: .7rem; color: var(--gray-600); margin: .15rem 0 0; }
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: .3rem .5rem; align-items: center; font-size: .85rem; padding: .6rem 0; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb span { color: var(--gray-500); }
+    .breadcrumb .current { color: var(--gray-800); font-weight: 600; }
+    .section-title { font-size: 1rem; font-weight: 700; margin: 1.5rem 0 .5rem; display: flex; align-items: center; gap: .4rem; }
+    .section-title i { color: var(--primary); }
+    @media (max-width: 700px) { .dash-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 450px) { .dash-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span>/</span><span class="current">Manage Lecturers</span></div>
+
+    <h1>Manage Lecturers</h1>
+    <p style="color:var(--gray-600)">Manage lecturer records, accounts, course assignments, and grade submissions across all academic levels.</p>
+
+    <!-- Stats -->
+    <div class="stats-row" id="lecStats">
+      <div class="stat-card"><h4>—</h4><p>Total Lecturers</p></div>
+      <div class="stat-card"><h4>—</h4><p>Active</p></div>
+      <div class="stat-card"><h4>—</h4><p>Inactive</p></div>
+      <div class="stat-card"><h4>—</h4><p>Pending Approvals</p></div>
+      <div class="stat-card"><h4>—</h4><p>Approved</p></div>
+      <div class="stat-card"><h4>—</h4><p>Courses Assigned</p></div>
+      <div class="stat-card"><h4>—</h4><p>Grades Submitted</p></div>
+      <div class="stat-card"><h4>—</h4><p>Pending Grade Approvals</p></div>
+    </div>
+
+    <!-- Action Cards -->
+    <div class="dash-grid">
+      <a href="lecturers/browse.html" class="dash-card" style="border-top:4px solid var(--primary)">
+        <div class="icon" style="color:var(--primary)"><i class="fa-solid fa-magnifying-glass"></i></div>
+        <h3>Browse Lecturers</h3>
+        <p>Navigate hierarchy to view lecturer records with search, sort, and export.</p>
+      </a>
+      <a href="lecturers/add.html" class="dash-card" style="border-top:4px solid var(--success)">
+        <div class="icon" style="color:var(--success)"><i class="fa-solid fa-plus"></i></div>
+        <h3>Add Lecturer</h3>
+        <p>Register new lecturer with full profile, course assignments, and account creation.</p>
+      </a>
+      <a href="lecturers/update.html" class="dash-card" style="border-top:4px solid var(--warning)">
+        <div class="icon" style="color:var(--warning)"><i class="fa-solid fa-pen"></i></div>
+        <h3>Update Lecturer</h3>
+        <p>Edit lecturer details, reassign courses, manage account status with audit trail.</p>
+      </a>
+      <a href="lecturers/delete.html" class="dash-card" style="border-top:4px solid var(--error)">
+        <div class="icon" style="color:var(--error)"><i class="fa-solid fa-trash-can"></i></div>
+        <h3>Delete Lecturer</h3>
+        <p>Remove lecturer records individually, in bulk, or by programme/department.</p>
+      </a>
+      <a href="lecturers/approval.html" class="dash-card" style="border-top:4px solid var(--info)">
+        <div class="icon" style="color:var(--info)"><i class="fa-solid fa-check-double"></i></div>
+        <h3>Login Approval</h3>
+        <p>Approve, reject, suspend, or manage lecturer login access.</p>
+      </a>
+      <a href="lecturers/received-grades.html" class="dash-card" style="border-top:4px solid var(--navy)">
+        <div class="icon" style="color:var(--navy)"><i class="fa-solid fa-file-lines"></i></div>
+        <h3>Received Grades</h3>
+        <p>Review, approve, or return grades submitted by lecturers.</p>
+      </a>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!["University Super Admin","School Super Admin","Department Admin"].includes(currentRole)) {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2><p>Only University Super Admin, School Super Admin, and Department Admin can manage lecturers.</p><a href="dashboard.html" class="btn btn-primary">Go to Dashboard</a></div>';
+        return;
+      }
+      await loadStats();
+    });
+
+    async function loadStats() {
+      try {
+        const lecturers = await SmartCampusAPI.withFallback(
+          () => apiFetch('/lecturers'),
+          () => []
+        );
+        if (!lecturers || !lecturers.length) return;
+        const total = lecturers.length;
+        const active = lecturers.filter(l => l.status === 'Active').length;
+        const inactive = lecturers.filter(l => l.status === 'Inactive').length;
+        const pendingApproval = lecturers.filter(l => l.loginApprovalStatus === 'Pending').length;
+        const approved = lecturers.filter(l => l.loginApprovalStatus === 'Approved').length;
+        const totalCourses = lecturers.reduce((sum, l) => sum + (l.assignedCourses ? l.assignedCourses.length : 0), 0);
+        const totalGrades = lecturers.reduce((sum, l) => sum + (l.gradesSubmitted || 0), 0);
+
+        document.getElementById("lecStats").innerHTML = `
+          <div class="stat-card"><h4>${total}</h4><p>Total Lecturers</p></div>
+          <div class="stat-card"><h4 style="color:var(--success)">${active}</h4><p>Active</p></div>
+          <div class="stat-card"><h4 style="color:var(--gray-500)">${inactive}</h4><p>Inactive</p></div>
+          <div class="stat-card"><h4 style="color:var(--warning)">${pendingApproval}</h4><p>Pending Approvals</p></div>
+          <div class="stat-card"><h4 style="color:var(--info)">${approved}</h4><p>Approved</p></div>
+          <div class="stat-card"><h4>${totalCourses}</h4><p>Courses Assigned</p></div>
+          <div class="stat-card"><h4>${totalGrades}</h4><p>Grades Submitted</p></div>
+          <div class="stat-card"><h4 style="color:var(--warning)">—</h4><p>Pending Grade Approvals</p></div>
+        `;
+      } catch {}
+    }
+  </script>
+</body>
+</html>

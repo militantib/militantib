@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Results - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <h1>My Results</h1>
+    <p style="color:var(--gray-600)">View your published academic results and transcripts.</p>
+
+    <div id="loadingSpinner" style="text-align:center;padding:3rem"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--gray-400)"></i><p style="color:var(--gray-500);margin-top:.5rem">Loading results...</p></div>
+
+    <div id="resultsContainer" style="display:none"></div>
+  </div>
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (currentRole !== "Student") {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>';
+        return;
+      }
+      await loadResults();
+    });
+
+    async function loadResults() {
+      try {
+        const user = JSON.parse(localStorage.getItem("sc_user"));
+        if (!user || !user.id) throw new Error("User not found");
+        const allGrades = await SmartCampusAPI.fetchStudentGrades(user.id);
+        const grades = Array.isArray(allGrades) ? allGrades : [];
+
+        const published = grades.filter(g => g.status === "Published");
+        const gradeBook = grades.filter(g => g.status === "Approved by University");
+
+        renderResults(published, gradeBook, user);
+        document.getElementById("loadingSpinner").style.display = "none";
+        document.getElementById("resultsContainer").style.display = "block";
+      } catch (e) {
+        document.getElementById("loadingSpinner").innerHTML = `<p style="color:var(--error)">Failed to load results. ${e.message}</p>`;
+      }
+    }
+
+    function renderResults(published, gradeBook, user) {
+      const container = document.getElementById("resultsContainer");
+
+      if (!published.length && !gradeBook.length) {
+        container.innerHTML = `
+          <div class="card" style="text-align:center;padding:3rem">
+            <i class="fa-solid fa-file-circle-exclamation fa-3x" style="color:var(--gray-300)"></i>
+            <h3 style="margin-top:1rem">No Results Available</h3>
+            <p style="color:var(--gray-500)">Your results have not been uploaded yet. Please check back later.</p>
+          </div>`;
+        return;
+      }
+
+      let html = '';
+
+      // ---- Published grades (traditional) ----
+      if (published.length) {
+        let totalGpa = 0, tCount = 0;
+        html += `<div class="card" style="margin-bottom:1.5rem"><h3>Published Exam Results</h3>
+          <div class="table-responsive"><table>
+          <thead><tr><th>Course Code</th><th>Course Title</th><th>CA1</th><th>CA2</th><th>Assign</th><th>Midterm</th><th>Final</th><th>Total</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>`;
+        published.forEach(g => {
+          if (g.gpa != null) { totalGpa += g.gpa; tCount++; }
+          const passed = (g.total || 0) >= 50;
+          html += `<tr>
+            <td>${esc(g.courseCode)}</td>
+            <td>${esc(g.courseTitle)}</td>
+            <td>${g.ca1 != null ? g.ca1 : '-'}</td>
+            <td>${g.ca2 != null ? g.ca2 : '-'}</td>
+            <td>${g.assignment != null ? g.assignment : '-'}</td>
+            <td>${g.midterm != null ? g.midterm : '-'}</td>
+            <td>${g.finalExam != null ? g.finalExam : '-'}</td>
+            <td><strong>${g.total != null ? g.total : '-'}</strong></td>
+            <td><span class="badge ${passed ? 'badge-success' : 'badge-error'}">${g.letterGrade || '-'}</span></td>
+            <td>${passed ? '<span class="badge badge-success">Pass</span>' : '<span class="badge badge-error">Fail</span>'}</td>
+          </tr>`;
+        });
+        const avgGpa = tCount > 0 ? (totalGpa / tCount).toFixed(2) : '0.00';
+        html += `</tbody></table></div>
+          <div style="margin-top:.75rem;padding:.75rem;background:var(--gray-100);border-radius:8px;display:flex;gap:2rem;flex-wrap:wrap">
+            <div><strong>Semester:</strong> ${published[0]?.semester || '-'}</div>
+            <div><strong>Academic Year:</strong> ${published[0]?.academicYear || '-'}</div>
+            <div><strong>GPA (4.0 Scale):</strong> ${avgGpa}</div>
+            <div><strong>Courses:</strong> ${published.length}</div>
+          </div>
+          <div style="margin-top:.5rem;font-size:.78rem;color:var(--gray-500)"><i class="fa-solid fa-check-circle" style="color:var(--success)"></i> Results published and certified by Njala University</div>
+        </div>`;
+      }
+
+      // ---- Grade Book results (uploaded by Super Admin) ----
+      if (gradeBook.length) {
+        let gbTotalGpa = 0, gbCount = 0;
+        const semesters = [...new Set(gradeBook.map(g => g.semester))];
+        html += `<div class="card"><h3>Grade Book Results <span style="font-size:.75rem;font-weight:400;color:var(--gray-500)">(Uploaded by Administration)</span></h3>`;
+
+        semesters.forEach(sem => {
+          const semGrades = gradeBook.filter(g => g.semester === sem);
+          html += `<h4 style="margin:.75rem 0 .25rem;color:var(--gray-600)">${sem}</h4>
+            <div class="table-responsive"><table>
+            <thead><tr><th>Course Code</th><th>Course Title</th><th>Grade</th><th>GPA (5.0)</th><th>Remarks</th></tr></thead><tbody>`;
+          semGrades.forEach(g => {
+            const gp = g.gpa != null ? g.gpa : 0;
+            gbTotalGpa += gp; gbCount++;
+            const passed = gp >= 2.0;
+            html += `<tr>
+              <td>${esc(g.courseCode)}</td>
+              <td>${esc(g.courseTitle)}</td>
+              <td><span class="badge ${passed ? 'badge-success' : 'badge-error'}">${g.letterGrade || '-'}</span></td>
+              <td>${gp.toFixed(1)}</td>
+              <td>${passed ? '<span class="badge badge-success">Pass</span>' : '<span class="badge badge-error">Fail</span>'}</td>
+            </tr>`;
+          });
+          const semAvg = semGrades.length > 0 ? (semGrades.reduce((a, g) => a + (g.gpa || 0), 0) / semGrades.length).toFixed(2) : '0.00';
+          html += `</tbody></table></div>
+            <div style="margin-top:.5rem;padding:.5rem;background:var(--gray-100);border-radius:6px;font-size:.85rem">
+              <strong>Semester GPA (5.0 Scale):</strong> ${semAvg}
+            </div>`;
+        });
+
+        const overallGpa = gbCount > 0 ? (gbTotalGpa / gbCount).toFixed(2) : '0.00';
+        const gpaNum = parseFloat(overallGpa);
+        let standing, standingCls, standingIcon;
+        if (gpaNum >= 4.3) { standing = "Dean's List"; standingCls = 'background:#d1fae5;color:#065f46;border:1px solid #6ee7b7'; standingIcon = 'fa-trophy'; }
+        else if (gpaNum >= 3.0) { standing = 'Promoted to the next class level with clear standing'; standingCls = 'background:#dbeafe;color:#1e40af;border:1px solid #93c5fd'; standingIcon = 'fa-arrow-up'; }
+        else if (gpaNum >= 2.7) { standing = 'To repeat'; standingCls = 'background:#fef3c7;color:#92400e;border:1px solid #fcd34d'; standingIcon = 'fa-repeat'; }
+        else { standing = 'Dropped out of programme'; standingCls = 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5'; standingIcon = 'fa-times-circle'; }
+        html += `<div style="margin-top:.75rem;padding:.75rem;background:#eef5ff;border-radius:8px;display:flex;gap:2rem;flex-wrap:wrap;align-items:center">
+            <div><strong>Academic Year:</strong> ${gradeBook[0]?.academicYear || '-'}</div>
+            <div><strong>Overall GPA (5.0 Scale):</strong> ${overallGpa}</div>
+            <div><strong>Courses:</strong> ${gradeBook.length}</div>
+            <div><span style="padding:.35rem .85rem;border-radius:20px;font-size:.82rem;display:inline-flex;align-items:center;gap:.4rem;${standingCls}"><i class="fa-solid ${standingIcon}"></i> ${standing}</span></div>
+          </div>
+        </div>`;
+
+        // Grading scale reference
+        html += `<div class="card" style="margin-top:1rem;background:var(--gray-50)">
+          <h4 style="margin-bottom:.5rem">Grade Book Grading Scale (5.0)</h4>
+          <div style="display:flex;gap:1.5rem;flex-wrap:wrap;font-size:.85rem">
+            <span><strong>A</strong> = 5.0 (Excellent)</span>
+            <span><strong>B</strong> = 4.0 (Good)</span>
+            <span><strong>C</strong> = 3.0 (Fairly Good)</span>
+            <span><strong>D</strong> = 2.0 (Barely Passed)</span>
+            <span><strong>E</strong> = 1.0 (Failed)</span>
+            <span><strong>F</strong> = 0.0 (Complete Failure)</span>
+            <span><strong>I</strong> = Incomplete</span>
+            <span><strong>W</strong> = Withdrawal</span>
+          </div>
+        </div>`;
+      }
+
+      container.innerHTML = html;
+    }
+
+    function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  </script>
+</body>
+</html>

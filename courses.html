@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Courses - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .course-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; }
+    .course-form .full { grid-column: 1 / -1; }
+    .course-form label { font-weight: 600; font-size: .85rem; display: block; margin-bottom: .25rem; }
+    .course-form input, .course-form select { width: 100%; padding: .5rem; border: 1px solid var(--gray-200); border-radius: 6px; }
+    .btn-sm { padding: .35rem .75rem; font-size: .8rem; }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <h1>Courses / Modules</h1>
+    <div class="card">
+      <div class="course-form" id="courseForm">
+        <div class="full"><label>Department</label><select id="courseDeptFilter"><option value="">All Departments</option></select></div>
+        <div><label>Code</label><input id="courseCode" placeholder="e.g. CS301"></div>
+        <div><label>Title</label><input id="courseTitle" placeholder="e.g. Software Engineering"></div>
+        <div><label>Credits</label><input id="courseCredits" type="number" value="3"></div>
+        <div><label>Type</label><select id="courseType"><option>Core</option><option>Elective</option></select></div>
+        <div><label>Year</label><select id="courseYear"><option>Year1</option><option>Year2</option><option>Year3</option><option>Year4</option></select></div>
+        <div><label>Semester</label><select id="courseSem"><option>Semester1</option><option>Semester2</option></select></div>
+        <div class="full" style="display:flex;gap:.5rem">
+          <button class="btn btn-primary" id="courseSaveBtn">Add Course</button>
+          <button class="btn btn-outline" id="courseCancelBtn" style="display:none">Cancel</button>
+        </div>
+      </div>
+    </div>
+    <div class="card table-responsive" id="coursesContainer"></div>
+  </div>
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+</body>
+</html>

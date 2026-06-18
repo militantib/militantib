@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finance Dashboard - SmartCampus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .fdash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .fdash-card { text-align: center; padding: 1.5rem; background: var(--gray-100); border-radius: 12px; border-left: 4px solid var(--primary); }
+    .fdash-card h3 { font-size: 1.8rem; margin-bottom: .25rem; }
+    .fdash-card p { font-size: .85rem; color: var(--gray-600); }
+    .fdash-card .icon { font-size: 2rem; margin-bottom: .5rem; color: var(--primary); }
+    .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .quick-actions a { display: block; text-align: center; padding: 1.25rem; background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; text-decoration: none; color: inherit; transition: all .2s; }
+    .quick-actions a:hover { border-color: var(--primary); box-shadow: 0 2px 12px rgba(79,110,247,.15); transform: translateY(-2px); }
+    .quick-actions a i { font-size: 1.8rem; color: var(--primary); margin-bottom: .5rem; display: block; }
+    .recent-activity { max-height: 300px; overflow-y: auto; }
+    .recent-activity .item { padding: .6rem; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; }
+    .recent-activity .item:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar">
+      <button class="menu-toggle" type="button">☰</button>
+      <div id="userBadge" style="display:flex;align-items:center;gap:.5rem;margin-left:auto;font-size:.85rem">
+        <span id="userBadgeName"></span>
+        <button id="logoutBtn" class="btn btn-outline btn-sm">Logout</button>
+      </div>
+    </div>
+
+    <h1>Finance Dashboard</h1>
+    <p style="color:var(--gray-600);margin-bottom:1rem">Overview of student fee collections and financial records.</p>
+
+    <div class="fdash-grid" id="financeStats"></div>
+
+    <h3 style="margin-bottom:.75rem">Quick Actions</h3>
+    <div class="quick-actions">
+      <a href="finance-portal.html"><i class="fa-solid fa-calculator"></i>Finance Portal</a>
+      <a href="record-payment.html"><i class="fa-solid fa-credit-card"></i>Record Payment</a>
+      <a href="finance-portal.html"><i class="fa-solid fa-magnifying-glass"></i>Search Students</a>
+      <a href="finance-portal.html"><i class="fa-solid fa-file-export"></i>Reports &amp; Export</a>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="card">
+        <h3 style="margin-bottom:.75rem;font-size:.95rem">Monthly Collections</h3>
+        <canvas id="monthlyChartFD" height="200"></canvas>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:.75rem;font-size:.95rem">Revenue by Department</h3>
+        <canvas id="deptChartFD" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <h3 style="margin-bottom:.75rem">Recent Payments</h3>
+      <div class="table-responsive" id="recentPaymentsFD"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/render.js"></script>
+  <script>
+    async function renderFinanceDashboard() {
+      const stats = document.getElementById("financeStats");
+      const recent = document.getElementById("recentPaymentsFD");
+      const data = await SmartCampusAPI.withFallback(() => SmartCampusAPI.fetchFinanceDashboard(), () => ({ data: {} }));
+      const d = data.data || data || {};
+
+      stats.innerHTML = `
+        <div class="fdash-card"><div class="icon"><i class="fa-solid fa-users"></i></div><h3>${d.totalStudents || 0}</h3><p>Total Students</p></div>
+        <div class="fdash-card" style="border-left-color:var(--success)"><div class="icon" style="color:var(--success)"><i class="fa-solid fa-check-circle"></i></div><h3>${d.studentsFullyPaid || 0}</h3><p>Fully Paid</p></div>
+        <div class="fdash-card" style="border-left-color:var(--error)"><div class="icon" style="color:var(--error)"><i class="fa-solid fa-exclamation-circle"></i></div><h3>${d.studentsWithDues || 0}</h3><p>With Outstanding</p></div>
+        <div class="fdash-card" style="border-left-color:var(--warning)"><div class="icon" style="color:var(--warning)"><i class="fa-solid fa-coins"></i></div><h3>NLE ${(d.totalRevenue || 0).toLocaleString()}</h3><p>Total Revenue</p></div>
+      `;
+
+      // Monthly chart
+      const monthly = d.monthlyCollections || {};
+      if (document.getElementById("monthlyChartFD")) {
+        new Chart(document.getElementById("monthlyChartFD"), {
+          type: 'bar', data: {
+            labels: Object.keys(monthly), datasets: [{ label: 'NLE', data: Object.values(monthly), backgroundColor: '#4f6ef7', borderRadius: 6 }]
+          }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } }
+        });
+      }
+
+      // Dept chart
+      const deptRev = d.deptRevenue || {};
+      if (document.getElementById("deptChartFD")) {
+        new Chart(document.getElementById("deptChartFD"), {
+          type: 'doughnut', data: {
+            labels: Object.keys(deptRev), datasets: [{ data: Object.values(deptRev), backgroundColor: ['#4f6ef7','#22c55e','#f59e0b','#ef4444','#8b5cf6'] }]
+          }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+        });
+      }
+
+      // Recent payments
+      const payments = d.recentPayments || [];
+      recent.innerHTML = payments.length
+        ? `<table><thead><tr><th>Date</th><th>Student</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead><tbody>${payments.map(p => `<tr><td>${p.date||''}</td><td>${p.studentName||'ID:'+p.studentId}</td><td>NLE${(p.amount||0).toLocaleString()}</td><td>${p.method||''}</td><td>${p.reference||''}</td></tr>`).join('')}</tbody></table>`
+        : '<p style="color:var(--gray-300);text-align:center;padding:1rem">No payments yet</p>';
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.location.pathname.includes("finance-dashboard.html")) renderFinanceDashboard();
+    });
+  </script>
+</body>
+</html>

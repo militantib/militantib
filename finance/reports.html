@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financial Reports - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root { --excel-header: #44546a; --excel-border: #d0d7de; }
+    .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+    .filter-grid label { font-weight: 600; font-size: .8rem; display: block; margin-bottom: .2rem; }
+    .filter-grid select, .filter-grid input { width: 100%; padding: .5rem; border: 1px solid var(--gray-200); border-radius: 6px; box-sizing: border-box; }
+    .report-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .75rem; margin-bottom: 1.25rem; }
+    .report-summary .s { text-align: center; padding: .75rem; background: var(--gray-100); border-radius: 8px; }
+    .report-summary .s h4 { font-size: 1.1rem; margin: 0; }
+    .report-summary .s p { font-size: .7rem; color: var(--gray-600); margin: .1rem 0 0; }
+    .excel-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .excel-table th { background: var(--excel-header); color: #fff; padding: .6rem .5rem; text-align: left; font-weight: 600; white-space: nowrap; }
+    .excel-table td { padding: .5rem; border: 1px solid var(--excel-border); }
+    .excel-table tr:nth-child(even) { background: #f8f9fa; }
+    .excel-table tr:hover { background: #eef2ff; }
+    .badge-success { background: var(--success); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .badge-warning { background: var(--warning); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .badge-error { background: var(--error); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .pagination { display: flex; gap: .3rem; align-items: center; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+    .pagination button { padding: .4rem .7rem; border: 1px solid var(--gray-200); border-radius: 5px; background: #fff; cursor: pointer; font-size: .8rem; }
+    .pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .pagination button:disabled { opacity: .4; cursor: default; }
+    .restricted-badge { display: inline-block; font-size: .7rem; background: var(--gray-200); color: var(--gray-600); border-radius: 4px; padding: .15rem .5rem; }
+    .revenue-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .revenue-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 1rem; }
+    .revenue-card h4 { font-size: .9rem; margin: 0 0 .5rem; }
+    .revenue-card .bar { display: flex; justify-content: space-between; padding: .25rem 0; font-size: .8rem; border-bottom: 1px solid var(--gray-100); }
+    .revenue-card .bar:last-child { border-bottom: none; }
+    .bar-value { font-weight: 600; color: var(--primary); }
+    @media (max-width: 768px) { .revenue-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h1 style="margin:0">Financial Reports</h1>
+      <a href="../finance.html" class="btn btn-outline btn-sm">&larr; Back to Dashboard</a>
+    </div>
+    <div style="margin-top:.3rem"><span class="restricted-badge"><i class="fa-solid fa-eye"></i> View-only reports</span></div>
+
+    <div class="breadcrumb" style="display:flex;flex-wrap:wrap;gap:.3rem .5rem;align-items:center;font-size:.85rem;padding:.6rem 0">
+      <a href="../finance.html">Finance Management</a> <span>/</span> <span class="current" style="color:var(--gray-800);font-weight:600">Financial Reports</span>
+    </div>
+
+    <!-- Filters -->
+    <div class="card" style="margin-bottom:1.25rem">
+      <h3 style="font-size:.95rem;margin-bottom:.75rem"><i class="fa-solid fa-filter"></i> Filter Reports</h3>
+      <div class="filter-grid">
+        <div>
+          <label for="filterSchool">School</label>
+          <select id="filterSchool" onchange="loadFilterDepts()">
+            <option value="">All Schools</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterDepartment">Department</label>
+          <select id="filterDepartment" onchange="loadFilterProgrammes()">
+            <option value="">All Departments</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterProgramme">Programme</label>
+          <select id="filterProgramme">
+            <option value="">All Programmes</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterLevel">Level</label>
+          <select id="filterLevel">
+            <option value="">All Levels</option>
+            <option value="Year 1">Year 1</option>
+            <option value="Year 2">Year 2</option>
+            <option value="Year 3">Year 3</option>
+            <option value="Year 4">Year 4</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterAcademicYear">Academic Year</label>
+          <select id="filterAcademicYear">
+            <option value="">All Years</option>
+            <option value="2024/2025">2024/2025</option>
+            <option value="2025/2026">2025/2026</option>
+            <option value="2026/2027">2026/2027</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterSemester">Semester</label>
+          <select id="filterSemester">
+            <option value="">All Semesters</option>
+            <option value="Semester1">Semester 1</option>
+            <option value="Semester2">Semester 2</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterPaymentStatus">Payment Status</label>
+          <select id="filterPaymentStatus">
+            <option value="">All Status</option>
+            <option value="Fully Paid">Fully Paid</option>
+            <option value="Partially Paid">Partially Paid</option>
+            <option value="No Payment">No Payment</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-primary" onclick="generateReport()" style="width:100%"><i class="fa-solid fa-chart-bar"></i> Generate Report</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report Content -->
+    <div id="reportContent">
+      <div style="text-align:center;padding:3rem;color:var(--gray-400)">
+        <i class="fa-solid fa-chart-simple" style="font-size:3rem;margin-bottom:.75rem;display:block"></i>
+        <p>Select filters and click Generate Report to view financial data.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/render.js"></script>
+  <script>
+    let currentReportData = { studentDetails: [] };
+    let page = 1;
+    const pageSize = 20;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      if (currentRole !== "University Super Admin") {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2><p>Only University Super Admin can access Finance Management.</p><a href="../dashboard.html" class="btn btn-primary">Go to Dashboard</a></div>';
+        return;
+      }
+      loadSchools();
+    });
+
+    async function loadSchools() {
+      try {
+        const schools = await SmartCampusAPI.fetchSchools() || [];
+        const sel = document.getElementById("filterSchool");
+        schools.forEach(s => {
+          sel.innerHTML += `<option value="${s.id}">${esc(s.name)}</option>`;
+        });
+      } catch {}
+    }
+
+    async function loadFilterDepts() {
+      const schoolId = document.getElementById("filterSchool").value;
+      const deptSel = document.getElementById("filterDepartment");
+      const progSel = document.getElementById("filterProgramme");
+      deptSel.innerHTML = '<option value="">All Departments</option>';
+      progSel.innerHTML = '<option value="">All Programmes</option>';
+      if (!schoolId) return;
+      try {
+        const depts = await SmartCampusAPI.fetchDepartments(schoolId) || [];
+        depts.forEach(d => {
+          deptSel.innerHTML += `<option value="${d.id}">${esc(d.name)}</option>`;
+        });
+      } catch {}
+    }
+
+    async function loadFilterProgrammes() {
+      const deptId = document.getElementById("filterDepartment").value;
+      const progSel = document.getElementById("filterProgramme");
+      progSel.innerHTML = '<option value="">All Programmes</option>';
+      if (!deptId) return;
+      try {
+        const progs = await SmartCampusAPI.fetchProgrammes(deptId) || [];
+        progs.forEach(p => {
+          progSel.innerHTML += `<option value="${p.id}">${esc(p.name)}</option>`;
+        });
+      } catch {}
+    }
+
+    async function generateReport() {
+      const schoolId = document.getElementById("filterSchool").value;
+      const departmentId = document.getElementById("filterDepartment").value;
+      const programmeId = document.getElementById("filterProgramme").value;
+      const yearLevel = document.getElementById("filterLevel").value;
+      const academicYear = document.getElementById("filterAcademicYear").value;
+      const semester = document.getElementById("filterSemester").value;
+      const paymentStatus = document.getElementById("filterPaymentStatus").value;
+
+      const container = document.getElementById("reportContent");
+      container.innerHTML = '<p style="text-align:center;padding:2rem;color:var(--gray-300)"><i class="fa-solid fa-spinner fa-spin"></i> Generating report...</p>';
+
+      try {
+        const res = await SmartCampusAPI.fetchFinanceReport(
+          schoolId || undefined,
+          departmentId || undefined,
+          programmeId || undefined,
+          yearLevel || undefined,
+          academicYear || undefined,
+          semester || undefined,
+          paymentStatus || undefined
+        );
+        currentReportData = res.data || res;
+        page = 1;
+        renderReport();
+      } catch {
+        container.innerHTML = '<p style="color:var(--error);text-align:center;padding:2rem">Failed to generate report.</p>';
+      }
+    }
+
+    function renderReport() {
+      const container = document.getElementById("reportContent");
+      const d = currentReportData;
+      const details = d.studentDetails || [];
+      const totalPages = Math.ceil(details.length / pageSize) || 1;
+      if (page > totalPages) page = totalPages;
+      const start = (page - 1) * pageSize;
+      const pageItems = details.slice(start, start + pageSize);
+
+      let html = `
+        <div class="report-summary">
+          <div class="s"><h4>${d.totalStudents || 0}</h4><p>Students</p></div>
+          <div class="s"><h4 style="color:var(--success)">NLE${(d.totalFeeCollected || 0).toLocaleString()}</h4><p>Total Collected</p></div>
+          <div class="s"><h4 style="color:var(--error)">NLE${(d.outstandingFees || 0).toLocaleString()}</h4><p>Outstanding</p></div>
+          <div class="s"><h4>${d.fullyPaidStudents || 0}</h4><p>Fully Paid</p></div>
+          <div class="s"><h4>${d.partiallyPaidStudents || 0}</h4><p>Partially Paid</p></div>
+          <div class="s"><h4>${d.studentsWithNoPayments || 0}</h4><p>No Payments</p></div>
+        </div>`;
+
+      // Revenue breakdowns
+      const revSchool = d.revenueBySchool || {};
+      const revDept = d.revenueByDepartment || {};
+      const revProg = d.revenueByProgramme || {};
+      const revLevel = d.revenueByLevel || {};
+
+      html += `<div class="revenue-grid">
+        <div class="revenue-card">
+          <h4>Revenue by School</h4>
+          ${Object.keys(revSchool).length ? Object.entries(revSchool).map(([k,v]) => `<div class="bar"><span>${esc(k)}</span><span class="bar-value">NLE${v.toLocaleString()}</span></div>`).join('') : '<p style="color:var(--gray-300);font-size:.8rem">No data</p>'}
+        </div>
+        <div class="revenue-card">
+          <h4>Revenue by Department</h4>
+          ${Object.keys(revDept).length ? Object.entries(revDept).map(([k,v]) => `<div class="bar"><span>${esc(k)}</span><span class="bar-value">NLE${v.toLocaleString()}</span></div>`).join('') : '<p style="color:var(--gray-300);font-size:.8rem">No data</p>'}
+        </div>
+        <div class="revenue-card">
+          <h4>Revenue by Programme</h4>
+          ${Object.keys(revProg).length ? Object.entries(revProg).map(([k,v]) => `<div class="bar"><span>${esc(k)}</span><span class="bar-value">NLE${v.toLocaleString()}</span></div>`).join('') : '<p style="color:var(--gray-300);font-size:.8rem">No data</p>'}
+        </div>
+        <div class="revenue-card">
+          <h4>Revenue by Level</h4>
+          ${Object.keys(revLevel).length ? Object.entries(revLevel).map(([k,v]) => `<div class="bar"><span>${esc(k)}</span><span class="bar-value">NLE${v.toLocaleString()}</span></div>`).join('') : '<p style="color:var(--gray-300);font-size:.8rem">No data</p>'}
+        </div>
+      </div>`;
+
+      // Student details table
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem">
+        <h3 style="font-size:.95rem;margin:0">Student Fee Details <span style="font-weight:400;font-size:.8rem;color:var(--gray-500)">(${details.length} students)</span></h3>
+        <div class="export-bar" style="display:flex;gap:.4rem">
+          <button class="btn btn-outline btn-sm" onclick="exportReportCsv()"><i class="fa-solid fa-file-excel"></i> Excel</button>
+          <button class="btn btn-outline btn-sm" onclick="exportReportPdf()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
+        </div>
+      </div>`;
+
+      html += `<div style="overflow-x:auto;border:1px solid var(--excel-border);border-radius:6px">
+        <table class="excel-table">
+          <thead><tr>
+            <th>Student</th><th>Reg #</th><th>School</th><th>Dept</th><th>Programme</th><th>Level</th><th>Total Fee</th><th>Paid</th><th>Balance</th><th>Status</th>
+          </tr></thead>
+          <tbody>`;
+
+      if (!pageItems.length) {
+        html += `<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--gray-400)">No data for selected filters.</td></tr>`;
+      } else {
+        pageItems.forEach(s => {
+          const cls = s.paymentStatus === 'Fully Paid' ? 'badge-success' : s.paymentStatus === 'Partially Paid' ? 'badge-warning' : 'badge-error';
+          html += `<tr>
+            <td><strong>${esc(s.name)}</strong></td>
+            <td>${esc(s.registrationNumber || '-')}</td>
+            <td>${esc(s.school || '-')}</td>
+            <td>${esc(s.department || '-')}</td>
+            <td>${esc(s.programme || '-')}</td>
+            <td>${esc(s.yearLevel || '-')}</td>
+            <td>NLE${(s.totalFee || 0).toLocaleString()}</td>
+            <td>NLE${(s.paidAmount || 0).toLocaleString()}</td>
+            <td>NLE${(s.balance || 0).toLocaleString()}</td>
+            <td><span class="${cls}">${esc(s.paymentStatus || 'Not Set')}</span></td>
+          </tr>`;
+        });
+      }
+
+      html += `</tbody></table></div>`;
+
+      // Pagination
+      html += `<div class="pagination">
+        <button onclick="goPage(1)" ${page<=1?'disabled':''}><i class="fa-solid fa-angles-left"></i></button>
+        <button onclick="goPage(${page-1})" ${page<=1?'disabled':''}><i class="fa-solid fa-angle-left"></i></button>`;
+      for (let p = Math.max(1, page-2); p <= Math.min(totalPages, page+2); p++) {
+        html += `<button onclick="goPage(${p})" class="${p===page?'active':''}">${p}</button>`;
+      }
+      html += `<button onclick="goPage(${page+1})" ${page>=totalPages?'disabled':''}><i class="fa-solid fa-angle-right"></i></button>
+        <button onclick="goPage(${totalPages})" ${page>=totalPages?'disabled':''}><i class="fa-solid fa-angles-right"></i></button>
+        <span style="font-size:.8rem;color:var(--gray-500);margin-left:.5rem">Page ${page} of ${totalPages}</span>
+      </div>`;
+
+      container.innerHTML = html;
+    }
+
+    function goPage(p) { page = p; renderReport(); }
+
+    function exportReportCsv() {
+      const details = currentReportData.studentDetails || [];
+      let csv = '\uFEFFStudent Name,Registration Number,School,Department,Programme,Level,Total Fee,Paid Amount,Balance,Payment Status\n';
+      details.forEach(s => {
+        csv += `"${s.name||''}","${s.registrationNumber||''}","${s.school||''}","${s.department||''}","${s.programme||''}","${s.yearLevel||''}",${s.totalFee||0},${s.paidAmount||0},${s.balance||0},"${s.paymentStatus||''}"\n`;
+      });
+      downloadBlob(csv, 'financial_report.csv', 'text/csv;charset=utf-8');
+    }
+
+    function exportReportPdf() {
+      const details = currentReportData.studentDetails || [];
+      let html = '<html><head><meta charset="utf-8"><title>Financial Report</title><style>table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ccc;padding:3px;text-align:left}th{background:#44546a;color:#fff}</style></head><body>';
+      html += '<h2>Financial Report</h2>';
+      html += `<p>Total Collected: NLE${(currentReportData.totalFeeCollected || 0).toLocaleString()} | Outstanding: NLE${(currentReportData.outstandingFees || 0).toLocaleString()} | Fully Paid: ${currentReportData.fullyPaidStudents || 0} | Partially Paid: ${currentReportData.partiallyPaidStudents || 0}</p>`;
+      html += '<table><thead><tr><th>Name</th><th>Reg #</th><th>School</th><th>Dept</th><th>Programme</th><th>Level</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead><tbody>';
+      details.forEach(s => {
+        html += `<tr><td>${esc(s.name||'')}</td><td>${esc(s.registrationNumber||'')}</td><td>${esc(s.school||'')}</td><td>${esc(s.department||'')}</td><td>${esc(s.programme||'')}</td><td>${esc(s.yearLevel||'')}</td><td>${(s.totalFee||0).toLocaleString()}</td><td>${(s.paidAmount||0).toLocaleString()}</td><td>${(s.balance||0).toLocaleString()}</td><td>${esc(s.paymentStatus||'')}</td></tr>`;
+      });
+      html += '</tbody></table></body></html>';
+      const win = window.open('', '_blank');
+      if (win) { win.document.write(html); win.document.close(); win.print(); }
+    }
+
+    function downloadBlob(content, filename, mime) {
+      const blob = new Blob([content], { type: mime });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+
+    function esc(v) { return String(v).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';'); }
+  </script>
+</body>
+</html>
