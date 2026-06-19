@@ -135,7 +135,7 @@
     let currentProgId = null;
 
     document.addEventListener("DOMContentLoaded", async () => {
-      if (!["University Super Admin", "School Super Admin"].includes(currentRole)) {
+      if (currentRole !== "University Super Admin") {
         document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2><a href="../dashboard.html" class="btn btn-primary">Dashboard</a></div>';
         return;
       }
