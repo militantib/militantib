@@ -105,7 +105,7 @@ const navItems = [
     { href: "enrollments.html", label: "Enrollments", icon: "fa-user-plus", roles: "Department Admin,School Super Admin" },
     { href: "course-registration.html", label: "Course Registration", icon: "fa-pen-to-square", roles: "Student" },
     { href: "timetable.html", label: "Timetable", icon: "fa-calendar-days", roles: "*" },
-    { href: "attendance.html", label: "Attendance", icon: "fa-user-check", roles: "Lecturer,School Super Admin,University Super Admin" },
+    { href: "attendance.html", label: "Attendance", icon: "fa-user-check", roles: "Lecturer,School Super Admin" },
     { href: "audit-log.html", label: "Audit Log", icon: "fa-clipboard-list", roles: "University Super Admin,School Super Admin" },
     { href: "admin_settings.html", label: "Admin", icon: "fa-gear", roles: "University Super Admin,School Super Admin" },
     { href: "admin-management.html", label: "Admin Management", icon: "fa-user-shield", roles: "University Super Admin,School Super Admin" },
