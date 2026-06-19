@@ -338,6 +338,7 @@
       html += `</tbody></table></div>
       <div class="action-bar">
         <button class="btn btn-primary" onclick="saveStudentGrades()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+        ${currentRole === "University Super Admin" ? '<button class="btn btn-success" onclick="publishStudentGrades()"><i class="fa-solid fa-crown"></i> Publish Grades</button>' : ''}
         <button class="btn btn-outline" onclick="resetStudentForm()"><i class="fa-solid fa-rotate-left"></i> Reset</button>
       </div>`;
 
@@ -460,6 +461,46 @@
         if (toCreate.length) await SmartCampusAPI.bulkCreateGrades(toCreate);
         if (toUpdate.length) await SmartCampusAPI.bulkUpdateGrades(toUpdate);
         SmartCampusUI.showToast("Grades saved successfully!", "success");
+        await preFetchAllGrades();
+        renderStudentGradeForm();
+      } catch (ex) { SmartCampusUI.showToast("Failed: " + ex.message, "error"); }
+    }
+
+    async function publishStudentGrades() {
+      if (!state.selectedStudent) return;
+      if (!confirm("Publish all grades for " + (state.selectedStudent.name || state.selectedStudent.displayName || 'this student') + "? This will finalize and make grades visible to students.")) return;
+      const user = (() => { try { return JSON.parse(localStorage.getItem('sc_user'))?.displayName || 'admin'; } catch { return 'admin'; } })();
+      const payload = [];
+      const sid = state.selectedStudent.id || state.selectedStudent._id;
+      state.courses.forEach(c => {
+        const gradeRow = findGradeForCourse(c.id);
+        if (gradeRow && (gradeRow.ca1 != null || gradeRow.ca2 != null || gradeRow.assignment != null || gradeRow.midterm != null || gradeRow.finalExam != null)) {
+          const computed = computeGradeForRow(gradeRow);
+          payload.push({
+            ...(gradeRow.id ? { id: gradeRow.id } : {}),
+            studentId: sid,
+            studentName: state.selectedStudent.name || state.selectedStudent.displayName,
+            registrationNumber: state.selectedStudent.registrationNumber || '',
+            courseId: c.id,
+            courseCode: c.code || c.courseCode || '',
+            courseTitle: c.title || c.courseTitle || '',
+            ca1: gradeRow.ca1, ca2: gradeRow.ca2, assignment: gradeRow.assignment,
+            midterm: gradeRow.midterm, finalExam: gradeRow.finalExam,
+            total: computed.total, letterGrade: computed.letterGrade, gpa: computed.gpa, remarks: computed.remarks,
+            semester: state.selectedSemester, academicYear: state.selectedAcademicYear,
+            programmeName: state.selectedProgName, yearLevel: state.selectedYear,
+            status: 'Finalized',
+            submittedBy: user, updatedBy: user
+          });
+        }
+      });
+      if (!payload.length) { SmartCampusUI.showToast("No scores to publish", "info"); return; }
+      const toCreate = payload.filter(g => !g.id).map(g => { const o = {...g}; delete o.id; return o; });
+      const toUpdate = payload.filter(g => g.id);
+      try {
+        if (toCreate.length) await SmartCampusAPI.bulkCreateGrades(toCreate);
+        if (toUpdate.length) await SmartCampusAPI.bulkUpdateGrades(toUpdate);
+        SmartCampusUI.showToast("Grades published successfully!", "success");
         await preFetchAllGrades();
         renderStudentGradeForm();
       } catch (ex) { SmartCampusUI.showToast("Failed: " + ex.message, "error"); }
