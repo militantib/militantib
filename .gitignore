@@ -2,5 +2,6 @@ node_modules/
 .env
 *.log
 backend/
+portfolio/
 .DS_Store
 Thumbs.db
