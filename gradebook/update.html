@@ -93,31 +93,8 @@
     };
 
     document.addEventListener("DOMContentLoaded", async () => {
-      if (!["University Super Admin","School Super Admin","Department Admin","Lecturer"].includes(currentRole)) {
+      if (!["Lecturer","University Super Admin"].includes(currentRole)) {
         document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>'; return;
-      }
-      if (currentRole === "Department Admin") {
-        var u = {}; try { u = JSON.parse(localStorage.getItem("sc_user") || "{}"); } catch(e) {}
-        if (u.department) {
-          try {
-            state.schools = await SmartCampusAPI.fetchSchools() || [];
-            for (var si = 0; si < state.schools.length; si++) {
-              var d = (state.schools[si].departments || []).find(function(dd) { return dd.name === u.department || String(dd.id) === String(u.department); });
-              if (d) {
-                state.selectedSchoolId = state.schools[si].id;
-                state.selectedSchoolName = state.schools[si].name;
-                state.selectedDeptId = d.id;
-                state.selectedDeptName = d.name;
-                state.departments = [d];
-                state.programmes = await SmartCampusAPI.fetchProgrammes(d.id) || [];
-                state.currentStep = 3;
-                buildBreadcrumb();
-                renderProgs();
-                return;
-              }
-            }
-          } catch(ex) { showError(ex.message); return; }
-        }
       }
       await loadSchools();
     });
@@ -143,8 +120,8 @@
       document.getElementById("studentListContainer").innerHTML = '';
       document.getElementById("gradeFormContainer").innerHTML = '';
       state.currentStep = step; buildBreadcrumb();
-      if (step === 1 && currentRole !== "Department Admin") renderSchools();
-      else if (step === 2 && currentRole !== "Department Admin") renderDepts();
+      if (step === 1) renderSchools();
+      else if (step === 2) renderDepts();
       else if (step === 3) renderProgs();
       else if (step === 4) renderYears();
       else if (step === 5) renderSemesters();
@@ -474,19 +451,6 @@
     }
 
     function showError(msg) { document.getElementById("stepContent").innerHTML = `<p style="color:var(--error);text-align:center;padding:2rem">${esc(msg)}</p>`; }
-
-    // Override resetTo for Dept Admin: skip school/dept steps
-    const origResetTo = resetTo;
-    resetTo = function(step) {
-      if (currentRole === "Department Admin" && step <= 2) {
-        state.selectedStudent = null;
-        document.getElementById("studentListContainer").innerHTML = '';
-        document.getElementById("gradeFormContainer").innerHTML = '';
-        state.currentStep = 3; buildBreadcrumb(); renderProgs();
-        return;
-      }
-      origResetTo(step);
-    };
   </script>
 </body>
 </html>
