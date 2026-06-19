@@ -218,19 +218,25 @@
       const el = document.getElementById("stepContent");
       el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading students & courses...</p>';
       try {
-        const [students, courses] = await Promise.all([
+        const [students, courses, deptCourses] = await Promise.all([
           SmartCampusAPI.fetchStudents(null, null, state.selectedProgId, state.selectedYear),
-          SmartCampusAPI.fetchCoursesByProgrammeAndYear(state.selectedProgId, state.selectedYear)
+          SmartCampusAPI.fetchCoursesByProgrammeAndYear(state.selectedProgId, state.selectedYear),
+          SmartCampusAPI.fetchCourses(state.selectedDeptId).catch(() => [])
         ]);
         state.students = Array.isArray(students) ? students : [];
-        state.courses = Array.isArray(courses) ? courses : [];
+        state.courses = Array.isArray(courses) && courses.length ? courses : (Array.isArray(deptCourses) ? deptCourses : []);
         if (!state.students.length) {
           el.innerHTML = '<div style="text-align:center;padding:4rem;color:var(--gray-400)"><i class="fa-solid fa-users-slash" style="font-size:2rem;display:block;margin-bottom:.5rem"></i>No students found for this programme/year.</div>';
           return;
         }
+        if (!state.courses.length) {
+          el.innerHTML = `<div class="step-title"><i class="fa-solid fa-users"></i>Students in ${esc(state.selectedYear)} - ${esc(state.selectedProgName)} <span style="font-weight:400;font-size:.85rem;color:var(--gray-500)">(${state.students.length} students)</span></div>`;
+          renderStudentList();
+          document.getElementById("gradeFormContainer").innerHTML = '<div style="text-align:center;padding:4rem;color:var(--gray-400)"><i class="fa-solid fa-book-open" style="font-size:2rem;display:block;margin-bottom:.5rem"></i>No courses found for this programme/year.<br>Please add courses to this programme in the Courses section.</div>';
+          return;
+        }
         el.innerHTML = `<div class="step-title"><i class="fa-solid fa-users"></i>Students in ${esc(state.selectedYear)} - ${esc(state.selectedProgName)} <span style="font-weight:400;font-size:.85rem;color:var(--gray-500)">(${state.students.length} students)</span></div>`;
         renderStudentList();
-        // Pre-fetch all grades for this semester/year for all courses
         await preFetchAllGrades();
       } catch (ex) { showError(ex.message); }
     }
@@ -278,7 +284,10 @@
 
     function renderStudentGradeForm() {
       const s = state.selectedStudent;
-      if (!s || !state.courses.length) return;
+      if (!s) return;
+      if (!state.courses.length) {
+        document.getElementById("gradeFormContainer").innerHTML = '<div style="text-align:center;padding:3rem;color:var(--gray-400)"><i class="fa-solid fa-book-open" style="font-size:2rem;display:block;margin-bottom:.5rem"></i>No courses available for grading.<br>Please ensure courses are assigned to this programme.</div>'; return;
+      }
       const container = document.getElementById("gradeFormContainer");
       const initial = (s.name || s.displayName || '?').charAt(0).toUpperCase();
       const name = s.name || s.displayName || 'Unknown';
