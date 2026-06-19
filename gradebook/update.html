@@ -97,6 +97,26 @@
         document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>'; return;
       }
       await loadSchools();
+      if (currentRole === "Lecturer") {
+        var u = {}; try { u = JSON.parse(localStorage.getItem("sc_user") || "{}"); } catch(e) {}
+        if (u.department) {
+          for (var si = 0; si < state.schools.length; si++) {
+            var d = (state.schools[si].departments || []).find(function(dd) { return dd.name === u.department || String(dd.id) === String(u.department); });
+            if (d) {
+              state.selectedSchoolId = state.schools[si].id;
+              state.selectedSchoolName = state.schools[si].name;
+              state.selectedDeptId = d.id;
+              state.selectedDeptName = d.name;
+              state.departments = [d];
+              try { state.programmes = await SmartCampusAPI.fetchProgrammes(d.id) || []; } catch(ex) { showError(ex.message); return; }
+              state.currentStep = 3;
+              buildBreadcrumb();
+              renderProgs();
+              return;
+            }
+          }
+        }
+      }
     });
 
     function buildBreadcrumb() {
