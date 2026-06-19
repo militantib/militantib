@@ -12,18 +12,38 @@
     .breadcrumb a { color: var(--primary); text-decoration: none; }
     .breadcrumb span { color: var(--gray-500); }
     .breadcrumb .current { color: var(--gray-800); font-weight: 600; }
-    .course-info { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 1rem; margin-bottom: 1.5rem; padding: 1.25rem; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 10px; }
-    .course-info label { font-weight: 600; font-size: .8rem; display: block; margin-bottom: .25rem; color: var(--gray-700); }
-    .course-info select, .course-info input { padding: .5rem .7rem; border: 1px solid var(--gray-200); border-radius: 6px; width: 100%; box-sizing: border-box; background: #fff; }
-    .editable-grid { overflow-x: auto; border: 1px solid var(--excel-border); border-radius: 6px; margin-bottom: 1rem; }
-    .editable-grid table { width: 100%; border-collapse: collapse; font-size: .82rem; }
-    .editable-grid th { background: var(--excel-header); color: #fff; padding: .5rem .4rem; text-align: left; font-weight: 600; white-space: nowrap; }
-    .editable-grid td { padding: .25rem; border: 1px solid var(--excel-border); }
-    .editable-grid tr:nth-child(even) { background: #f8f9fa; }
-    .editable-grid input[type="number"] { width: 100%; border: none; background: transparent; padding: .3rem .2rem; font-size: .82rem; text-align: center; box-sizing: border-box; }
-    .editable-grid input[type="number"]:focus { outline: 2px solid var(--primary); border-radius: 3px; background: #fff; }
-    .editable-grid input.highlight-missing { background: #fff0f0; }
-    .editable-grid .readonly { padding: .3rem .2rem; text-align: center; font-weight: 600; font-size: .82rem; }
+    .hierarchy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .hierarchy-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 1.25rem; text-align: center; cursor: pointer; transition: all .2s; }
+    .hierarchy-card:hover { border-color: var(--success); box-shadow: 0 2px 12px rgba(0,0,0,.08); transform: translateY(-2px); }
+    .hierarchy-card .h-icon { font-size: 1.8rem; color: var(--success); margin-bottom: .5rem; }
+    .hierarchy-card .h-name { font-weight: 600; font-size: .95rem; }
+    .step-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
+    .step-title i { margin-right: .4rem; color: var(--success); }
+    .year-grid { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .year-btn, .sem-btn { padding: 1rem 2rem; border: 1px solid var(--gray-200); border-radius: 10px; background: #fff; cursor: pointer; font-weight: 600; transition: all .2s; min-width: 140px; text-align: center; }
+    .year-btn:hover, .sem-btn:hover { border-color: var(--success); background: #f0fff4; }
+    .year-btn .y-icon, .sem-btn .y-icon { font-size: 1.4rem; display: block; margin-bottom: .3rem; color: var(--success); }
+    .student-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .75rem; }
+    .student-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: .85rem 1rem; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: .75rem; }
+    .student-card:hover { border-color: var(--success); box-shadow: 0 1px 8px rgba(0,0,0,.06); transform: translateY(-1px); }
+    .student-card .s-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--gray-100); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--success); font-size: 1rem; flex-shrink: 0; }
+    .student-card .s-info { flex: 1; min-width: 0; }
+    .student-card .s-name { font-weight: 600; font-size: .85rem; }
+    .student-card .s-reg { font-size: .75rem; color: var(--gray-500); }
+    .student-card .s-badge { font-size: .7rem; background: var(--gray-100); padding: .1rem .4rem; border-radius: 4px; }
+    .student-info-card { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; padding: 1rem 1.25rem; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 10px; margin-bottom: 1rem; }
+    .student-info-card .si-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--success); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; }
+    .student-info-card .si-detail { flex: 1; }
+    .student-info-card .si-name { font-weight: 700; font-size: 1rem; }
+    .student-info-card .si-meta { font-size: .8rem; color: var(--gray-500); }
+    .course-score-grid { overflow-x: auto; border: 1px solid var(--excel-border); border-radius: 6px; margin-bottom: 1rem; }
+    .course-score-grid table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .course-score-grid th { background: var(--excel-header); color: #fff; padding: .5rem .4rem; text-align: left; font-weight: 600; white-space: nowrap; }
+    .course-score-grid td { padding: .25rem; border: 1px solid var(--excel-border); }
+    .course-score-grid tr:nth-child(even) { background: #f8f9fa; }
+    .course-score-grid input[type="number"] { width: 100%; border: none; background: transparent; padding: .3rem .2rem; font-size: .82rem; text-align: center; box-sizing: border-box; }
+    .course-score-grid input[type="number"]:focus { outline: 2px solid var(--success); border-radius: 3px; background: #fff; }
+    .course-score-grid .readonly { padding: .3rem .2rem; text-align: center; font-weight: 600; font-size: .82rem; }
     .total-cell { font-weight: 700; }
     .grade-A { color: var(--success); }
     .grade-B { color: #3b82f6; }
@@ -31,9 +51,14 @@
     .grade-D { color: #f97316; }
     .grade-F { color: var(--error); }
     .action-bar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: 1rem 0; }
+    .back-link { margin-bottom: .75rem; display: inline-block; color: var(--primary); cursor: pointer; font-size: .85rem; }
+    .back-link i { margin-right: .3rem; }
+    .badge-draft { background: var(--warning); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-finalized { background: var(--success); color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
+    .badge-submitted { background: #3b82f6; color: #fff; padding: .15rem .5rem; border-radius: 10px; font-size: .7rem; }
     .summary-bar { display: flex; gap: 1rem; flex-wrap: wrap; padding: .75rem 1rem; background: var(--gray-50); border-radius: 8px; margin-bottom: 1rem; font-size: .85rem; }
     .summary-bar span { display: flex; align-items: center; gap: .3rem; }
-    @media (max-width: 700px) { .course-info { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .hierarchy-grid { grid-template-columns: 1fr 1fr; } .student-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -44,49 +69,10 @@
       <h1 style="margin:0">Add Grades</h1>
       <a href="../gradebook.html" class="btn btn-outline btn-sm">&larr; Back to Gradebook</a>
     </div>
-    <div class="breadcrumb"><a href="../gradebook.html">Gradebook</a> <span>/</span> <span class="current">Add Grades</span></div>
-
-    <!-- Course Info Selectors -->
-    <div class="course-info" id="courseInfo">
-      <div><label>School</label><select id="schoolSelect" onchange="loadDepts()"><option value="">Select School</option></select></div>
-      <div><label>Department</label><select id="deptSelect" onchange="loadProgs()"><option value="">Select Department</option></select></div>
-      <div><label>Programme</label><select id="progSelect" onchange="loadCourses()"><option value="">Select Programme</option></select></div>
-      <div><label>Level</label><select id="levelSelect" onchange="loadCourses()"><option value="">Select Level</option><option value="Year 1">Year 1</option><option value="Year 2">Year 2</option><option value="Year 3">Year 3</option><option value="Year 4">Year 4</option></select></div>
-      <div><label>Course</label><select id="courseSelect" onchange="onCourseChange()"><option value="">Select Course</option></select></div>
-      <div><label>Semester</label><select id="semesterSelect"><option value="Semester1">Semester One</option><option value="Semester2">Semester Two</option></select></div>
-      <div><label>Academic Year</label><select id="academicYearSelect"><option value="2024/2025">2024/2025</option><option value="2025/2026" selected>2025/2026</option><option value="2026/2027">2026/2027</option></select></div>
-      <div><label>Lecturer</label><input id="lecturerInput" placeholder="e.g. Dr. Smith" value="Admin User"></div>
-    </div>
-
-    <!-- Alerts -->
-    <div id="finalizedWarning" style="display:none;padding:.75rem 1rem;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:1rem;font-size:.85rem">
-      <i class="fa-solid fa-triangle-exclamation" style="color:var(--error)"></i>
-      <strong>Warning:</strong> Some grades for this course have already been <strong>Finalized</strong>. Editing will update the record.
-    </div>
-    <div id="duplicateWarning" style="display:none;padding:.75rem 1rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;margin-bottom:1rem;font-size:.85rem">
-      <i class="fa-solid fa-info-circle" style="color:var(--warning)"></i>
-      <strong>Note:</strong> Grades already exist for <span id="existingCount">0</span> student(s). Their existing scores have been pre-loaded.
-    </div>
-
-    <!-- Summary -->
-    <div class="summary-bar" id="summaryBar" style="display:none">
-      <span><i class="fa-solid fa-users"></i> Students: <strong id="studentCount">0</strong></span>
-      <span><i class="fa-solid fa-chart-line"></i> Avg: <strong id="avgTotal">0</strong></span>
-      <span><i class="fa-solid fa-check-circle" style="color:var(--success)"></i> Pass: <strong id="passCount" style="color:var(--success)">0</strong></span>
-      <span><i class="fa-solid fa-xmark-circle" style="color:var(--error)"></i> Fail: <strong id="failCount" style="color:var(--error)">0</strong></span>
-    </div>
-
-    <!-- Editable Grid -->
-    <div id="gradeGridContainer"></div>
-
-    <!-- Actions -->
-    <div class="action-bar" id="actionBar" style="display:none">
-      <button class="btn btn-primary" onclick="saveGrades()"><i class="fa-solid fa-floppy-disk"></i> Save Grades</button>
-      <button class="btn btn-outline" onclick="saveDraft()"><i class="fa-solid fa-cloud"></i> Save Draft</button>
-      <button class="btn btn-success" onclick="submitFinal()"><i class="fa-solid fa-check"></i> Submit Final</button>
-      <button class="btn btn-outline" onclick="resetGrid()"><i class="fa-solid fa-rotate-left"></i> Reset</button>
-      <a href="../gradebook.html" class="btn btn-outline">Cancel</a>
-    </div>
+    <div class="breadcrumb" id="breadcrumb"><a href="../gradebook.html">Gradebook</a> <span>/</span> <span class="current">Add Grades</span></div>
+    <div id="stepContent"></div>
+    <div id="studentListContainer"></div>
+    <div id="gradeFormContainer"></div>
   </div>
 
   <script src="../js/data.js"></script>
@@ -94,297 +80,433 @@
   <script src="../js/api.js"></script>
   <script src="../js/render.js"></script>
   <script>
-    // Constants
     const MAX = { ca1: 10, ca2: 10, assignment: 10, midterm: 20, finalExam: 50 };
-    let state = { grades: [], students: [], courseId: null };
-    let courseCache = [];
-    let _schoolsData = [];
+    const state = {
+      schools: [], departments: [], programmes: [], courses: [],
+      students: [], allGrades: [],
+      selectedSchoolId: null, selectedSchoolName: '',
+      selectedDeptId: null, selectedDeptName: '',
+      selectedProgId: null, selectedProgName: '',
+      selectedYear: '', selectedSemester: 'Semester1',
+      selectedAcademicYear: '2025/2026',
+      selectedStudent: null, currentStep: 0
+    };
 
     document.addEventListener("DOMContentLoaded", async () => {
       if (!["Lecturer","University Super Admin"].includes(currentRole)) {
         document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>'; return;
       }
-      try { _schoolsData = await SmartCampusAPI.fetchSchools() || []; } catch { _schoolsData = []; }
-      if (!_schoolsData.length) { SmartCampusUI.showToast("Failed to load schools", "error"); return; }
+      await loadSchools();
       if (currentRole === "Lecturer") {
         var u = {}; try { u = JSON.parse(localStorage.getItem("sc_user") || "{}"); } catch(e) {}
         if (u.department) {
-          for (var si = 0; si < _schoolsData.length; si++) {
-            var d = (_schoolsData[si].departments || []).find(function(dd) { return dd.name === u.department || String(dd.id) === String(u.department); });
+          for (var si = 0; si < state.schools.length; si++) {
+            var d = (state.schools[si].departments || []).find(function(dd) { return dd.name === u.department || String(dd.id) === String(u.department); });
             if (d) {
-              var sel = document.getElementById("schoolSelect");
-              sel.innerHTML = '<option value="">Select School</option>';
-              _schoolsData.forEach(function(s) { sel.innerHTML += '<option value="' + s.id + '">' + esc(s.name) + '</option>'; });
-              sel.value = _schoolsData[si].id;
-              await loadDepts();
-              document.getElementById("deptSelect").value = d.id;
-              await loadProgs();
+              state.selectedSchoolId = state.schools[si].id;
+              state.selectedSchoolName = state.schools[si].name;
+              state.selectedDeptId = d.id;
+              state.selectedDeptName = d.name;
+              state.departments = [d];
+              try { state.programmes = await SmartCampusAPI.fetchProgrammes(d.id) || []; } catch(ex) { showError(ex.message); return; }
+              state.currentStep = 3;
+              buildBreadcrumb();
+              renderProgs();
               return;
             }
           }
         }
       }
-      var sel = document.getElementById("schoolSelect");
-      sel.innerHTML = '<option value="">Select School</option>';
-      _schoolsData.forEach(function(s) { sel.innerHTML += '<option value="' + s.id + '">' + esc(s.name) + '</option>'; });
     });
 
+    function buildBreadcrumb() {
+      const bc = document.getElementById("breadcrumb");
+      let html = '<a href="../gradebook.html">Gradebook</a> <span>/</span> <a href="add.html">Add Grades</a>';
+      if (state.selectedSchoolName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(1)">${esc(state.selectedSchoolName)}</a>`;
+      if (state.selectedDeptName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(2)">${esc(state.selectedDeptName)}</a>`;
+      if (state.selectedProgName) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(3)">${esc(state.selectedProgName)}</a>`;
+      if (state.selectedYear) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(4)">${esc(state.selectedYear)}</a>`;
+      if (state.selectedSemester) html += ` <span>/</span> <a href="#" onclick="event.preventDefault();resetTo(5)">Semester ${state.selectedSemester === 'Semester1' ? 'One' : 'Two'}</a>`;
+      if (state.selectedAcademicYear) html += ` <span>/</span> <span class="current">${esc(state.selectedAcademicYear)}</span>`;
+      bc.innerHTML = html;
+    }
+
+    function resetTo(step) {
+      if (step <= 1) { state.selectedSchoolId = null; state.selectedSchoolName = ''; }
+      if (step <= 2) { state.selectedDeptId = null; state.selectedDeptName = ''; }
+      if (step <= 3) { state.selectedProgId = null; state.selectedProgName = ''; }
+      if (step <= 4) { state.selectedYear = ''; }
+      state.selectedStudent = null;
+      document.getElementById("studentListContainer").innerHTML = '';
+      document.getElementById("gradeFormContainer").innerHTML = '';
+      state.currentStep = step; buildBreadcrumb();
+      if (step === 1) renderSchools();
+      else if (step === 2) renderDepts();
+      else if (step === 3) renderProgs();
+      else if (step === 4) renderYears();
+      else if (step === 5) renderSemesters();
+    }
+
+    // -------- School / Dept / Programme / Year / Semester --------
     async function loadSchools() {
-      try {
-        const schools = await SmartCampusAPI.fetchSchools() || [];
-        const sel = document.getElementById("schoolSelect");
-        sel.innerHTML = '<option value="">Select School</option>';
-        schools.forEach(s => { sel.innerHTML += `<option value="${s.id}">${esc(s.name)}</option>`; });
-      } catch { SmartCampusUI.showToast("Failed to load schools", "error"); }
+      try { state.schools = await SmartCampusAPI.fetchSchools() || []; state.currentStep = 1; renderSchools(); }
+      catch (ex) { showError(ex.message); }
     }
-    async function loadDepts() {
-      const schoolId = document.getElementById("schoolSelect").value;
-      const dept = document.getElementById("deptSelect");
-      dept.innerHTML = '<option value="">Select Department</option>';
-      document.getElementById("progSelect").innerHTML = '<option value="">Select Programme</option>';
-      document.getElementById("courseSelect").innerHTML = '<option value="">Select Course</option>';
-      if (!schoolId) return;
-      const depts = await SmartCampusAPI.fetchDepartments(schoolId) || [];
-      depts.forEach(d => { dept.innerHTML += `<option value="${d.id}">${esc(d.name)}</option>`; });
+    function renderSchools() {
+      let html = '<div class="step-title"><i class="fa-solid fa-school"></i>Select a School</div><div class="hierarchy-grid">';
+      state.schools.forEach(s => { html += `<div class="hierarchy-card" onclick="selectSchool('${s.id}','${esc(s.name)}')"><div class="h-icon"><i class="fa-solid fa-school"></i></div><div class="h-name">${esc(s.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
     }
-    async function loadProgs() {
-      const deptId = document.getElementById("deptSelect").value;
-      const prog = document.getElementById("progSelect");
-      prog.innerHTML = '<option value="">Select Programme</option>';
-      document.getElementById("courseSelect").innerHTML = '<option value="">Select Course</option>';
-      if (!deptId) return;
-      const progs = await SmartCampusAPI.fetchProgrammes(deptId) || [];
-      progs.forEach(p => { prog.innerHTML += `<option value="${p.id}">${esc(p.name)}</option>`; });
+    async function selectSchool(id, name) {
+      state.selectedSchoolId = id; state.selectedSchoolName = name;
+      try { state.departments = await SmartCampusAPI.fetchDepartments(id) || []; state.currentStep = 2; buildBreadcrumb(); renderDepts(); }
+      catch (ex) { showError(ex.message); }
     }
-    async function loadCourses() {
-      const progId = document.getElementById("progSelect").value;
-      const level = document.getElementById("levelSelect").value;
-      const courseSel = document.getElementById("courseSelect");
-      courseSel.innerHTML = '<option value="">Select Course</option>';
-      if (!progId || !level) return;
-      try {
-        courseCache = await SmartCampusAPI.fetchCoursesByProgrammeAndYear(progId, level) || [];
-        courseCache.forEach(c => { courseSel.innerHTML += `<option value="${c.id}" data-code="${c.code}" >${esc(c.title)} (${esc(c.code)})</option>`; });
-      } catch {}
+    function renderDepts() {
+      if (!state.departments.length) { document.getElementById("stepContent").innerHTML = '<div style="text-align:center;padding:4rem;color:var(--gray-400)">No departments.</div>'; return; }
+      let html = '<div class="step-title"><i class="fa-solid fa-sitemap"></i>Select a Department</div><div class="hierarchy-grid">';
+      state.departments.forEach(d => { html += `<div class="hierarchy-card" onclick="selectDept('${d.id}','${esc(d.name)}')"><div class="h-icon"><i class="fa-solid fa-building"></i></div><div class="h-name">${esc(d.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
     }
-
-    function onCourseChange() {
-      const courseId = document.getElementById("courseSelect").value;
-      if (!courseId) { document.getElementById("gradeGridContainer").innerHTML = ''; document.getElementById("actionBar").style.display = 'none'; document.getElementById("summaryBar").style.display = 'none'; return; }
-      state.courseId = parseInt(courseId);
-      loadStudentsForGrading();
+    function selectDept(id, name) { state.selectedDeptId = id; state.selectedDeptName = name; loadProgs(id); }
+    async function loadProgs(deptId) {
+      try { state.programmes = await SmartCampusAPI.fetchProgrammes(deptId) || []; state.currentStep = 3; buildBreadcrumb(); renderProgs(); }
+      catch (ex) { showError(ex.message); }
+    }
+    function renderProgs() {
+      if (!state.programmes.length) { document.getElementById("stepContent").innerHTML = '<div style="text-align:center;padding:4rem;color:var(--gray-400)">No programmes.</div>'; return; }
+      let html = '<div class="step-title"><i class="fa-solid fa-graduation-cap"></i>Select a Programme</div><div class="hierarchy-grid">';
+      state.programmes.forEach(p => { html += `<div class="hierarchy-card" onclick="selectProg('${p.id}','${esc(p.name)}')"><div class="h-icon"><i class="fa-solid fa-book-open"></i></div><div class="h-name">${esc(p.name)}</div></div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectProg(id, name) { state.selectedProgId = id; state.selectedProgName = name; state.currentStep = 4; buildBreadcrumb(); renderYears(); }
+    function renderYears() {
+      const years = ["Year 1","Year 2","Year 3","Year 4"];
+      let html = '<div class="step-title"><i class="fa-solid fa-layer-group"></i>Select Year / Level</div><div class="year-grid">';
+      years.forEach(y => { html += `<div class="year-btn" onclick="selectYear('${y}')"><span class="y-icon"><i class="fa-solid fa-layer-group"></i></span>${y}</div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectYear(year) {
+      state.selectedYear = year; state.currentStep = 5; buildBreadcrumb();
+      renderSemesters();
     }
 
-    async function loadStudentsForGrading() {
-      const el = document.getElementById("gradeGridContainer");
-      el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading students...</p>';
+    function renderSemesters() {
+      let html = '<div class="step-title"><i class="fa-solid fa-calendar"></i>Select Semester</div><div class="semester-grid">';
+      html += `<div class="sem-btn" onclick="selectSemester('Semester1')"><span class="y-icon"><i class="fa-solid fa-sun"></i></span>Semester One</div>`;
+      html += `<div class="sem-btn" onclick="selectSemester('Semester2')"><span class="y-icon"><i class="fa-solid fa-cloud"></i></span>Semester Two</div>`;
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectSemester(sem) {
+      state.selectedSemester = sem; state.currentStep = 6; buildBreadcrumb();
+      renderAcademicYears();
+    }
+    function renderAcademicYears() {
+      const years = ["2024/2025","2025/2026","2026/2027","2027/2028"];
+      let html = '<div class="step-title"><i class="fa-solid fa-calendar"></i>Select Academic Year</div><div class="year-grid">';
+      years.forEach(y => { html += `<div class="year-btn" onclick="selectAcademicYear('${y}')"><span class="y-icon"><i class="fa-solid fa-calendar"></i></span>${y}</div>`; });
+      html += '</div>'; document.getElementById("stepContent").innerHTML = html;
+    }
+    function selectAcademicYear(year) {
+      state.selectedAcademicYear = year; state.currentStep = 7; buildBreadcrumb();
+      loadStudentsAndCourses();
+    }
+
+    // -------- Load students and courses --------
+    async function loadStudentsAndCourses() {
+      const el = document.getElementById("stepContent");
+      el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading students & courses...</p>';
       try {
-        const progId = document.getElementById("progSelect").value;
-        const level = document.getElementById("levelSelect").value;
-        state.students = await SmartCampusAPI.fetchStudents(null, null, progId, level) || [];
+        const [students, courses] = await Promise.all([
+          SmartCampusAPI.fetchStudents(null, null, state.selectedProgId, state.selectedYear),
+          SmartCampusAPI.fetchCoursesByProgrammeAndYear(state.selectedProgId, state.selectedYear)
+        ]);
+        state.students = Array.isArray(students) ? students : [];
+        state.courses = Array.isArray(courses) ? courses : [];
         if (!state.students.length) {
-          el.innerHTML = '<p style="color:var(--gray-400);text-align:center;padding:2rem">No students registered for this programme and level.</p>'; return;
+          el.innerHTML = '<div style="text-align:center;padding:4rem;color:var(--gray-400)"><i class="fa-solid fa-users-slash" style="font-size:2rem;display:block;margin-bottom:.5rem"></i>No students found for this programme/year.</div>';
+          return;
         }
-        // Check for existing grades
-        const sem = document.getElementById("semesterSelect").value;
-        const year = document.getElementById("academicYearSelect").value;
-        const existing = await SmartCampusAPI.fetchGradesByCourse(state.courseId, sem, year) || [];
-        const finalizedExisting = existing.filter(x => x.status === 'Finalized');
-        const hasExisting = existing.length > 0;
-        state.grades = state.students.map(s => {
-          const e = existing.find(x => Number(x.studentId) === Number(s.id));
-          const course = courseCache.find(c => Number(c.id) === state.courseId);
-          return {
-            id: e ? e.id : null,
-            studentId: s.id,
-            studentName: s.name,
-            registrationNumber: s.registrationNumber || '',
-            courseId: state.courseId,
-            courseCode: course ? course.code : '',
-            courseTitle: course ? course.title : '',
-            ca1: e ? e.ca1 : null,
-            ca2: e ? e.ca2 : null,
-            assignment: e ? e.assignment : null,
-            midterm: e ? e.midterm : null,
-            finalExam: e ? e.finalExam : null,
-            total: e ? e.total : null,
-            letterGrade: e ? e.letterGrade : null,
-            gpa: e ? e.gpa : null,
-            remarks: e ? e.remarks : null,
-            exists: !!e
-          };
-        });
-
-        // Show warnings
-        const fw = document.getElementById("finalizedWarning");
-        const dw = document.getElementById("duplicateWarning");
-        if (finalizedExisting.length > 0) {
-          fw.style.display = 'block';
-        } else { fw.style.display = 'none'; }
-        if (hasExisting) {
-          document.getElementById("existingCount").textContent = existing.length;
-          dw.style.display = 'block';
-        } else { dw.style.display = 'none'; }
-
-        renderGrid();
-        startAutoSave();
-      } catch (ex) { el.innerHTML = `<p style="color:var(--error)">${esc(ex.message)}</p>`; }
+        el.innerHTML = `<div class="step-title"><i class="fa-solid fa-users"></i>Students in ${esc(state.selectedYear)} - ${esc(state.selectedProgName)} <span style="font-weight:400;font-size:.85rem;color:var(--gray-500)">(${state.students.length} students)</span></div>`;
+        renderStudentList();
+        await preFetchAllGrades();
+      } catch (ex) { showError(ex.message); }
     }
 
-    function calcGrade(g) {
-      const ca1 = g.ca1 != null ? g.ca1 : 0;
-      const ca2 = g.ca2 != null ? g.ca2 : 0;
-      const asgn = g.assignment != null ? g.assignment : 0;
-      const mid = g.midterm != null ? g.midterm : 0;
-      const fin = g.finalExam != null ? g.finalExam : 0;
-      g.total = Math.round((ca1 + ca2 + asgn + mid + fin) * 100) / 100;
-      g.letterGrade = g.total >= 80 ? 'A' : g.total >= 70 ? 'B' : g.total >= 60 ? 'C' : g.total >= 50 ? 'D' : 'F';
-      g.gpa = g.letterGrade === 'A' ? 4.0 : g.letterGrade === 'B' ? 3.0 : g.letterGrade === 'C' ? 2.0 : g.letterGrade === 'D' ? 1.0 : 0.0;
-      g.remarks = g.total >= 50 ? 'Pass' : 'Fail';
+    async function preFetchAllGrades() {
+      try {
+        const all = await Promise.all(state.courses.map(c =>
+          SmartCampusAPI.fetchGradesByCourse(c.id, state.selectedSemester, state.selectedAcademicYear)
+            .then(grades => ({ courseId: c.id, grades: Array.isArray(grades) ? grades : [] }))
+            .catch(() => ({ courseId: c.id, grades: [] }))
+        ));
+        state.allGrades = {};
+        all.forEach(entry => { state.allGrades[entry.courseId] = entry.grades; });
+      } catch(e) { state.allGrades = {}; }
     }
 
-    function renderGrid() {
-      const container = document.getElementById("gradeGridContainer");
-      const actionBar = document.getElementById("actionBar");
-      const summaryBar = document.getElementById("summaryBar");
-      actionBar.style.display = 'flex'; summaryBar.style.display = 'flex';
+    function renderStudentList() {
+      const container = document.getElementById("studentListContainer");
+      let html = '<div class="student-grid">';
+      state.students.forEach((s, i) => {
+        const initial = (s.name || s.displayName || '?').charAt(0).toUpperCase();
+        const reg = s.registrationNumber || s.studentId || '-';
+        const name = s.name || s.displayName || 'Unknown';
+        html += `<div class="student-card" onclick="selectStudent(${i})">
+          <div class="s-avatar">${esc(initial)}</div>
+          <div class="s-info">
+            <div class="s-name">${esc(name)}</div>
+            <div class="s-reg">${esc(reg)}</div>
+          </div>
+          <span class="s-badge">${esc(state.selectedYear)}</span>
+        </div>`;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
 
-      let html = '<div class="editable-grid"><table><thead><tr><th>#</th><th>Reg No</th><th>Student Name</th><th>CA1 (10)</th><th>CA2 (10)</th><th>Asgn (10)</th><th>Mid (20)</th><th>Final (50)</th><th>Total</th><th>Grade</th><th>GPA</th><th>Remarks</th></tr></thead><tbody>';
+    // -------- Student grade form --------
+    function selectStudent(idx) {
+      state.selectedStudent = state.students[idx];
+      state.currentStep = 8;
+      buildBreadcrumb();
+      document.getElementById("gradeFormContainer").innerHTML = '';
+      renderStudentGradeForm();
+    }
 
-      let passCount = 0, failCount = 0, totalSum = 0, count = 0;
-      state.grades.forEach((g, i) => {
-        calcGrade(g);
-        if (g.ca1 != null) { totalSum += g.total; count++; if (g.total >= 50) passCount++; else failCount++; }
+    function renderStudentGradeForm() {
+      const s = state.selectedStudent;
+      if (!s || !state.courses.length) return;
+      const container = document.getElementById("gradeFormContainer");
+      const initial = (s.name || s.displayName || '?').charAt(0).toUpperCase();
+      const name = s.name || s.displayName || 'Unknown';
+      const reg = s.registrationNumber || s.studentId || '-';
+
+      let html = `<div class="back-link" onclick="backToStudentList()"><i class="fa-solid fa-arrow-left"></i> Back to student list</div>
+      <div class="student-info-card">
+        <div class="si-avatar">${esc(initial)}</div>
+        <div class="si-detail">
+          <div class="si-name">${esc(name)}</div>
+          <div class="si-meta">${esc(reg)} &middot; ${esc(state.selectedProgName)} &middot; ${esc(state.selectedYear)} &middot; ${state.selectedSemester === 'Semester1' ? 'Semester One' : 'Semester Two'} &middot; ${esc(state.selectedAcademicYear)}</div>
+        </div>
+      </div>
+      <div class="summary-bar">
+        <span><i class="fa-solid fa-book"></i> Courses: <strong>${state.courses.length}</strong></span>
+        <span><i class="fa-solid fa-check-circle" style="color:var(--success)"></i> Pass: <strong id="sfPass" style="color:var(--success)">0</strong></span>
+        <span><i class="fa-solid fa-xmark-circle" style="color:var(--error)"></i> Fail: <strong id="sfFail" style="color:var(--error)">0</strong></span>
+      </div>
+      <div class="course-score-grid">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Code</th><th>Course Title</th><th>CA1 (10)</th><th>CA2 (10)</th><th>Asgn (10)</th><th>Mid (20)</th><th>Final (50)</th><th>Total</th><th>Grade</th><th>GPA</th><th>Remarks</th><th>Status</th>
+          </tr></thead>
+          <tbody>`;
+
+      let passCount = 0, failCount = 0;
+      state.courses.forEach((c, i) => {
+        const gradeRow = findGradeForCourse(c.id);
+        const g = gradeRow || {};
+        const ca1 = g.ca1, ca2 = g.ca2, asgn = g.assignment, mid = g.midterm, fin = g.finalExam;
+        let total, letter = 'F', gpa = 0, remarks = 'Fail', status = g.status || '';
+        if (ca1 != null || ca2 != null || asgn != null || mid != null || fin != null) {
+          total = Math.round(((ca1||0)+(ca2||0)+(asgn||0)+(mid||0)+(fin||0))*100)/100;
+          letter = total >= 80 ? 'A' : total >= 70 ? 'B' : total >= 60 ? 'C' : total >= 50 ? 'D' : 'F';
+          gpa = letter === 'A' ? 4.0 : letter === 'B' ? 3.0 : letter === 'C' ? 2.0 : letter === 'D' ? 1.0 : 0.0;
+          remarks = total >= 50 ? 'Pass' : 'Fail';
+          if (remarks === 'Pass') passCount++; else failCount++;
+        }
+        const statusBadge = status === 'Finalized' ? 'badge-finalized' : status === 'Submitted' ? 'badge-submitted' : 'badge-draft';
         html += `<tr>
           <td>${i+1}</td>
-          <td>${esc(g.registrationNumber||'-')}</td>
-          <td><strong>${esc(g.studentName)}</strong></td>
-          <td><input type="number" step="0.5" min="0" max="10" value="${g.ca1 != null ? g.ca1 : ''}" oninput="updateGrade(${i},'ca1',this.value)" class="${g.ca1==null&&g.exists?'highlight-missing':''}"></td>
-          <td><input type="number" step="0.5" min="0" max="10" value="${g.ca2 != null ? g.ca2 : ''}" oninput="updateGrade(${i},'ca2',this.value)" class="${g.ca2==null&&g.exists?'highlight-missing':''}"></td>
-          <td><input type="number" step="0.5" min="0" max="10" value="${g.assignment != null ? g.assignment : ''}" oninput="updateGrade(${i},'assignment',this.value)" class="${g.assignment==null&&g.exists?'highlight-missing':''}"></td>
-          <td><input type="number" step="0.5" min="0" max="20" value="${g.midterm != null ? g.midterm : ''}" oninput="updateGrade(${i},'midterm',this.value)" class="${g.midterm==null&&g.exists?'highlight-missing':''}"></td>
-          <td><input type="number" step="0.5" min="0" max="50" value="${g.finalExam != null ? g.finalExam : ''}" oninput="updateGrade(${i},'finalExam',this.value)" class="${g.finalExam==null&&g.exists?'highlight-missing':''}"></td>
-          <td class="readonly total-cell">${g.total != null ? g.total : '-'}</td>
-          <td class="readonly grade-${g.letterGrade||'F'}">${g.letterGrade || '-'}</td>
-          <td class="readonly">${g.gpa != null ? g.gpa.toFixed(1) : '-'}</td>
-          <td class="readonly">${g.remarks || '-'}</td>
+          <td>${esc(c.code || c.courseCode || '')}</td>
+          <td><strong>${esc(c.title || c.courseTitle || '')}</strong></td>
+          <td><input type="number" step="0.5" min="0" max="10" value="${ca1 != null ? ca1 : ''}" oninput="updateStudentGrade(${i},'ca1',this.value)" ${status === 'Finalized' ? 'disabled' : ''} data-course-id="${c.id}"></td>
+          <td><input type="number" step="0.5" min="0" max="10" value="${ca2 != null ? ca2 : ''}" oninput="updateStudentGrade(${i},'ca2',this.value)" ${status === 'Finalized' ? 'disabled' : ''} data-course-id="${c.id}"></td>
+          <td><input type="number" step="0.5" min="0" max="10" value="${asgn != null ? asgn : ''}" oninput="updateStudentGrade(${i},'assignment',this.value)" ${status === 'Finalized' ? 'disabled' : ''} data-course-id="${c.id}"></td>
+          <td><input type="number" step="0.5" min="0" max="20" value="${mid != null ? mid : ''}" oninput="updateStudentGrade(${i},'midterm',this.value)" ${status === 'Finalized' ? 'disabled' : ''} data-course-id="${c.id}"></td>
+          <td><input type="number" step="0.5" min="0" max="50" value="${fin != null ? fin : ''}" oninput="updateStudentGrade(${i},'finalExam',this.value)" ${status === 'Finalized' ? 'disabled' : ''} data-course-id="${c.id}"></td>
+          <td class="readonly total-cell" id="stTotal${i}">${total != null ? total : '-'}</td>
+          <td class="readonly grade-${letter}" id="stLetter${i}">${letter}</td>
+          <td class="readonly" id="stGpa${i}">${gpa.toFixed(1)}</td>
+          <td class="readonly" id="stRemarks${i}">${remarks}</td>
+          <td><span class="${statusBadge}">${status || 'Draft'}</span></td>
         </tr>`;
       });
-      html += '</tbody></table></div>';
-      container.innerHTML = html;
 
-      document.getElementById("studentCount").textContent = state.grades.length;
-      document.getElementById("avgTotal").textContent = count > 0 ? (totalSum / count).toFixed(1) : '0';
-      document.getElementById("passCount").textContent = passCount;
-      document.getElementById("failCount").textContent = failCount;
+      html += `</tbody></table></div>
+      <div class="action-bar">
+        <button class="btn btn-primary" onclick="saveStudentGrades()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+        ${currentRole === "University Super Admin" ? '<button class="btn btn-success" onclick="publishStudentGrades()"><i class="fa-solid fa-crown"></i> Publish Grades</button>' : ''}
+        <button class="btn btn-outline" onclick="resetStudentForm()"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+      </div>`;
+
+      container.innerHTML = html;
+      document.getElementById("sfPass").textContent = passCount;
+      document.getElementById("sfFail").textContent = failCount;
     }
 
-    function updateGrade(idx, field, value) {
-      if (value === '') { state.grades[idx][field] = null; }
+    function findGradeForCourse(courseId) {
+      const grades = state.allGrades[courseId];
+      if (!grades || !state.selectedStudent) return null;
+      const sid = state.selectedStudent.id || state.selectedStudent._id;
+      return grades.find(g => String(g.studentId) === String(sid)) || null;
+    }
+
+    function updateStudentGrade(courseIdx, field, value) {
+      const c = state.courses[courseIdx];
+      if (!c) return;
+      let gradeRow = findGradeForCourse(c.id);
+      if (!gradeRow) {
+        gradeRow = {
+          id: null,
+          studentId: state.selectedStudent.id || state.selectedStudent._id,
+          courseId: c.id,
+          registrationNumber: state.selectedStudent.registrationNumber,
+          studentName: state.selectedStudent.name || state.selectedStudent.displayName,
+          semester: state.selectedSemester,
+          academicYear: state.selectedAcademicYear,
+          status: 'Draft'
+        };
+        if (!state.allGrades[c.id]) state.allGrades[c.id] = [];
+        state.allGrades[c.id].push(gradeRow);
+      }
+      if (gradeRow.status === 'Finalized') return;
+      if (value === '') { gradeRow[field] = null; }
       else {
         const v = parseFloat(value);
         const max = MAX[field] || 100;
-        if (v > max) { SmartCampusUI.showToast(`Max ${field} is ${max}`, "error"); state.grades[idx][field] = max; }
-        else if (v < 0) { SmartCampusUI.showToast("Negative scores not allowed", "error"); state.grades[idx][field] = 0; }
-        else { state.grades[idx][field] = v; }
+        if (v > max) { SmartCampusUI.showToast(`Max ${field} is ${max}`, "error"); gradeRow[field] = max; }
+        else if (v < 0) { SmartCampusUI.showToast("Negative scores not allowed", "error"); gradeRow[field] = 0; }
+        else { gradeRow[field] = v; }
       }
-      renderGrid();
+      const ca1 = gradeRow.ca1||0, ca2 = gradeRow.ca2||0, asgn = gradeRow.assignment||0, mid = gradeRow.midterm||0, fin = gradeRow.finalExam||0;
+      const total = Math.round((ca1+ca2+asgn+mid+fin)*100)/100;
+      const letter = total >= 80 ? 'A' : total >= 70 ? 'B' : total >= 60 ? 'C' : total >= 50 ? 'D' : 'F';
+      const gpa = letter === 'A' ? 4.0 : letter === 'B' ? 3.0 : letter === 'C' ? 2.0 : letter === 'D' ? 1.0 : 0.0;
+      const remarks = total >= 50 ? 'Pass' : 'Fail';
+      document.getElementById(`stTotal${courseIdx}`).textContent = total;
+      document.getElementById(`stLetter${courseIdx}`).textContent = letter;
+      document.getElementById(`stGpa${courseIdx}`).textContent = gpa.toFixed(1);
+      document.getElementById(`stRemarks${courseIdx}`).textContent = remarks;
+      updatePassFail();
     }
 
-    function getPayload(status) {
-      const sem = document.getElementById("semesterSelect").value;
-      const year = document.getElementById("academicYearSelect").value;
-      const user = document.getElementById("lecturerInput").value || 'system';
-      const progName = document.getElementById("progSelect").selectedOptions[0]?.text || '';
-      const level = document.getElementById("levelSelect").value;
-      return state.grades.map(g => ({
-        ...(g.id ? { id: g.id } : {}),
-        studentId: g.studentId,
-        studentName: g.studentName,
-        registrationNumber: g.registrationNumber,
-        courseId: g.courseId,
-        courseCode: g.courseCode,
-        courseTitle: g.courseTitle,
-        ca1: g.ca1, ca2: g.ca2, assignment: g.assignment, midterm: g.midterm, finalExam: g.finalExam,
-        total: g.total, letterGrade: g.letterGrade, gpa: g.gpa, remarks: g.remarks,
-        semester: sem, academicYear: year, programmeName: progName, yearLevel: level,
-        status: status || 'Draft', submittedBy: user, updatedBy: user
-      }));
+    function updatePassFail() {
+      let pass = 0, fail = 0;
+      state.courses.forEach((c, i) => {
+        const el = document.getElementById(`stRemarks${i}`);
+        if (el) {
+          if (el.textContent === 'Pass') pass++;
+          else if (el.textContent === 'Fail') fail++;
+        }
+      });
+      document.getElementById("sfPass").textContent = pass;
+      document.getElementById("sfFail").textContent = fail;
     }
 
-    async function saveGrades() { await save('Draft', 'Grades saved!'); }
-    async function saveDraft() { await save('Draft', 'Draft saved!'); }
-    async function submitFinal() {
-      if (!confirm("Submit final grades? This action cannot be undone.")) return;
-      await save('Finalized', 'Final grades submitted!');
+    function backToStudentList() {
+      state.selectedStudent = null;
+      state.currentStep = 7;
+      buildBreadcrumb();
+      document.getElementById("gradeFormContainer").innerHTML = '';
+      document.getElementById("stepContent").scrollIntoView({ behavior: 'smooth' });
     }
 
-    async function save(status, msg) {
-      const payload = getPayload(status);
-      const exists = payload.filter(p => p.id);
-      const news = payload.filter(p => !p.id);
+    // -------- Save --------
+    function computeGradeForRow(gradeRow) {
+      const ca1 = gradeRow.ca1||0, ca2 = gradeRow.ca2||0, asgn = gradeRow.assignment||0, mid = gradeRow.midterm||0, fin = gradeRow.finalExam||0;
+      const total = Math.round((ca1+ca2+asgn+mid+fin)*100)/100;
+      const letter = total >= 80 ? 'A' : total >= 70 ? 'B' : total >= 60 ? 'C' : total >= 50 ? 'D' : 'F';
+      const gpa = letter === 'A' ? 4.0 : letter === 'B' ? 3.0 : letter === 'C' ? 2.0 : letter === 'D' ? 1.0 : 0.0;
+      const remarks = total >= 50 ? 'Pass' : 'Fail';
+      return { total, letterGrade: letter, gpa, remarks };
+    }
+
+    async function saveStudentGrades() {
+      if (!state.selectedStudent) return;
+      const user = (() => { try { return JSON.parse(localStorage.getItem('sc_user'))?.displayName || 'admin'; } catch { return 'admin'; } })();
+      const payload = [];
+      const sid = state.selectedStudent.id || state.selectedStudent._id;
+      state.courses.forEach(c => {
+        const gradeRow = findGradeForCourse(c.id);
+        if (gradeRow && (gradeRow.ca1 != null || gradeRow.ca2 != null || gradeRow.assignment != null || gradeRow.midterm != null || gradeRow.finalExam != null)) {
+          const computed = computeGradeForRow(gradeRow);
+          payload.push({
+            ...(gradeRow.id ? { id: gradeRow.id } : {}),
+            studentId: sid,
+            studentName: state.selectedStudent.name || state.selectedStudent.displayName,
+            registrationNumber: state.selectedStudent.registrationNumber || '',
+            courseId: c.id,
+            courseCode: c.code || c.courseCode || '',
+            courseTitle: c.title || c.courseTitle || '',
+            ca1: gradeRow.ca1, ca2: gradeRow.ca2, assignment: gradeRow.assignment,
+            midterm: gradeRow.midterm, finalExam: gradeRow.finalExam,
+            total: computed.total, letterGrade: computed.letterGrade, gpa: computed.gpa, remarks: computed.remarks,
+            semester: state.selectedSemester, academicYear: state.selectedAcademicYear,
+            programmeName: state.selectedProgName, yearLevel: state.selectedYear,
+            status: gradeRow.status || 'Draft',
+            submittedBy: user, updatedBy: user
+          });
+        }
+      });
+      if (!payload.length) { SmartCampusUI.showToast("No scores to save", "info"); return; }
+      const toCreate = payload.filter(g => !g.id).map(g => { const o = {...g}; delete o.id; return o; });
+      const toUpdate = payload.filter(g => g.id);
       try {
-        if (news.length) await SmartCampusAPI.bulkCreateGrades(news);
-        if (exists.length) await SmartCampusAPI.bulkUpdateGrades(exists);
-        SmartCampusUI.showToast(msg, "success");
-        await loadStudentsForGrading();
+        if (toCreate.length) await SmartCampusAPI.bulkCreateGrades(toCreate);
+        if (toUpdate.length) await SmartCampusAPI.bulkUpdateGrades(toUpdate);
+        SmartCampusUI.showToast("Grades saved successfully!", "success");
+        await preFetchAllGrades();
+        renderStudentGradeForm();
       } catch (ex) { SmartCampusUI.showToast("Failed: " + ex.message, "error"); }
     }
 
-    function resetGrid() {
-      if (!confirm("Reset all grade entries?")) return;
-      state.grades.forEach(g => { g.ca1 = null; g.ca2 = null; g.assignment = null; g.midterm = null; g.finalExam = null; });
-      renderGrid();
-    }
-
-    // Auto-save draft every 60 seconds
-    let autoSaveTimer = null;
-    function startAutoSave() {
-      if (autoSaveTimer) clearInterval(autoSaveTimer);
-      autoSaveTimer = setInterval(async () => {
-        const hasData = state.grades.some(g => g.ca1 != null || g.ca2 != null || g.assignment != null || g.midterm != null || g.finalExam != null);
-        if (!hasData) return;
-        try {
-          const payload = getPayload('Draft');
-          const news = payload.filter(p => !p.id);
-          const exists = payload.filter(p => p.id);
-          if (news.length) await SmartCampusAPI.bulkCreateGrades(news);
-          if (exists.length) await SmartCampusAPI.bulkUpdateGrades(exists);
-          SmartCampusUI.showToast("Draft auto-saved", "info");
-        } catch {}
-      }, 60000);
-    }
-
-    // Highlight missing marks before submission
-    function highlightMissing() {
-      let missing = false;
-      state.grades.forEach(g => {
-        if (!g.exists && (g.ca1 == null || g.ca2 == null || g.assignment == null || g.midterm == null || g.finalExam == null)) {
-          missing = true;
+    async function publishStudentGrades() {
+      if (!state.selectedStudent) return;
+      if (!confirm("Publish all grades for " + (state.selectedStudent.name || state.selectedStudent.displayName || 'this student') + "? This will finalize and make grades visible to students.")) return;
+      const user = (() => { try { return JSON.parse(localStorage.getItem('sc_user'))?.displayName || 'admin'; } catch { return 'admin'; } })();
+      const payload = [];
+      const sid = state.selectedStudent.id || state.selectedStudent._id;
+      state.courses.forEach(c => {
+        const gradeRow = findGradeForCourse(c.id);
+        if (gradeRow && (gradeRow.ca1 != null || gradeRow.ca2 != null || gradeRow.assignment != null || gradeRow.midterm != null || gradeRow.finalExam != null)) {
+          const computed = computeGradeForRow(gradeRow);
+          payload.push({
+            ...(gradeRow.id ? { id: gradeRow.id } : {}),
+            studentId: sid,
+            studentName: state.selectedStudent.name || state.selectedStudent.displayName,
+            registrationNumber: state.selectedStudent.registrationNumber || '',
+            courseId: c.id,
+            courseCode: c.code || c.courseCode || '',
+            courseTitle: c.title || c.courseTitle || '',
+            ca1: gradeRow.ca1, ca2: gradeRow.ca2, assignment: gradeRow.assignment,
+            midterm: gradeRow.midterm, finalExam: gradeRow.finalExam,
+            total: computed.total, letterGrade: computed.letterGrade, gpa: computed.gpa, remarks: computed.remarks,
+            semester: state.selectedSemester, academicYear: state.selectedAcademicYear,
+            programmeName: state.selectedProgName, yearLevel: state.selectedYear,
+            status: 'Finalized',
+            submittedBy: user, updatedBy: user
+          });
         }
       });
-      if (missing) {
-        SmartCampusUI.showToast("Some students have missing marks. Please fill all fields.", "warning");
-        renderGrid();
-      }
-      return missing;
+      if (!payload.length) { SmartCampusUI.showToast("No scores to publish", "info"); return; }
+      const toCreate = payload.filter(g => !g.id).map(g => { const o = {...g}; delete o.id; return o; });
+      const toUpdate = payload.filter(g => g.id);
+      try {
+        if (toCreate.length) await SmartCampusAPI.bulkCreateGrades(toCreate);
+        if (toUpdate.length) await SmartCampusAPI.bulkUpdateGrades(toUpdate);
+        SmartCampusUI.showToast("Grades published successfully!", "success");
+        await preFetchAllGrades();
+        renderStudentGradeForm();
+      } catch (ex) { SmartCampusUI.showToast("Failed: " + ex.message, "error"); }
     }
 
-    // Override submitFinal to check missing marks
-    const origSubmit = submitFinal;
-    submitFinal = async function() {
-      if (highlightMissing()) return;
-      const hasFinalized = state.grades.some(g => g.exists && g.id && state.grades.find(x => x.id === g.id)?.status === 'Finalized');
-      if (hasFinalized && !confirm("Some grades are already finalized. Submitting will overwrite them. Continue?")) return;
-      await origSubmit();
-    };
+    function resetStudentForm() {
+      if (!confirm("Reset all changes for this student?")) return;
+      preFetchAllGrades().then(() => renderStudentGradeForm());
+    }
 
-    // Override saveGrades to check missing marks
-    const origSave = saveGrades;
-    saveGrades = async function() {
-      highlightMissing();
-      await origSave();
-    };
+    function showError(msg) { document.getElementById("stepContent").innerHTML = `<p style="color:var(--error);text-align:center;padding:2rem">${esc(msg)}</p>`; }
   </script>
 </body>
 </html>
