@@ -498,6 +498,23 @@ input, select, textarea {
     cursor: not-allowed;
 }
 
+.menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: var(--navy);
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    transition: var(--transition);
+}
+.menu-toggle:hover {
+    background: var(--gray-100);
+}
+
 /* ========== NOTIFICATIONS ========== */
 .notifications-cluster {
     position: relative;

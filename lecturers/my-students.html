@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Students - SmartCampus</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: .3rem .5rem; font-size: .85rem; padding: .6rem 0; }
+    .breadcrumb a { color: var(--primary); text-decoration: none; }
+    .breadcrumb span { color: var(--gray-500); }
+    .breadcrumb .current { color: var(--gray-800); font-weight: 600; }
+    .filter-bar { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1.5rem; padding: 1rem 1.25rem; background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; }
+    .filter-group { display: flex; flex-direction: column; gap: .25rem; min-width: 180px; }
+    .filter-group label { font-size: .78rem; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: .03em; }
+    .filter-group select, .filter-group input { padding: .5rem .6rem; border: 1px solid var(--gray-200); border-radius: 6px; font-size: .85rem; background: #fff; outline: none; }
+    .filter-group select:focus, .filter-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
+    .btn-search { padding: .5rem 1.25rem; }
+    .students-count { font-size: .85rem; color: var(--gray-500); margin-bottom: .75rem; }
+    .student-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .student-table th { background: var(--navy); color: #fff; padding: .55rem .6rem; text-align: left; font-weight: 600; white-space: nowrap; }
+    .student-table td { padding: .45rem .6rem; border-bottom: 1px solid var(--gray-100); }
+    .student-table tr:hover td { background: #f8faff; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--gray-200); border-radius: 8px; }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--gray-400); }
+    .empty-state i { font-size: 2.5rem; display: block; margin-bottom: .75rem; }
+    .badge-year { display: inline-block; background: var(--gray-100); padding: .15rem .5rem; border-radius: 10px; font-size: .75rem; }
+    .spinner { text-align: center; padding: 2rem; color: var(--gray-400); }
+    .spinner i { margin-right: .4rem; }
+    @media (max-width: 600px) { .filter-group { min-width: 100%; } }
+  </style>
+</head>
+<body>
+  <div id="sidebarMount"></div>
+  <div class="main-content">
+    <div class="top-bar"><button class="menu-toggle" type="button">☰</button><div class="role-selector"><label for="roleSelect">View as:</label><select id="roleSelect"></select></div></div>
+    <h1>My Students</h1>
+    <div class="breadcrumb"><a href="../dashboard.html">Dashboard</a> <span>/</span> <span class="current">My Students</span></div>
+
+    <div class="filter-bar" id="filterBar">
+      <div class="filter-group">
+        <label>Programme</label>
+        <select id="programmeSelect"><option value="">— Select Programme —</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Course</label>
+        <select id="courseSelect"><option value="">— Select Course —</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Year</label>
+        <select id="yearSelect">
+          <option value="">All Years</option>
+          <option value="Year 1">Year 1</option>
+          <option value="Year 2">Year 2</option>
+          <option value="Year 3">Year 3</option>
+          <option value="Year 4">Year 4</option>
+        </select>
+      </div>
+      <div class="filter-group" style="align-self:flex-end">
+        <button class="btn btn-primary btn-search" onclick="searchStudents()"><i class="fa-solid fa-search"></i> Search</button>
+      </div>
+    </div>
+
+    <div id="resultArea">
+      <div class="empty-state"><i class="fa-solid fa-users"></i><p>Select a programme, course, and year then click Search.</p></div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/api.js"></script>
+  <script>
+    var state = {
+      schools: [],
+      deptId: null,
+      deptName: '',
+      schoolId: null,
+      programmes: [],
+      assignedCourses: [],
+      allCourses: []
+    };
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (currentRole !== "Lecturer") {
+        document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>';
+        return;
+      }
+      var u = {};
+      try { u = JSON.parse(localStorage.getItem("sc_user") || "{}"); } catch(e) {}
+      if (!u.department) {
+        document.getElementById("resultArea").innerHTML = '<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Department not found in your profile.</p></div>';
+        return;
+      }
+      state.deptName = u.department;
+      try {
+        state.schools = await SmartCampusAPI.fetchSchools() || [];
+        for (var si = 0; si < state.schools.length; si++) {
+          var d = (state.schools[si].departments || []).find(function(dd) { return dd.name === u.department || String(dd.id) === String(u.department); });
+          if (d) {
+            state.schoolId = state.schools[si].id;
+            state.deptId = d.id;
+            break;
+          }
+        }
+      } catch(e) {}
+      if (!state.deptId) {
+        document.getElementById("resultArea").innerHTML = '<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Could not resolve your department. Contact admin.</p></div>';
+        return;
+      }
+      // Load programmes
+      try { state.programmes = await SmartCampusAPI.fetchProgrammes(state.deptId) || []; } catch(e) {}
+      populateProgrammes();
+      // Load courses for department
+      try { state.allCourses = await SmartCampusAPI.fetchCourses(state.deptId) || []; } catch(e) {}
+      // Load lecturer's assigned courses
+      try {
+        var lecData = await apiFetch('/lecturers/' + u.id) || {};
+        var lecCrs = lecData.assignedCourses || [];
+        var assignedIds = new Set(lecCrs.map(function(c) { return String(c.courseId); }));
+        state.assignedCourses = state.allCourses.filter(function(c) { return assignedIds.has(String(c.id)); });
+        if (!state.assignedCourses.length && lecCrs.length) {
+          state.assignedCourses = lecCrs.map(function(c) {
+            return { id: c.courseId, code: c.courseCode, courseCode: c.courseCode, title: c.courseTitle, courseTitle: c.courseTitle };
+          });
+        }
+      } catch(e) { state.assignedCourses = []; }
+      populateCourses();
+    });
+
+    function populateProgrammes() {
+      var sel = document.getElementById("programmeSelect");
+      sel.innerHTML = '<option value="">— Select Programme —</option>';
+      state.programmes.forEach(function(p) {
+        sel.innerHTML += '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>';
+      });
+    }
+
+    function populateCourses() {
+      var sel = document.getElementById("courseSelect");
+      sel.innerHTML = '<option value="">— Select Course —</option>';
+      state.assignedCourses.forEach(function(c) {
+        sel.innerHTML += '<option value="' + esc(c.id) + '">' + esc(c.code || c.courseCode || '') + ' - ' + esc(c.title || c.courseTitle || '') + '</option>';
+      });
+      if (!state.assignedCourses.length) {
+        sel.innerHTML = '<option value="">No courses assigned</option>';
+      }
+    }
+
+    async function searchStudents() {
+      var progId = document.getElementById("programmeSelect").value;
+      var courseId = document.getElementById("courseSelect").value;
+      var year = document.getElementById("yearSelect").value;
+      if (!progId || !courseId) {
+        SmartCampusUI.showToast("Please select a programme and course.", "info");
+        return;
+      }
+      var area = document.getElementById("resultArea");
+      area.innerHTML = '<div class="spinner"><i class="fa-solid fa-spinner fa-spin"></i> Loading students...</div>';
+      try {
+        var students = await SmartCampusAPI.fetchStudents(state.schoolId, state.deptId, progId, year || null) || [];
+        renderStudents(area, students, courseId, year);
+      } catch (ex) {
+        area.innerHTML = '<div class="empty-state"><i class="fa-solid fa-exclamation-circle"></i><p>Failed to load students: ' + esc(ex.message) + '</p></div>';
+      }
+    }
+
+    function renderStudents(area, students, courseId, year) {
+      if (!students.length) {
+        area.innerHTML = '<div class="empty-state"><i class="fa-solid fa-users-slash"></i><p>No students found for the selected criteria.</p></div>';
+        return;
+      }
+      var html = '<div class="students-count"><i class="fa-solid fa-users"></i> ' + students.length + ' student' + (students.length > 1 ? 's' : '') + ' found</div>';
+      html += '<div class="table-wrap"><table class="student-table"><thead><tr>';
+      html += '<th>#</th><th>Name</th><th>Registration No.</th><th>Email</th><th>Programme</th><th>Year</th>';
+      html += '</tr></thead><tbody>';
+      students.forEach(function(s, i) {
+        var name = s.name || s.displayName || 'Unknown';
+        var reg = s.registrationNumber || s.studentId || '—';
+        var email = s.email || '—';
+        var prog = s.programmeName || s.programme || '—';
+        var yr = s.yearLevel || year || '—';
+        html += '<tr>';
+        html += '<td>' + (i + 1) + '</td>';
+        html += '<td><strong>' + esc(name) + '</strong></td>';
+        html += '<td>' + esc(reg) + '</td>';
+        html += '<td>' + esc(email) + '</td>';
+        html += '<td>' + esc(prog) + '</td>';
+        html += '<td><span class="badge-year">' + esc(yr) + '</span></td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      area.innerHTML = html;
+    }
+
+    function esc(v) { return String(v).replace(/[&<>"']/g, function(c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+  </script>
+</body>
+</html>

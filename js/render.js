@@ -21,7 +21,44 @@ async function renderDashboard() {
     }
     let widgets = [];
     if (currentRole === "Lecturer") {
-        widgets = ["Pending Grade Submissions", "Class Average", "Moderation Requests"];
+        try {
+            var userId = (function() { try { return JSON.parse(localStorage.getItem("sc_user") || "{}").id; } catch { return null; } })();
+            if (userId) {
+                var dashData = await SmartCampusAPI.withFallback(function() { return apiFetch('/grades/lecturer/' + userId + '/dashboard'); }, function() { return null; });
+                var lecData = await SmartCampusAPI.withFallback(function() { return apiFetch('/lecturers/' + userId); }, function() { return null; });
+                var coursesCount = (lecData && lecData.assignedCourses) ? lecData.assignedCourses.length : 0;
+                if (dashData) {
+                    var totalGrades = dashData.totalGrades || 0;
+                    var draft = dashData.draftGrades || 0;
+                    var submitted = dashData.submittedGrades || 0;
+                    var returned = dashData.returnedForCorrection || 0;
+                    var approvedChain = (dashData.approvedByDepartment || 0) + (dashData.approvedBySchool || 0) + (dashData.approvedByUniversity || 0);
+                    var published = dashData.published || 0;
+                    var avgScore = dashData.averageScore || 0;
+                    var passRate = dashData.passRate || 0;
+                    var uniqueStudents = dashData.uniqueStudents || 0;
+                    widgets = [
+                        { label: "Total Grades", value: totalGrades, icon: "fa-table", color: "var(--primary)" },
+                        { label: "Drafts", value: draft, icon: "fa-pen", color: "var(--gray-500)" },
+                        { label: "Submitted", value: submitted, icon: "fa-paper-plane", color: "var(--warning)" },
+                        { label: "Approved", value: approvedChain, icon: "fa-check-circle", color: "var(--success)" },
+                        { label: "Published", value: published, icon: "fa-check-double", color: "#8B5CF6" },
+                        { label: "Returned", value: returned, icon: "fa-rotate-left", color: "var(--error)" },
+                        { label: "Students", value: uniqueStudents, icon: "fa-users", color: "var(--info)" },
+                        { label: "Courses", value: coursesCount, icon: "fa-book", color: "var(--navy)" },
+                        { label: "Avg Score", value: avgScore.toFixed(1), icon: "fa-chart-line", color: "var(--teal)" },
+                        { label: "Pass Rate", value: passRate + "%", icon: "fa-percent", color: "var(--success)" }
+                    ];
+                }
+            }
+        } catch(e) { /* fallback */ }
+        if (!widgets.length) {
+            widgets = [
+                { label: "Total Grades", value: "—", icon: "fa-table", color: "var(--primary)" },
+                { label: "Students", value: "—", icon: "fa-users", color: "var(--info)" },
+                { label: "Courses", value: "—", icon: "fa-book", color: "var(--navy)" }
+            ];
+        }
     } else {
         try {
             const schools = await SmartCampusAPI.fetchSchools();
@@ -31,7 +68,13 @@ async function renderDashboard() {
             widgets = ["Total Schools: 5", "Total Departments: 21", "Total Students: 2450"];
         }
     }
-    let html = `<div class="grid-3" style="margin-bottom:1.5rem">${widgets.map((w) => `<div class="card"><h3>${w}</h3><p>Live data for ${currentRole}</p></div>`).join("")}</div>`;
+    var widgetHtml;
+    if (typeof widgets[0] === "string") {
+        widgetHtml = widgets.map(function(w) { return '<div class="card"><h3>' + w + '</h3><p>Live data for ' + currentRole + '</p></div>'; }).join("");
+    } else {
+        widgetHtml = widgets.map(function(w) { return '<div class="card" style="text-align:center;padding:1rem"><div style="font-size:2rem;color:' + w.color + ';margin-bottom:.35rem"><i class="fa-solid ' + w.icon + '"></i></div><div style="font-size:1.5rem;font-weight:700;color:var(--gray-800)">' + w.value + '</div><div style="font-size:.8rem;color:var(--gray-500);margin-top:.15rem">' + w.label + '</div></div>'; }).join("");
+    }
+    let html = '<div style="margin-bottom:1.5rem">' + widgetHtml + '</div>';
 
     // Management section links
     const mgmtCards = [];
@@ -72,6 +115,56 @@ async function renderDashboard() {
 
     if (mgmtCards.length) {
         html += `<h2 style="font-size:1.2rem;margin:1.5rem 0 .5rem">Management</h2><div class="grid-2">${mgmtCards.join("")}</div>`;
+    }
+
+    // Lecturer-specific sections
+    if (currentRole === "Lecturer") {
+        var user2 = (function() { try { return JSON.parse(localStorage.getItem("sc_user") || "{}"); } catch { return {}; } })();
+        var lecFull = null;
+        try { lecFull = await apiFetch('/lecturers/' + user2.id); } catch(e) {}
+        var assignedCrs = (lecFull && lecFull.assignedCourses) || [];
+        if (assignedCrs.length) {
+            html += '<h2 style="font-size:1.2rem;margin:1.5rem 0 .5rem"><i class="fa-solid fa-book-open"></i> My Courses (' + assignedCrs.length + ')</h2>';
+            html += '<div class="grid-3" style="margin-bottom:1rem">';
+            assignedCrs.forEach(function(c) {
+                html += '<a class="card card-link" href="gradebook/browse.html?courseId=' + c.courseId + '&semester=' + encodeURIComponent(c.semester || 'Semester1') + '" style="padding:.65rem .85rem">';
+                html += '<div style="font-weight:600;font-size:.9rem">' + esc(c.courseCode) + '</div>';
+                html += '<div style="font-size:.8rem;color:var(--gray-600)">' + esc(c.courseTitle) + '</div>';
+                html += '<div style="font-size:.75rem;color:var(--gray-400);margin-top:.2rem">' + esc(c.semester || '') + ' ' + esc(c.academicYear || '') + '</div>';
+                html += '</a>';
+            });
+            html += '</div>';
+        }
+        // Recent activity
+        try {
+            var dash = await apiFetch('/grades/lecturer/' + user2.id + '/dashboard');
+            var recent = (dash && dash.recentActivity) || [];
+            if (recent.length) {
+                html += '<h2 style="font-size:1.2rem;margin:1.5rem 0 .5rem"><i class="fa-solid fa-clock-rotate-left"></i> Recent Activity</h2>';
+                html += '<div class="table-container"><table class="table"><thead><tr><th>Student</th><th>Course</th><th>Total</th><th>Status</th><th>Date</th></tr></thead><tbody>';
+                recent.forEach(function(r) {
+                    var dateStr = r.updatedAt || r.submittedAt || '';
+                    if (dateStr) { try { dateStr = new Date(dateStr).toLocaleDateString(); } catch(e) {} }
+                    var statusBadge = '';
+                    var s = r.status || '';
+                    if (s === 'Published') statusBadge = '<span class="badge badge-success">Published</span>';
+                    else if (s === 'Approved by University') statusBadge = '<span class="badge badge-primary">Univ Approved</span>';
+                    else if (s === 'Approved by School') statusBadge = '<span class="badge badge-info">School Approved</span>';
+                    else if (s === 'Approved by Department') statusBadge = '<span class="badge badge-info">Dept Approved</span>';
+                    else if (s === 'Submitted to Department') statusBadge = '<span class="badge badge-warning">Submitted</span>';
+                    else if (s === 'Returned for Correction') statusBadge = '<span class="badge badge-danger">Returned</span>';
+                    else statusBadge = '<span class="badge badge-secondary">' + esc(s) + '</span>';
+                    html += '<tr><td>' + esc(r.studentName || '') + '</td><td>' + esc(r.courseCode || '') + '</td><td>' + (r.total != null ? r.total : '—') + '</td><td>' + statusBadge + '</td><td>' + dateStr + '</td></tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+        } catch(e) {}
+        // Quick links
+        html += '<h2 style="font-size:1.2rem;margin:1.5rem 0 .5rem"><i class="fa-solid fa-link"></i> Quick Actions</h2>';
+        html += '<div class="grid-2" style="margin-bottom:1rem">';
+        html += '<a class="card card-link" href="lecturers/my-students.html"><div style="display:flex;align-items:center;gap:.75rem"><i class="fa-solid fa-user-graduate fa-xl" style="color:var(--info);width:2rem"></i><div><h3 style="margin:0">My Students</h3><p style="margin:.15rem 0 0;font-size:.8rem;color:var(--gray-600)">View students enrolled in your courses by programme and year.</p></div></div></a>';
+        html += '<a class="card card-link" href="lecturers/grade-sheet.html"><div style="display:flex;align-items:center;gap:.75rem"><i class="fa-solid fa-file-spreadsheet fa-xl" style="color:#8B5CF6;width:2rem"></i><div><h3 style="margin:0">Grade Sheet</h3><p style="margin:.15rem 0 0;font-size:.8rem;color:var(--gray-600)">Spreadsheet-style grade entry for your courses.</p></div></div></a>';
+        html += '</div>';
     }
 
     container.innerHTML = html;

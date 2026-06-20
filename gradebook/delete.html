@@ -69,10 +69,11 @@
       selectedProgId: null, selectedProgName: '',
       selectedYear: '', selectedCourseId: null, selectedCourseName: '',
       selectedSemester: 'Semester1', selectedAcademicYear: '2025/2026', currentStep: 0,
-      selectedIds: new Set() };
+      selectedIds: new Set(),
+      assignedCourseIds: null, assignedCourses: [], assignedYears: [] };
 
     document.addEventListener("DOMContentLoaded", async () => {
-      if (!["Lecturer","University Super Admin"].includes(currentRole)) {
+      if (!["University Super Admin","School Super Admin","Department Admin","Lecturer"].includes(currentRole)) {
         document.querySelector(".main-content").innerHTML = '<div style="text-align:center;padding:4rem"><h2 style="color:var(--error)">Access Denied</h2></div>'; return;
       }
       await loadSchools();
@@ -88,6 +89,21 @@
               state.selectedDeptName = d.name;
               state.departments = [d];
               try { state.programmes = await SmartCampusAPI.fetchProgrammes(d.id) || []; } catch(ex) { showError(ex.message); return; }
+              // Load lecturer's assigned courses
+              try {
+                var lecData = await apiFetch('/lecturers/' + u.id) || {};
+                var lecCrs = lecData.assignedCourses || [];
+                state.assignedCourseIds = new Set(lecCrs.map(function(c) { return c.courseId; }));
+                if (state.assignedCourseIds.size > 0) {
+                  var deptCrs = await SmartCampusAPI.fetchCourses(d.id) || [];
+                  state.assignedCourses = deptCrs.filter(function(c) { return state.assignedCourseIds.has(c.id); });
+                  state.assignedYears = [...new Set(state.assignedCourses.map(function(c) { return c.year; }))];
+                }
+              } catch(e) { state.assignedCourseIds = null; }
+              if (state.assignedCourseIds && state.assignedCourseIds.size === 0) {
+                document.getElementById("stepContent").innerHTML = '<div class="empty-state"><i class="fa-solid fa-chalkboard-user"></i><p>No courses have been assigned to you yet.<br>Please contact the department admin to assign courses.</p></div>';
+                state.currentStep = -1; buildBreadcrumb(); return;
+              }
               state.currentStep = 3;
               buildBreadcrumb();
               renderProgs();
@@ -158,7 +174,11 @@
     }
     function selectProg(id, name) { state.selectedProgId = id; state.selectedProgName = name; state.currentStep = 4; buildBreadcrumb(); renderYears(); }
     function renderYears() {
-      const years = ["Year 1","Year 2","Year 3","Year 4"];
+      var years = ["Year 1","Year 2","Year 3","Year 4"];
+      if (currentRole === "Lecturer" && state.assignedCourseIds && state.assignedYears.length) {
+        years = years.filter(function(y) { return state.assignedYears.indexOf(y.replace(' ','')) !== -1; });
+      }
+      if (!years.length) { document.getElementById("stepContent").innerHTML = '<div class="empty-state"><i class="fa-solid fa-layer-group"></i><p>No years assigned to you.</p></div>'; return; }
       let html = '<div class="step-title"><i class="fa-solid fa-layer-group"></i>Select Year / Level</div><div class="year-grid">';
       years.forEach(y => { html += `<div class="year-btn" onclick="selectYear('${y}')"><span class="y-icon"><i class="fa-solid fa-layer-group"></i></span>${y}</div>`; });
       html += '</div>'; document.getElementById("stepContent").innerHTML = html;
@@ -170,7 +190,13 @@
       el.innerHTML = '<p style="color:var(--gray-300);text-align:center;padding:2rem"><i class="fa-solid fa-spinner fa-spin"></i> Loading courses...</p>';
       try {
         state.courses = await SmartCampusAPI.fetchCoursesByProgrammeAndYear(state.selectedProgId, state.selectedYear) || [];
-        if (!state.courses.length) { el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-book"></i><p>No courses.</p></div>'; return; }
+        if (!state.courses.length) {
+          state.courses = await SmartCampusAPI.fetchCourses(state.selectedDeptId).catch(() => []) || [];
+        }
+        if (currentRole === "Lecturer" && state.assignedCourseIds && state.assignedCourseIds.size > 0) {
+          state.courses = state.courses.filter(function(c) { return state.assignedCourseIds.has(c.id); });
+        }
+        if (!state.courses.length) { el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-book"></i><p>No courses assigned to you for this year.</p></div>'; return; }
         let html = '<div class="step-title"><i class="fa-solid fa-book"></i>Select a Course</div><div class="hierarchy-grid">';
         state.courses.forEach(c => { html += `<div class="hierarchy-card" onclick="selectCourse('${c.id}','${esc(c.title)}')"><div class="h-icon"><i class="fa-solid fa-book"></i></div><div class="h-name">${esc(c.title)}</div></div>`; });
         html += '</div>'; el.innerHTML = html;

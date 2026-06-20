@@ -89,10 +89,13 @@ const navItems = [
     { href: "student-dashboard.html", label: "Student Dashboard", icon: "fa-chart-pie", roles: "Student" },
     { href: "finance-dashboard.html", label: "Finance Dashboard", icon: "fa-chart-pie", roles: FINANCE_ROLES },
     { href: "schools.html", label: "Schools", icon: "fa-school", roles: "Lecturer,School Super Admin,University Super Admin" },
-    { href: "programmes.html", label: "Programmes", icon: "fa-graduation-cap", roles: ACADEMIC_ROLES },
+    { href: "programmes.html", label: "Programmes", icon: "fa-graduation-cap", roles: "Department Admin,School Super Admin,University Super Admin" },
     { href: "curriculum.html", label: "Curriculum", icon: "fa-book-open", roles: "School Super Admin,University Super Admin" },
     { href: "gradebook.html", label: "Gradebook", icon: "fa-table", roles: "Lecturer,Department Admin,School Super Admin,University Super Admin" },
+    { href: "lecturers/my-students.html", label: "My Students", icon: "fa-user-graduate", roles: "Lecturer" },
+    { href: "lecturers/grade-sheet.html", label: "Grade Sheet", icon: "fa-file-spreadsheet", roles: "Lecturer" },
     { href: "manage-lecturers.html", label: "Manage Lecturers", icon: "fa-chalkboard-user", roles: "University Super Admin,School Super Admin,Department Admin" },
+    { href: "lecturers/assign-courses.html", label: "Assign Courses", icon: "fa-pen-to-square", roles: "Department Admin" },
     { href: "gradebook/department-approval.html", label: "Dept Approval", icon: "fa-check-double", roles: "Department Admin" },
     { href: "gradebook/school-approval.html", label: "School Approval", icon: "fa-school", roles: "School Super Admin" },
     { href: "gradebook/university-approval.html", label: "Univ Approval", icon: "fa-crown", roles: "University Super Admin" },
@@ -280,7 +283,8 @@ function renderBreadcrumbsHtml(items) {
             if (c.current) {
                 return `<li><span class="breadcrumb-current" aria-current="page">${escapeHtmlSafe(c.label)}</span></li>`;
             }
-            return `<li><a href="${c.href}">${escapeHtmlSafe(c.label)}</a></li>`;
+            const href = c.href.startsWith("/") ? c.href : "/" + c.href;
+            return `<li><a href="${href}">${escapeHtmlSafe(c.label)}</a></li>`;
         })
         .join("");
     return `<ol class="breadcrumbs">${li}</ol>`;
@@ -396,6 +400,9 @@ function enhanceTopBarsWithChrome() {
         bar.innerHTML = `
             <div class="top-bar-row-main">
               <div class="top-bar-left-cluster">
+                <button type="button" class="menu-toggle" aria-label="Toggle sidebar" title="Toggle sidebar">
+                  <i class="fa-solid fa-bars"></i>
+                </button>
                 <button type="button" class="btn-back-arrow" id="smartcampusBackBtn" aria-label="Go back" ${pageFile === "dashboard.html" ? "disabled data-disabled-dashboard" : ""} title="Back">
                   <i class="fa-solid fa-arrow-left-long"></i>
                 </button>
@@ -423,7 +430,7 @@ function enhanceTopBarsWithChrome() {
         if (backBtn && !backBtn.disabled) {
             backBtn.addEventListener("click", () => {
                 if (window.history.length > 1) window.history.back();
-                else window.location.href = "dashboard.html";
+                else window.location.href = "/dashboard.html";
             });
         }
     });
@@ -564,7 +571,8 @@ function mountReusableSidebar() {
     if (!mount) return;
     const navHtml = navItems.map((item) => {
         const roleAttr = item.roles === "*" ? "*" : item.roles;
-        return `<li data-role="${roleAttr}"><a href="${item.href}" title="${item.label}"><i class="fa-solid ${item.icon}"></i> <span class="nav-label">${item.label}</span></a></li>`;
+        const href = item.href.startsWith("/") ? item.href : "/" + item.href;
+        return `<li data-role="${roleAttr}"><a href="${href}" title="${item.label}"><i class="fa-solid ${item.icon}"></i> <span class="nav-label">${item.label}</span></a></li>`;
     }).join("");
 
     mount.innerHTML = `
@@ -572,7 +580,7 @@ function mountReusableSidebar() {
             <div class="sidebar-header">
                 <div class="brand-block">
                     <div class="logo-slot">
-                        <img class="logo-image" src="img/Njala_university_logo.png" alt="Njala University Logo">
+                        <img class="logo-image" src="/img/Njala_university_logo.png" alt="Njala University Logo">
                         <span class="logo-text-fallback">NJ</span>
                     </div>
                     <div class="brand-text">
@@ -622,10 +630,10 @@ function bindGlobalSearch() {
                 if (!schools.length) { results.innerHTML = "<div class='sr-item'>No results</div>"; results.classList.add("open"); return; }
                 let html = "";
                 schools.forEach(s => {
-                    html += `<div class="sr-item" onclick="window.location.href='school_details.html?id=${s.id}'"><strong>${s.name}</strong></div>`;
+                    html += `<div class="sr-item" onclick="window.location.href='/school_details.html?id=${s.id}'"><strong>${s.name}</strong></div>`;
                     (s.departments || []).forEach(d => {
                         if (d.name.toLowerCase().includes(q) || (d.programmes || []).some(p => p.toLowerCase().includes(q))) {
-                            html += `<div class="sr-item sub" onclick="window.location.href='department_details.html?deptId=${d.id}&schoolId=${s.id}'">${d.name}</div>`;
+                            html += `<div class="sr-item sub" onclick="window.location.href='/department_details.html?deptId=${d.id}&schoolId=${s.id}'">${d.name}</div>`;
                         }
                     });
                 });
@@ -649,6 +657,14 @@ function adjustContentMargin() {
 function bindSidebarToggle() {
     const logoSlot = document.querySelector(".logo-slot");
     const sidebar = document.querySelector(".sidebar");
+    const menuToggle = document.querySelector(".menu-toggle");
+    if (menuToggle && sidebar) {
+        menuToggle.addEventListener("click", (e) => {
+            e.stopPropagation();
+            sidebar.classList.toggle("collapsed");
+            adjustContentMargin();
+        });
+    }
     if (logoSlot && sidebar) {
         logoSlot.addEventListener("click", () => {
             sidebar.classList.remove("collapsed");
@@ -670,7 +686,7 @@ function highlightActiveNav() {
     const currentPage = window.location.pathname.split("/").pop();
     const navLinks = document.querySelectorAll(".sidebar-nav a");
     navLinks.forEach((link) => {
-        const href = link.getAttribute("href");
+        const href = link.getAttribute("href").replace(/^\//, "");
         if (href === currentPage) {
             link.classList.add("active");
         } else {
